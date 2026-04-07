@@ -1,6 +1,11 @@
 import { Prisma } from "@/generated/prisma/client";
 import { UnauthorizedError, requireAuthUser } from "@/lib/auth";
-import { createBeerOffer, getBeerOffers, getLocationContributionPermission } from "@/lib/query";
+import {
+  createOfferOrPriceUpdateProposal,
+  getBeerOffers,
+  getLocationContributionPermission,
+  getVariantContributionPermission,
+} from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
 import { createBeerOfferBodySchema, parseBeerQueryParams } from "@/lib/validation";
 
@@ -67,13 +72,16 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const permission = await getLocationContributionPermission(userId, parsed.data.locationId);
+  const locationPermission = await getLocationContributionPermission(
+    userId,
+    parsed.data.locationId,
+  );
 
-  if (permission === "missing") {
+  if (locationPermission === "missing") {
     return jsonError(404, "LOCATION_NOT_FOUND", "No location found for the supplied locationId.");
   }
 
-  if (permission === "forbidden") {
+  if (locationPermission === "forbidden") {
     return jsonError(
       403,
       "LOCATION_PENDING_RESTRICTED",
@@ -81,25 +89,76 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  const variantPermission = await getVariantContributionPermission(userId, parsed.data.variantId);
+
+  if (variantPermission === "missing") {
+    return jsonError(404, "VARIANT_NOT_FOUND", "No beer variant found for the supplied variantId.");
+  }
+
+  if (variantPermission === "forbidden") {
+    return jsonError(
+      403,
+      "VARIANT_PENDING_RESTRICTED",
+      "You can only submit offers for approved variants or variants you submitted.",
+    );
+  }
+
   try {
-    const offer = await createBeerOffer({
+    const result = await createOfferOrPriceUpdateProposal({
       ...parsed.data,
       createdById: userId,
       status: "pending",
     });
 
-    return jsonOk({ offer }, { status: 201 });
+    if (result.outcome === "offer") {
+      return jsonOk(
+        {
+          outcome: "offer_submission_created",
+          offer: result.offer,
+        },
+        { status: 201 },
+      );
+    }
+
+    if (result.outcome === "price_update") {
+      return jsonOk(
+        {
+          outcome: "price_update_proposed",
+          proposal: result.proposal,
+          offer: result.offer,
+        },
+        { status: 201 },
+      );
+    }
+
+    if (result.outcome === "existing_offer_not_approved") {
+      return jsonError(
+        409,
+        "EXISTING_OFFER_PENDING",
+        "A matching offer already exists but is not yet approved.",
+      );
+    }
+
+    return jsonError(
+      409,
+      "SAME_PRICE_ALREADY_ACTIVE",
+      "The submitted price is already the currently approved price.",
+    );
   } catch (error) {
     if (isKnownRequestError(error) && error.code === "P2002") {
       return jsonError(
         409,
         "OFFER_CONFLICT",
-        "An offer with this location, brand, variant, size, and serving already exists.",
+        "A conflicting offer already exists for this location, variant, size, and serving.",
       );
     }
 
     if (isKnownRequestError(error) && error.code === "P2003") {
-      return jsonError(404, "LOCATION_NOT_FOUND", "No location found for the supplied locationId.");
+      return jsonError(
+        404,
+        "RELATION_NOT_FOUND",
+        "One of the related entities (location or variant) does not exist.",
+      );
     }
 
     throw error;

@@ -2,33 +2,13 @@ export type ServingType = "tap" | "bottle" | "can";
 
 export type LocationType = "pub" | "bar" | "restaurant" | "supermarket";
 
-export type BeerOffer = {
-  id: string;
-  brand: string;
-  variant: string;
-  sizeMl: number;
-  serving: ServingType;
-  priceEur: number;
-  locationId: string;
-  status: SubmissionStatus;
-  createdById?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
-
-export type Location = {
-  id: string;
-  name: string;
-  locationType: LocationType;
-  district: string;
-  address: string;
-  status: SubmissionStatus;
-  createdById?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
-
 export type UserRole = "user" | "moderator" | "admin";
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export type SubmissionStatus = "pending" | "approved" | "rejected";
+
+export type ModerationStatusDecision = Exclude<SubmissionStatus, "pending">;
 
 export type User = {
   id: string;
@@ -51,11 +31,85 @@ export type Session = {
   updatedAt: Date;
 };
 
-export type ReviewStatus = "pending" | "approved" | "rejected";
+export type Location = {
+  id: string;
+  name: string;
+  locationType: LocationType;
+  district: string;
+  address: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
-export type SubmissionStatus = "pending" | "approved" | "rejected";
+export type BeerStyle = {
+  id: string;
+  name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
-export type ModerationStatusDecision = Exclude<SubmissionStatus, "pending">;
+export type BeerBrand = {
+  id: string;
+  name: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerVariant = {
+  id: string;
+  name: string;
+  brandId: string;
+  styleId: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  brand?: BeerBrand;
+  style?: BeerStyle;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerOffer = {
+  id: string;
+  brand: string;
+  variant: string;
+  variantId: string;
+  style: string;
+  sizeMl: number;
+  serving: ServingType;
+  priceEur: number;
+  locationId: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerOfferWithLocation = BeerOffer & {
+  location: Location;
+};
+
+export type OfferPriceHistory = {
+  id: string;
+  beerOfferId: string;
+  priceEur: number;
+  effectiveAt: Date;
+  priceUpdateProposalId?: string | null;
+  createdAt: Date;
+};
+
+export type PriceUpdateProposal = {
+  id: string;
+  beerOfferId: string;
+  proposedPriceEur: number;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type Review = {
   id: string;
@@ -69,13 +123,10 @@ export type Review = {
   updatedAt: Date;
 };
 
-export type BeerOfferWithLocation = BeerOffer & {
-  location: Location;
-};
-
 export type BeerQuery = {
-  brand?: string;
-  variant?: string;
+  brandId?: string;
+  variantId?: string;
+  styleId?: string;
   sizeMl?: number;
   serving?: ServingType;
   locationType?: LocationType;
@@ -91,9 +142,22 @@ export type CreateLocationInput = {
   status?: SubmissionStatus;
 };
 
+export type CreateBeerBrandInput = {
+  name: string;
+  createdById?: string;
+  status?: SubmissionStatus;
+};
+
+export type CreateBeerVariantInput = {
+  name: string;
+  brandId: string;
+  styleId: string;
+  createdById?: string;
+  status?: SubmissionStatus;
+};
+
 export type CreateBeerOfferInput = {
-  brand: string;
-  variant: string;
+  variantId: string;
   sizeMl: number;
   serving: ServingType;
   priceCents: number;
@@ -113,7 +177,22 @@ export type PendingLocationSubmission = Location & {
   submitter: ModerationSubmitter | null;
 };
 
+export type PendingBeerBrandSubmission = BeerBrand & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingBeerVariantSubmission = BeerVariant & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
 export type PendingBeerOfferSubmission = BeerOfferWithLocation & {
   createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingPriceUpdateProposal = PriceUpdateProposal & {
+  offer: BeerOfferWithLocation;
   submitter: ModerationSubmitter | null;
 };

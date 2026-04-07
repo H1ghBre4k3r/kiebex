@@ -6,8 +6,9 @@ const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;
 
 export const beerQuerySchema = z.object({
-  brand: z.string().trim().min(1).max(80).optional(),
-  variant: z.string().trim().min(1).max(80).optional(),
+  brandId: z.string().trim().min(1).max(100).optional(),
+  variantId: z.string().trim().min(1).max(100).optional(),
+  styleId: z.string().trim().min(1).max(100).optional(),
   sizeMl: z.coerce.number().int().positive().max(2000).optional(),
   serving: z.enum(servingTypes).optional(),
   locationType: z.enum(locationTypes).optional(),
@@ -37,9 +38,18 @@ export const createLocationBodySchema = z.object({
   address: z.string().trim().min(5).max(200),
 });
 
+export const createBeerBrandBodySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+});
+
+export const createBeerVariantBodySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  brandId: z.string().trim().min(1).max(100),
+  styleId: z.string().trim().min(1).max(100),
+});
+
 export const createBeerOfferBodySchema = z.object({
-  brand: z.string().trim().min(1).max(80),
-  variant: z.string().trim().min(1).max(80),
+  variantId: z.string().trim().min(1).max(100),
   sizeMl: z.number().int().positive().max(2000),
   serving: z.enum(servingTypes),
   priceCents: z.number().int().positive().max(50000),
@@ -77,8 +87,9 @@ export function parseBeerQueryRecord(
   record: Record<string, SearchValue>,
 ): ReturnType<typeof beerQuerySchema.safeParse> {
   return beerQuerySchema.safeParse({
-    brand: compactString(firstValue(record.brand)),
-    variant: compactString(firstValue(record.variant)),
+    brandId: compactString(firstValue(record.brandId)),
+    variantId: compactString(firstValue(record.variantId)),
+    styleId: compactString(firstValue(record.styleId)),
     sizeMl: compactString(firstValue(record.sizeMl)),
     serving: compactString(firstValue(record.serving)),
     locationType: compactString(firstValue(record.locationType)),
@@ -90,8 +101,9 @@ export function parseBeerQueryParams(
   searchParams: URLSearchParams,
 ): ReturnType<typeof beerQuerySchema.safeParse> {
   return beerQuerySchema.safeParse({
-    brand: compactString(searchParams.get("brand") ?? undefined),
-    variant: compactString(searchParams.get("variant") ?? undefined),
+    brandId: compactString(searchParams.get("brandId") ?? undefined),
+    variantId: compactString(searchParams.get("variantId") ?? undefined),
+    styleId: compactString(searchParams.get("styleId") ?? undefined),
     sizeMl: compactString(searchParams.get("sizeMl") ?? undefined),
     serving: compactString(searchParams.get("serving") ?? undefined),
     locationType: compactString(searchParams.get("locationType") ?? undefined),

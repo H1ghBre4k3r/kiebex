@@ -1,25 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import styles from "./contribute.module.css";
 
 type LocationOption = {
   id: string;
   name: string;
-  locationType: string;
   status: "pending" | "approved" | "rejected";
-  createdById?: string | null;
+};
+
+type BrandOption = {
+  id: string;
+  name: string;
+};
+
+type VariantOption = {
+  id: string;
+  name: string;
+  brandId: string;
+  styleName: string;
+  status: "pending" | "approved" | "rejected";
 };
 
 type OfferFormProps = {
   locations: LocationOption[];
+  brands: BrandOption[];
+  variants: VariantOption[];
 };
 
 type ApiResponse = {
   status?: "ok" | "error";
   error?: {
     message?: string;
+  };
+  data?: {
+    outcome?: "offer_submission_created" | "price_update_proposed";
   };
 };
 
@@ -41,10 +57,27 @@ function locationStatusLabel(status: LocationOption["status"]): string {
   return "Approved";
 }
 
-export function OfferForm({ locations }: OfferFormProps) {
+function variantStatusLabel(status: VariantOption["status"]): string {
+  if (status === "pending") {
+    return "Pending";
+  }
+
+  if (status === "rejected") {
+    return "Rejected";
+  }
+
+  return "Approved";
+}
+
+export function OfferForm({ locations, brands, variants }: OfferFormProps) {
   const router = useRouter();
-  const [brand, setBrand] = useState("");
-  const [variant, setVariant] = useState("");
+  const initialBrandId = brands[0]?.id ?? "";
+  const [brandId, setBrandId] = useState(initialBrandId);
+  const availableVariants = useMemo(
+    () => variants.filter((variant) => variant.brandId === brandId),
+    [variants, brandId],
+  );
+  const [variantId, setVariantId] = useState(availableVariants[0]?.id ?? "");
   const [sizeMl, setSizeMl] = useState("500");
   const [serving, setServing] = useState<(typeof servingTypes)[number]["value"]>("tap");
   const [priceCents, setPriceCents] = useState("500");
@@ -52,6 +85,12 @@ export function OfferForm({ locations }: OfferFormProps) {
   const [pending, setPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  function handleBrandChange(nextBrandId: string) {
+    setBrandId(nextBrandId);
+    const nextVariants = variants.filter((variant) => variant.brandId === nextBrandId);
+    setVariantId(nextVariants[0]?.id ?? "");
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,8 +110,7 @@ export function OfferForm({ locations }: OfferFormProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          brand,
-          variant,
+          variantId,
           sizeMl: Number(sizeMl),
           serving,
           priceCents: Number(priceCents),
@@ -88,12 +126,16 @@ export function OfferForm({ locations }: OfferFormProps) {
         return;
       }
 
-      setBrand("");
-      setVariant("");
       setSizeMl("500");
       setServing("tap");
       setPriceCents("500");
-      setSuccessMessage("Offer submitted for moderation.");
+
+      if (body?.data?.outcome === "price_update_proposed") {
+        setSuccessMessage("Price update proposal submitted for moderation.");
+      } else {
+        setSuccessMessage("Offer submission created for moderation.");
+      }
+
       setPending(false);
       router.refresh();
     } catch {
@@ -104,32 +146,38 @@ export function OfferForm({ locations }: OfferFormProps) {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <label className={styles.field} htmlFor="offer-brand">
+      <label className={styles.field} htmlFor="offer-brand-id">
         Brand
-        <input
-          id="offer-brand"
-          name="brand"
-          type="text"
+        <select
+          id="offer-brand-id"
+          name="brandId"
           required
-          minLength={1}
-          maxLength={80}
-          value={brand}
-          onChange={(event) => setBrand(event.target.value)}
-        />
+          value={brandId}
+          onChange={(event) => handleBrandChange(event.target.value)}
+        >
+          {brands.map((brand) => (
+            <option key={brand.id} value={brand.id}>
+              {brand.name}
+            </option>
+          ))}
+        </select>
       </label>
 
-      <label className={styles.field} htmlFor="offer-variant">
+      <label className={styles.field} htmlFor="offer-variant-id">
         Variant
-        <input
-          id="offer-variant"
-          name="variant"
-          type="text"
+        <select
+          id="offer-variant-id"
+          name="variantId"
           required
-          minLength={1}
-          maxLength={80}
-          value={variant}
-          onChange={(event) => setVariant(event.target.value)}
-        />
+          value={variantId}
+          onChange={(event) => setVariantId(event.target.value)}
+        >
+          {availableVariants.map((variant) => (
+            <option key={variant.id} value={variant.id}>
+              {variant.name} ({variant.styleName}, {variantStatusLabel(variant.status)})
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className={styles.field} htmlFor="offer-size-ml">
@@ -211,9 +259,9 @@ export function OfferForm({ locations }: OfferFormProps) {
         <button
           type="submit"
           className={styles.button}
-          disabled={pending || locations.length === 0}
+          disabled={pending || locations.length === 0 || availableVariants.length === 0}
         >
-          {pending ? "Submitting..." : "Submit Offer"}
+          {pending ? "Submitting..." : "Submit Offer / Price Update"}
         </button>
       </div>
     </form>

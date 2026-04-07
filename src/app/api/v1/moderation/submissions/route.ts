@@ -1,6 +1,12 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { getPendingBeerOfferSubmissions, getPendingLocationSubmissions } from "@/lib/query";
+import {
+  getPendingBeerBrandSubmissions,
+  getPendingBeerOfferSubmissions,
+  getPendingBeerVariantSubmissions,
+  getPendingLocationSubmissions,
+  getPendingPriceUpdateProposals,
+} from "@/lib/query";
 
 export async function GET(): Promise<Response> {
   try {
@@ -17,17 +23,27 @@ export async function GET(): Promise<Response> {
     throw error;
   }
 
-  const [pendingLocations, pendingOffers] = await Promise.all([
-    getPendingLocationSubmissions(),
-    getPendingBeerOfferSubmissions(),
-  ]);
+  const [pendingLocations, pendingBrands, pendingVariants, pendingOffers, pendingPriceUpdates] =
+    await Promise.all([
+      getPendingLocationSubmissions(),
+      getPendingBeerBrandSubmissions(),
+      getPendingBeerVariantSubmissions(),
+      getPendingBeerOfferSubmissions(),
+      getPendingPriceUpdateProposals(),
+    ]);
 
   return jsonOk({
     pendingLocations,
+    pendingBrands,
+    pendingVariants,
     pendingOffers,
+    pendingPriceUpdates,
     counts: {
       locations: pendingLocations.length,
+      brands: pendingBrands.length,
+      variants: pendingVariants.length,
       offers: pendingOffers.length,
+      priceUpdates: pendingPriceUpdates.length,
     },
   });
 }

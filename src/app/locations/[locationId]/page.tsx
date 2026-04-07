@@ -4,6 +4,7 @@ import {
   formatEur,
   getLocationById,
   getLocationOffers,
+  getOfferPriceHistory,
   getServingLabel,
   locationTypeLabel,
 } from "@/lib/query";
@@ -22,6 +23,14 @@ export default async function LocationPage({
   }
 
   const offers = await getLocationOffers(locationId);
+  const historyMap = new Map<string, Awaited<ReturnType<typeof getOfferPriceHistory>>>();
+
+  await Promise.all(
+    offers.map(async (offer) => {
+      const history = await getOfferPriceHistory(offer.id);
+      historyMap.set(offer.id, history);
+    }),
+  );
 
   return (
     <main className={styles.page}>
@@ -43,17 +52,35 @@ export default async function LocationPage({
           <p>No offers available for this location yet.</p>
         ) : (
           <ul className={styles.list}>
-            {offers.map((offer) => (
-              <li key={offer.id} className={styles.item}>
-                <h3>
-                  {offer.brand} {offer.variant}
-                </h3>
-                <p>{formatEur(offer.priceEur)}</p>
-                <p>
-                  {offer.sizeMl} ml - {getServingLabel(offer.serving)}
-                </p>
-              </li>
-            ))}
+            {offers.map((offer) => {
+              const history = historyMap.get(offer.id) ?? [];
+
+              return (
+                <li key={offer.id} className={styles.item}>
+                  <h3>
+                    {offer.brand} {offer.variant}
+                  </h3>
+                  <p>{formatEur(offer.priceEur)}</p>
+                  <p>{offer.style}</p>
+                  <p>
+                    {offer.sizeMl} ml - {getServingLabel(offer.serving)}
+                  </p>
+                  <p>Price history ({history.length})</p>
+                  {history.length > 0 ? (
+                    <ul>
+                      {history.map((entry) => (
+                        <li key={entry.id}>
+                          <p>{formatEur(entry.priceEur)}</p>
+                          <p>{new Date(entry.effectiveAt).toLocaleDateString("en-GB")}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No tracked price history yet.</p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

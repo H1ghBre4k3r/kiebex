@@ -33,11 +33,57 @@ const locationSeed = [
   },
 ] as const;
 
+const beerStyleSeed = [
+  { id: "style-stout", name: "Stout" },
+  { id: "style-red-ale", name: "Red Ale" },
+  { id: "style-pils", name: "Pils" },
+  { id: "style-hefeweizen", name: "Hefeweizen" },
+] as const;
+
+const beerBrandSeed = [
+  { id: "brand-guinness", name: "Guinness" },
+  { id: "brand-kilkenny", name: "Kilkenny" },
+  { id: "brand-becks", name: "Becks" },
+  { id: "brand-astra", name: "Astra" },
+  { id: "brand-flensburger", name: "Flensburger" },
+  { id: "brand-erdinger", name: "Erdinger" },
+  { id: "brand-holsten", name: "Holsten" },
+] as const;
+
+const beerVariantSeed = [
+  {
+    id: "variant-guinness-stout",
+    brandId: "brand-guinness",
+    styleId: "style-stout",
+    name: "Stout",
+  },
+  {
+    id: "variant-kilkenny-red-ale",
+    brandId: "brand-kilkenny",
+    styleId: "style-red-ale",
+    name: "Red Ale",
+  },
+  { id: "variant-becks-pils", brandId: "brand-becks", styleId: "style-pils", name: "Pils" },
+  { id: "variant-astra-pils", brandId: "brand-astra", styleId: "style-pils", name: "Pils" },
+  {
+    id: "variant-flensburger-pils",
+    brandId: "brand-flensburger",
+    styleId: "style-pils",
+    name: "Pils",
+  },
+  {
+    id: "variant-erdinger-hefeweizen",
+    brandId: "brand-erdinger",
+    styleId: "style-hefeweizen",
+    name: "Hefeweizen",
+  },
+  { id: "variant-holsten-pils", brandId: "brand-holsten", styleId: "style-pils", name: "Pils" },
+] as const;
+
 const beerOfferSeed = [
   {
     id: "offer-001",
-    brand: "Guinness",
-    variant: "Stout",
+    variantId: "variant-guinness-stout",
     sizeMl: 568,
     serving: "tap",
     priceCents: 690,
@@ -45,8 +91,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-002",
-    brand: "Kilkenny",
-    variant: "Red Ale",
+    variantId: "variant-kilkenny-red-ale",
     sizeMl: 568,
     serving: "tap",
     priceCents: 660,
@@ -54,8 +99,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-003",
-    brand: "Becks",
-    variant: "Pils",
+    variantId: "variant-becks-pils",
     sizeMl: 500,
     serving: "bottle",
     priceCents: 420,
@@ -63,8 +107,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-004",
-    brand: "Astra",
-    variant: "Pils",
+    variantId: "variant-astra-pils",
     sizeMl: 330,
     serving: "can",
     priceCents: 270,
@@ -72,8 +115,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-005",
-    brand: "Flensburger",
-    variant: "Pils",
+    variantId: "variant-flensburger-pils",
     sizeMl: 400,
     serving: "tap",
     priceCents: 520,
@@ -81,8 +123,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-006",
-    brand: "Erdinger",
-    variant: "Hefeweizen",
+    variantId: "variant-erdinger-hefeweizen",
     sizeMl: 500,
     serving: "bottle",
     priceCents: 540,
@@ -90,8 +131,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-007",
-    brand: "Holsten",
-    variant: "Pils",
+    variantId: "variant-holsten-pils",
     sizeMl: 500,
     serving: "can",
     priceCents: 139,
@@ -99,8 +139,7 @@ const beerOfferSeed = [
   },
   {
     id: "offer-008",
-    brand: "Guinness",
-    variant: "Stout",
+    variantId: "variant-guinness-stout",
     sizeMl: 440,
     serving: "can",
     priceCents: 229,
@@ -121,7 +160,12 @@ async function main() {
 
   try {
     await prisma.review.deleteMany();
+    await prisma.offerPriceHistory.deleteMany();
+    await prisma.priceUpdateProposal.deleteMany();
     await prisma.beerOffer.deleteMany();
+    await prisma.beerVariant.deleteMany();
+    await prisma.beerBrand.deleteMany();
+    await prisma.beerStyle.deleteMany();
     await prisma.location.deleteMany();
 
     for (const location of locationSeed) {
@@ -132,20 +176,74 @@ async function main() {
           locationType: location.locationType,
           district: location.district,
           address: location.address,
+          status: "approved",
+        },
+      });
+    }
+
+    for (const style of beerStyleSeed) {
+      await prisma.beerStyle.create({
+        data: {
+          id: style.id,
+          name: style.name,
+        },
+      });
+    }
+
+    for (const brand of beerBrandSeed) {
+      await prisma.beerBrand.create({
+        data: {
+          id: brand.id,
+          name: brand.name,
+          status: "approved",
+        },
+      });
+    }
+
+    for (const variant of beerVariantSeed) {
+      await prisma.beerVariant.create({
+        data: {
+          id: variant.id,
+          name: variant.name,
+          brandId: variant.brandId,
+          styleId: variant.styleId,
+          status: "approved",
         },
       });
     }
 
     for (const offer of beerOfferSeed) {
+      const variant = beerVariantSeed.find((candidate) => candidate.id === offer.variantId);
+
+      if (!variant) {
+        throw new Error(`Missing variant '${offer.variantId}' for seed offer '${offer.id}'.`);
+      }
+
+      const brand = beerBrandSeed.find((candidate) => candidate.id === variant.brandId);
+
+      if (!brand) {
+        throw new Error(`Missing brand '${variant.brandId}' for variant '${variant.id}'.`);
+      }
+
       await prisma.beerOffer.create({
         data: {
           id: offer.id,
-          brand: offer.brand,
-          variant: offer.variant,
+          brand: brand.name,
+          variant: variant.name,
+          variantId: offer.variantId,
           sizeMl: offer.sizeMl,
           serving: offer.serving,
           priceCents: offer.priceCents,
           locationId: offer.locationId,
+          status: "approved",
+        },
+      });
+
+      await prisma.offerPriceHistory.create({
+        data: {
+          id: `history-${offer.id}`,
+          beerOfferId: offer.id,
+          priceCents: offer.priceCents,
         },
       });
     }

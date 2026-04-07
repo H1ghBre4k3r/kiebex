@@ -1,11 +1,11 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderateBeerOfferSubmission } from "@/lib/query";
+import { moderatePriceUpdateProposal } from "@/lib/query";
 import { moderationDecisionSchema } from "@/lib/validation";
 
 export async function PATCH(
   request: Request,
-  context: { params: Promise<{ offerId: string }> },
+  context: { params: Promise<{ proposalId: string }> },
 ): Promise<Response> {
   try {
     await requireModeratorUser();
@@ -43,15 +43,23 @@ export async function PATCH(
     );
   }
 
-  const { offerId } = await context.params;
-  const result = await moderateBeerOfferSubmission(offerId, parsed.data.status);
+  const { proposalId } = await context.params;
+  const result = await moderatePriceUpdateProposal(proposalId, parsed.data.status);
 
   if (result.outcome !== "updated") {
     if (result.outcome === "missing") {
       return jsonError(
         404,
-        "OFFER_SUBMISSION_NOT_FOUND",
-        `No pending offer submission found for id '${offerId}'.`,
+        "PRICE_UPDATE_PROPOSAL_NOT_FOUND",
+        `No pending price update proposal found for id '${proposalId}'.`,
+      );
+    }
+
+    if (result.outcome === "offer_not_approved") {
+      return jsonError(
+        409,
+        "OFFER_NOT_APPROVED",
+        "Cannot approve a price update while the offer is not approved.",
       );
     }
 
@@ -59,16 +67,19 @@ export async function PATCH(
       return jsonError(
         409,
         "LOCATION_NOT_APPROVED",
-        "Cannot approve an offer while its location is not approved.",
+        "Cannot approve a price update while the location is not approved.",
       );
     }
 
     return jsonError(
       409,
       "VARIANT_NOT_APPROVED",
-      "Cannot approve an offer while its variant or brand is not approved.",
+      "Cannot approve a price update while the variant or brand is not approved.",
     );
   }
 
-  return jsonOk({ offer: result.offer });
+  return jsonOk({
+    proposal: result.proposal,
+    offer: result.offer,
+  });
 }

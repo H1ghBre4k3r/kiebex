@@ -1,11 +1,11 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderateBeerOfferSubmission } from "@/lib/query";
+import { moderateBeerBrandSubmission } from "@/lib/query";
 import { moderationDecisionSchema } from "@/lib/validation";
 
 export async function PATCH(
   request: Request,
-  context: { params: Promise<{ offerId: string }> },
+  context: { params: Promise<{ brandId: string }> },
 ): Promise<Response> {
   try {
     await requireModeratorUser();
@@ -43,32 +43,16 @@ export async function PATCH(
     );
   }
 
-  const { offerId } = await context.params;
-  const result = await moderateBeerOfferSubmission(offerId, parsed.data.status);
+  const { brandId } = await context.params;
+  const brand = await moderateBeerBrandSubmission(brandId, parsed.data.status);
 
-  if (result.outcome !== "updated") {
-    if (result.outcome === "missing") {
-      return jsonError(
-        404,
-        "OFFER_SUBMISSION_NOT_FOUND",
-        `No pending offer submission found for id '${offerId}'.`,
-      );
-    }
-
-    if (result.outcome === "location_not_approved") {
-      return jsonError(
-        409,
-        "LOCATION_NOT_APPROVED",
-        "Cannot approve an offer while its location is not approved.",
-      );
-    }
-
+  if (!brand) {
     return jsonError(
-      409,
-      "VARIANT_NOT_APPROVED",
-      "Cannot approve an offer while its variant or brand is not approved.",
+      404,
+      "BRAND_SUBMISSION_NOT_FOUND",
+      `No pending beer brand submission found for id '${brandId}'.`,
     );
   }
 
-  return jsonOk({ offer: result.offer });
+  return jsonOk({ brand });
 }
