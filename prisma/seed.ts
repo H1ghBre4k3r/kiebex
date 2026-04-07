@@ -1,6 +1,8 @@
-import type { BeerOffer, Location } from "@/lib/types";
+import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-export const locations: Location[] = [
+const locationSeed = [
   {
     id: "pogue-mahone",
     name: "Pogue Mahone Irish Pub",
@@ -29,16 +31,16 @@ export const locations: Location[] = [
     district: "Gaarden",
     address: "Schoenberger Strasse 4, 24148 Kiel",
   },
-];
+] as const;
 
-export const beerOffers: BeerOffer[] = [
+const beerOfferSeed = [
   {
     id: "offer-001",
     brand: "Guinness",
     variant: "Stout",
     sizeMl: 568,
     serving: "tap",
-    priceEur: 6.9,
+    priceCents: 690,
     locationId: "pogue-mahone",
   },
   {
@@ -47,7 +49,7 @@ export const beerOffers: BeerOffer[] = [
     variant: "Red Ale",
     sizeMl: 568,
     serving: "tap",
-    priceEur: 6.6,
+    priceCents: 660,
     locationId: "pogue-mahone",
   },
   {
@@ -56,7 +58,7 @@ export const beerOffers: BeerOffer[] = [
     variant: "Pils",
     sizeMl: 500,
     serving: "bottle",
-    priceEur: 4.2,
+    priceCents: 420,
     locationId: "hafenkante-bar",
   },
   {
@@ -65,7 +67,7 @@ export const beerOffers: BeerOffer[] = [
     variant: "Pils",
     sizeMl: 330,
     serving: "can",
-    priceEur: 2.7,
+    priceCents: 270,
     locationId: "hafenkante-bar",
   },
   {
@@ -74,7 +76,7 @@ export const beerOffers: BeerOffer[] = [
     variant: "Pils",
     sizeMl: 400,
     serving: "tap",
-    priceEur: 5.2,
+    priceCents: 520,
     locationId: "foerde-brauhaus",
   },
   {
@@ -83,7 +85,7 @@ export const beerOffers: BeerOffer[] = [
     variant: "Hefeweizen",
     sizeMl: 500,
     serving: "bottle",
-    priceEur: 5.4,
+    priceCents: 540,
     locationId: "foerde-brauhaus",
   },
   {
@@ -92,7 +94,7 @@ export const beerOffers: BeerOffer[] = [
     variant: "Pils",
     sizeMl: 500,
     serving: "can",
-    priceEur: 1.39,
+    priceCents: 139,
     locationId: "marktfrisch-kiel",
   },
   {
@@ -101,7 +103,59 @@ export const beerOffers: BeerOffer[] = [
     variant: "Stout",
     sizeMl: 440,
     serving: "can",
-    priceEur: 2.29,
+    priceCents: 229,
     locationId: "marktfrisch-kiel",
   },
-];
+] as const;
+
+async function main() {
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error("DATABASE_URL must be set before running the seed script.");
+  }
+
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
+  const prisma = new PrismaClient({ adapter });
+
+  try {
+    await prisma.review.deleteMany();
+    await prisma.beerOffer.deleteMany();
+    await prisma.location.deleteMany();
+
+    for (const location of locationSeed) {
+      await prisma.location.create({
+        data: {
+          id: location.id,
+          name: location.name,
+          locationType: location.locationType,
+          district: location.district,
+          address: location.address,
+        },
+      });
+    }
+
+    for (const offer of beerOfferSeed) {
+      await prisma.beerOffer.create({
+        data: {
+          id: offer.id,
+          brand: offer.brand,
+          variant: offer.variant,
+          sizeMl: offer.sizeMl,
+          serving: offer.serving,
+          priceCents: offer.priceCents,
+          locationId: offer.locationId,
+        },
+      });
+    }
+  } finally {
+    await prisma.$disconnect();
+    await pool.end();
+  }
+}
+
+main().catch((error) => {
+  console.error("Failed to seed database", error);
+  process.exit(1);
+});

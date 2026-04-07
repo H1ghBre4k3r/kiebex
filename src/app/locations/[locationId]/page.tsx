@@ -15,13 +15,13 @@ export default async function LocationPage({
   params: Promise<{ locationId: string }>;
 }) {
   const { locationId } = await params;
-  const location = getLocationById(locationId);
+  const location = await getLocationById(locationId);
 
   if (!location) {
     notFound();
   }
 
-  const offers = getLocationOffers(locationId);
+  const offers = await getLocationOffers(locationId);
 
   return (
     <main className={styles.page}>

@@ -31,9 +31,9 @@ export default async function Home({
   const parsedQuery = parseBeerQueryRecord(rawSearchParams);
   const query = parsedQuery.success ? parsedQuery.data : {};
 
-  const offers = getBeerOffers(query);
-  const allOffers = getBeerOffers();
-  const locations = getLocations();
+  const offers = await getBeerOffers(query);
+  const allOffers = await getBeerOffers();
+  const locations = await getLocations();
 
   const brands = [...new Set(allOffers.map((offer) => offer.brand))].sort((a, b) =>
     a.localeCompare(b, "en-US"),

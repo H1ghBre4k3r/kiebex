@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  user
+  moderator
+  admin
+}
+
+enum LocationType {
+  pub
+  bar
+  restaurant
+  supermarket
+}
+
+enum ServingType {
+  tap
+  bottle
+  can
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String
+  role        UserRole @default(user)
+  passwordHash String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdLocations Location[] @relation("LocationCreatedBy")
+  reviews          Review[]
+}
+
+model Location {
+  id           String       @id @default(cuid())
+  name         String
+  locationType LocationType
+  district     String
+  address      String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  createdById  String?
+
+  createdBy User?      @relation("LocationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  offers    BeerOffer[]
+  reviews   Review[]
+
+  @@index([locationType])
+  @@index([district])
+}
+
+model BeerOffer {
+  id         String      @id @default(cuid())
+  brand      String
+  variant    String
+  sizeMl     Int
+  serving    ServingType
+  priceCents Int
+  locationId String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, brand, variant, sizeMl, serving])
+  @@index([brand])
+  @@index([variant])
+  @@index([sizeMl])
+  @@index([serving])
+  @@index([locationId])
+  @@index([priceCents])
+}
+
+model Review {
+  id         String       @id @default(cuid())
+  locationId String
+  userId     String
+  rating     Int
+  title      String?
+  body       String?
+  status     ReviewStatus @default(pending)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+  @@index([userId])
+  @@index([status])
+}

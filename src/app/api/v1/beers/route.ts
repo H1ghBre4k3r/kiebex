@@ -17,7 +17,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const offers = getBeerOffers(parsed.data);
+  const offers = await getBeerOffers(parsed.data);
   return jsonOk({
     filters: parsed.data,
     count: offers.length,

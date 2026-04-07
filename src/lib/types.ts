@@ -10,6 +10,8 @@ export type BeerOffer = {
   serving: ServingType;
   priceEur: number;
   locationId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type Location = {
@@ -18,6 +20,35 @@ export type Location = {
   locationType: LocationType;
   district: string;
   address: string;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type UserRole = "user" | "moderator" | "admin";
+
+export type User = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  passwordHash?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export type Review = {
+  id: string;
+  locationId: string;
+  userId: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  status: ReviewStatus;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type BeerOfferWithLocation = BeerOffer & {

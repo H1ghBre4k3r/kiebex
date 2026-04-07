@@ -16,6 +16,7 @@ The app supports filtering offers by:
 - Next.js App Router (frontend + backend route handlers)
 - TypeScript (strict mode)
 - Zod for query validation
+- PostgreSQL + Prisma ORM
 - CSS Modules + global CSS variables
 - ESLint + Prettier
 
@@ -43,6 +44,26 @@ Install dependencies:
 npm install
 ```
 
+Set up environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Update `DATABASE_URL` in `.env` to your local PostgreSQL instance.
+
+Apply database migrations:
+
+```bash
+npm run db:migrate
+```
+
+Seed initial Kiel dataset:
+
+```bash
+npm run db:seed
+```
+
 Run locally:
 
 ```bash
@@ -65,6 +86,11 @@ npm run format
 
 ## Data Model (Current)
 
-The current implementation uses an in-memory seed dataset under `src/lib/data.ts`.
+The app now uses a PostgreSQL database via Prisma with core entities:
 
-Planned next step is migrating to a persistent database and adding authenticated data submission.
+- `User`
+- `Location`
+- `BeerOffer`
+- `Review`
+
+Schema and migrations live in `prisma/`, and application queries are in `src/lib/query.ts`.

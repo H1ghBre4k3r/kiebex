@@ -6,13 +6,13 @@ export async function GET(
   context: { params: Promise<{ locationId: string }> },
 ): Promise<Response> {
   const { locationId } = await context.params;
-  const location = getLocationById(locationId);
+  const location = await getLocationById(locationId);
 
   if (!location) {
     return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
   }
 
-  const offers = getLocationOffers(locationId);
+  const offers = await getLocationOffers(locationId);
 
   return jsonOk({
     location,
