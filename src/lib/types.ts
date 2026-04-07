@@ -74,3 +74,20 @@ export type BeerQuery = {
   locationType?: LocationType;
   locationId?: string;
 };
+
+export type CreateLocationInput = {
+  name: string;
+  locationType: LocationType;
+  district: string;
+  address: string;
+  createdById?: string;
+};
+
+export type CreateBeerOfferInput = {
+  brand: string;
+  variant: string;
+  sizeMl: number;
+  serving: ServingType;
+  priceCents: number;
+  locationId: string;
+};

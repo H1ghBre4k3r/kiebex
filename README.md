@@ -36,6 +36,8 @@ The app supports filtering offers by:
 - `/locations/[locationId]` - location detail page with all offers
 - `/api/v1/health` - health endpoint
 - `/api/v1/beers` - filtered beer offers
+- `/api/v1/beers` (`POST`) - authenticated offer submission
+- `/api/v1/locations` (`POST`) - authenticated location submission
 - `/api/v1/locations/[locationId]` - location detail API
 - `/api/v1/auth/register` - create account and session
 - `/api/v1/auth/login` - sign in and create session

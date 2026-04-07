@@ -1,5 +1,12 @@
 import { db } from "@/lib/db";
-import type { BeerOfferWithLocation, BeerQuery, Location, ServingType } from "@/lib/types";
+import type {
+  BeerOfferWithLocation,
+  BeerQuery,
+  CreateBeerOfferInput,
+  CreateLocationInput,
+  Location,
+  ServingType,
+} from "@/lib/types";
 
 function servingLabel(serving: ServingType): string {
   if (serving === "tap") {
@@ -113,4 +120,59 @@ export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWit
 
 export async function getLocationOffers(locationId: string): Promise<BeerOfferWithLocation[]> {
   return getBeerOffers({ locationId });
+}
+
+export async function createLocation(input: CreateLocationInput): Promise<Location> {
+  const location = await db.location.create({
+    data: {
+      name: input.name.trim(),
+      locationType: input.locationType,
+      district: input.district.trim(),
+      address: input.address.trim(),
+      createdById: input.createdById,
+    },
+  });
+
+  return {
+    id: location.id,
+    name: location.name,
+    locationType: location.locationType,
+    district: location.district,
+    address: location.address,
+    createdById: location.createdById,
+  };
+}
+
+export async function createBeerOffer(input: CreateBeerOfferInput): Promise<BeerOfferWithLocation> {
+  const offer = await db.beerOffer.create({
+    data: {
+      brand: input.brand.trim(),
+      variant: input.variant.trim(),
+      sizeMl: input.sizeMl,
+      serving: input.serving,
+      priceCents: input.priceCents,
+      locationId: input.locationId,
+    },
+    include: {
+      location: true,
+    },
+  });
+
+  return {
+    id: offer.id,
+    brand: offer.brand,
+    variant: offer.variant,
+    sizeMl: offer.sizeMl,
+    serving: offer.serving,
+    priceEur: offer.priceCents / 100,
+    locationId: offer.locationId,
+    location: {
+      id: offer.location.id,
+      name: offer.location.name,
+      locationType: offer.location.locationType,
+      district: offer.location.district,
+      address: offer.location.address,
+      createdById: offer.location.createdById,
+    },
+  };
 }

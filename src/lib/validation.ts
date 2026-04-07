@@ -28,6 +28,22 @@ export const loginBodySchema = z.object({
   password: z.string().min(1).max(128),
 });
 
+export const createLocationBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  locationType: z.enum(locationTypes),
+  district: z.string().trim().min(2).max(80),
+  address: z.string().trim().min(5).max(200),
+});
+
+export const createBeerOfferBodySchema = z.object({
+  brand: z.string().trim().min(1).max(80),
+  variant: z.string().trim().min(1).max(80),
+  sizeMl: z.number().int().positive().max(2000),
+  serving: z.enum(servingTypes),
+  priceCents: z.number().int().positive().max(50000),
+  locationId: z.string().trim().min(1).max(100),
+});
+
 type SearchValue = string | string[] | undefined;
 
 function firstValue(value: SearchValue): string | undefined {
