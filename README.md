@@ -34,6 +34,7 @@ The app supports filtering offers by:
 - `/login` - sign-in page
 - `/register` - account creation page
 - `/contribute` - authenticated contribution forms for locations and offers
+- `/moderation` - moderator/admin queue for approving or rejecting submissions
 - `/locations/[locationId]` - location detail page with all offers
 - `/api/v1/health` - health endpoint
 - `/api/v1/beers` - filtered beer offers
@@ -45,6 +46,9 @@ The app supports filtering offers by:
 - `/api/v1/auth/logout` - clear session
 - `/api/v1/auth/session` - current session state (nullable user)
 - `/api/v1/auth/me` - current user profile (requires auth)
+- `/api/v1/moderation/submissions` - moderator list of pending locations/offers
+- `/api/v1/moderation/locations/[locationId]` (`PATCH`) - moderate pending location
+- `/api/v1/moderation/offers/[offerId]` (`PATCH`) - moderate pending offer
 
 ## Development
 
@@ -112,3 +116,4 @@ Schema and migrations live in `prisma/`, and application queries are in `src/lib
 - New user-submitted offers are created with `pending` status.
 - Public listing and detail queries only show `approved` locations/offers.
 - Offer submission is allowed for approved locations and for pending locations created by the same user.
+- Moderators/admins can review and approve/reject pending locations and offers via `/moderation`.

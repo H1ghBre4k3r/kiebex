@@ -55,6 +55,8 @@ export type ReviewStatus = "pending" | "approved" | "rejected";
 
 export type SubmissionStatus = "pending" | "approved" | "rejected";
 
+export type ModerationStatusDecision = Exclude<SubmissionStatus, "pending">;
+
 export type Review = {
   id: string;
   locationId: string;
@@ -98,4 +100,20 @@ export type CreateBeerOfferInput = {
   locationId: string;
   createdById?: string;
   status?: SubmissionStatus;
+};
+
+export type ModerationSubmitter = {
+  id: string;
+  displayName: string;
+  email: string;
+};
+
+export type PendingLocationSubmission = Location & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingBeerOfferSubmission = BeerOfferWithLocation & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
 };

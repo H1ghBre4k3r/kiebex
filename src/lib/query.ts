@@ -5,6 +5,9 @@ import type {
   CreateBeerOfferInput,
   CreateLocationInput,
   Location,
+  ModerationStatusDecision,
+  PendingBeerOfferSubmission,
+  PendingLocationSubmission,
   ServingType,
 } from "@/lib/types";
 
@@ -248,5 +251,196 @@ export async function createBeerOffer(input: CreateBeerOfferInput): Promise<Beer
     },
     status: offer.status,
     createdById: offer.createdById,
+  };
+}
+
+export async function getPendingLocationSubmissions(): Promise<PendingLocationSubmission[]> {
+  const locations = await db.location.findMany({
+    where: {
+      status: "pending",
+    },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  return locations.map((location) => ({
+    id: location.id,
+    name: location.name,
+    locationType: location.locationType,
+    district: location.district,
+    address: location.address,
+    status: location.status,
+    createdById: location.createdById,
+    createdAt: location.createdAt,
+    submitter: location.createdBy,
+  }));
+}
+
+export async function getPendingBeerOfferSubmissions(): Promise<PendingBeerOfferSubmission[]> {
+  const offers = await db.beerOffer.findMany({
+    where: {
+      status: "pending",
+    },
+    include: {
+      location: true,
+      createdBy: {
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  return offers.map((offer) => ({
+    id: offer.id,
+    brand: offer.brand,
+    variant: offer.variant,
+    sizeMl: offer.sizeMl,
+    serving: offer.serving,
+    priceEur: offer.priceCents / 100,
+    locationId: offer.locationId,
+    status: offer.status,
+    createdById: offer.createdById,
+    createdAt: offer.createdAt,
+    location: {
+      id: offer.location.id,
+      name: offer.location.name,
+      locationType: offer.location.locationType,
+      district: offer.location.district,
+      address: offer.location.address,
+      status: offer.location.status,
+      createdById: offer.location.createdById,
+    },
+    submitter: offer.createdBy,
+  }));
+}
+
+export async function moderateLocationSubmission(
+  locationId: string,
+  status: ModerationStatusDecision,
+): Promise<Location | null> {
+  const location = await db.location.findUnique({
+    where: {
+      id: locationId,
+    },
+  });
+
+  if (!location || location.status !== "pending") {
+    return null;
+  }
+
+  const updatedLocation =
+    status === "rejected"
+      ? await db.$transaction(async (transaction) => {
+          const moderatedLocation = await transaction.location.update({
+            where: {
+              id: locationId,
+            },
+            data: {
+              status,
+            },
+          });
+
+          await transaction.beerOffer.updateMany({
+            where: {
+              locationId,
+              status: "pending",
+            },
+            data: {
+              status: "rejected",
+            },
+          });
+
+          return moderatedLocation;
+        })
+      : await db.location.update({
+          where: {
+            id: locationId,
+          },
+          data: {
+            status,
+          },
+        });
+
+  return {
+    id: updatedLocation.id,
+    name: updatedLocation.name,
+    locationType: updatedLocation.locationType,
+    district: updatedLocation.district,
+    address: updatedLocation.address,
+    status: updatedLocation.status,
+    createdById: updatedLocation.createdById,
+  };
+}
+
+export async function moderateBeerOfferSubmission(
+  offerId: string,
+  status: ModerationStatusDecision,
+): Promise<
+  | { outcome: "updated"; offer: BeerOfferWithLocation }
+  | { outcome: "missing" | "location_not_approved" }
+> {
+  const offer = await db.beerOffer.findUnique({
+    where: {
+      id: offerId,
+    },
+    include: {
+      location: true,
+    },
+  });
+
+  if (!offer || offer.status !== "pending") {
+    return { outcome: "missing" };
+  }
+
+  if (status === "approved" && offer.location.status !== "approved") {
+    return { outcome: "location_not_approved" };
+  }
+
+  const updatedOffer = await db.beerOffer.update({
+    where: {
+      id: offerId,
+    },
+    data: {
+      status,
+    },
+    include: {
+      location: true,
+    },
+  });
+
+  return {
+    outcome: "updated",
+    offer: {
+      id: updatedOffer.id,
+      brand: updatedOffer.brand,
+      variant: updatedOffer.variant,
+      sizeMl: updatedOffer.sizeMl,
+      serving: updatedOffer.serving,
+      priceEur: updatedOffer.priceCents / 100,
+      locationId: updatedOffer.locationId,
+      status: updatedOffer.status,
+      createdById: updatedOffer.createdById,
+      location: {
+        id: updatedOffer.location.id,
+        name: updatedOffer.location.name,
+        locationType: updatedOffer.location.locationType,
+        district: updatedOffer.location.district,
+        address: updatedOffer.location.address,
+        status: updatedOffer.location.status,
+        createdById: updatedOffer.location.createdById,
+      },
+    },
   };
 }

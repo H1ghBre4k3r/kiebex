@@ -50,6 +50,13 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class ForbiddenError extends Error {
+  constructor(message = "Insufficient permissions.") {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
@@ -216,6 +223,16 @@ export async function requireAuthUser(): Promise<AuthUser> {
 
   if (!user) {
     throw new UnauthorizedError();
+  }
+
+  return user;
+}
+
+export async function requireModeratorUser(): Promise<AuthUser> {
+  const user = await requireAuthUser();
+
+  if (user.role !== "moderator" && user.role !== "admin") {
+    throw new ForbiddenError();
   }
 
   return user;
