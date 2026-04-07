@@ -1,11 +1,70 @@
 # Kiel Beer Index
 
-This project aims to provide a website with metrics for beer prices across different locations in Kiel, Northern Germany. 
+Kiel Beer Index is a fullstack web app for comparing beer prices across locations in Kiel, Germany.
 
-## Idea
+The app supports filtering offers by:
 
-The idea is that users can see the prices for different kinds of beer, sorted by brand (e.g., Guinness, Kilkenny, Becks, etc.), variant of beer (Helles, Pils, Stout, etc.), size (e.g., 330ml, 0.5l, 1l, etc.), way of serving (e.g., on tap, bottled, from a can, etc.), and location (e.g., supermarket, restaurant, bar, pub). 
+- brand
+- beer variant
+- size in ml
+- serving type (tap, bottle, can)
+- location type (pub, bar, restaurant, supermarket)
+- specific location
 
-## Concept
+## Stack
 
-The website should allow users to filter for each of these attributes - some are filtered directly (e.g,. brand) and some are filtered by category (e.g., variant of beer, size, kind of location) - and see all search results for these filters. Furthermore, users should be able to select a concrete location (e.g., the Pogue Mahone Irish Pub in Kiel) and see everything this pub has to offer (this "selection" could also be a kind of filter, where kind of location is concretized). Additionally, users should be able to register and login to enter new locations and new beers for already existing locations themselves, leave reviews for locations, etc..
+- Next.js App Router (frontend + backend route handlers)
+- TypeScript (strict mode)
+- Zod for query validation
+- CSS Modules + global CSS variables
+- ESLint + Prettier
+
+## Brutalist Design Goals
+
+- high contrast
+- hard edges and clear blocks
+- expressive typography
+- mobile-first readability
+- strong focus styles and semantic structure for accessibility
+
+## Current Routes
+
+- `/` - beer offer directory with filters
+- `/locations/[locationId]` - location detail page with all offers
+- `/api/v1/health` - health endpoint
+- `/api/v1/beers` - filtered beer offers
+- `/api/v1/locations/[locationId]` - location detail API
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run locally:
+
+```bash
+npm run dev
+```
+
+Quality checks:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Format code:
+
+```bash
+npm run format
+```
+
+## Data Model (Current)
+
+The current implementation uses an in-memory seed dataset under `src/lib/data.ts`.
+
+Planned next step is migrating to a persistent database and adding authenticated data submission.
