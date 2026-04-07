@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
+import { getCurrentAuthUser } from "@/lib/auth";
 import {
   getBeerOffers,
   getLocations,
@@ -34,6 +36,7 @@ export default async function Home({
   const offers = await getBeerOffers(query);
   const allOffers = await getBeerOffers();
   const locations = await getLocations();
+  const authUser = await getCurrentAuthUser();
 
   const brands = [...new Set(allOffers.map((offer) => offer.brand))].sort((a, b) =>
     a.localeCompare(b, "en-US"),
@@ -52,6 +55,26 @@ export default async function Home({
           Compare beer prices across pubs, bars, restaurants, and supermarkets in Kiel. Filter by
           brand, beer style, serving, and size to find the best offer quickly.
         </p>
+        <div className={styles.authRow}>
+          {authUser ? (
+            <>
+              <p className={styles.authStatus}>Signed in as {authUser.displayName}</p>
+              <LogoutButton className={styles.authButton} />
+            </>
+          ) : (
+            <>
+              <p className={styles.authStatus}>Contributors can add and review offers.</p>
+              <div className={styles.authLinks}>
+                <Link href="/login" className={styles.authLink}>
+                  Sign In
+                </Link>
+                <Link href="/register" className={styles.authLink}>
+                  Create Account
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <main className={styles.main}>

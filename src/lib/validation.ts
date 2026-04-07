@@ -12,6 +12,22 @@ export const beerQuerySchema = z.object({
   locationId: z.string().trim().min(1).max(100).optional(),
 });
 
+export const registerBodySchema = z.object({
+  email: z.string().trim().email().max(255),
+  displayName: z.string().trim().min(2).max(80),
+  password: z
+    .string()
+    .min(8)
+    .max(128)
+    .regex(/[A-Za-z]/, "Password must include at least one letter.")
+    .regex(/[0-9]/, "Password must include at least one number."),
+});
+
+export const loginBodySchema = z.object({
+  email: z.string().trim().email().max(255),
+  password: z.string().min(1).max(128),
+});
+
 type SearchValue = string | string[] | undefined;
 
 function firstValue(value: SearchValue): string | undefined {

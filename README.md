@@ -31,10 +31,17 @@ The app supports filtering offers by:
 ## Current Routes
 
 - `/` - beer offer directory with filters
+- `/login` - sign-in page
+- `/register` - account creation page
 - `/locations/[locationId]` - location detail page with all offers
 - `/api/v1/health` - health endpoint
 - `/api/v1/beers` - filtered beer offers
 - `/api/v1/locations/[locationId]` - location detail API
+- `/api/v1/auth/register` - create account and session
+- `/api/v1/auth/login` - sign in and create session
+- `/api/v1/auth/logout` - clear session
+- `/api/v1/auth/session` - current session state (nullable user)
+- `/api/v1/auth/me` - current user profile (requires auth)
 
 ## Development
 
@@ -89,6 +96,7 @@ npm run format
 The app now uses a PostgreSQL database via Prisma with core entities:
 
 - `User`
+- `Session`
 - `Location`
 - `BeerOffer`
 - `Review`

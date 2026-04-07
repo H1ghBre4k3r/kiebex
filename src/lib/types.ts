@@ -37,6 +37,17 @@ export type User = {
   updatedAt: Date;
 };
 
+export type AuthUser = Pick<User, "id" | "email" | "displayName" | "role">;
+
+export type Session = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ReviewStatus = "pending" | "approved" | "rejected";
 
 export type Review = {
