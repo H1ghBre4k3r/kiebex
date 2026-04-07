@@ -3,6 +3,7 @@ import { z } from "zod";
 const servingTypes = ["tap", "bottle", "can"] as const;
 const locationTypes = ["pub", "bar", "restaurant", "supermarket"] as const;
 const moderationStatuses = ["approved", "rejected"] as const;
+const userRoles = ["user", "moderator", "admin"] as const;
 
 export const beerQuerySchema = z.object({
   brand: z.string().trim().min(1).max(80).optional(),
@@ -47,6 +48,10 @@ export const createBeerOfferBodySchema = z.object({
 
 export const moderationDecisionSchema = z.object({
   status: z.enum(moderationStatuses),
+});
+
+export const userRoleUpdateSchema = z.object({
+  role: z.enum(userRoles),
 });
 
 type SearchValue = string | string[] | undefined;

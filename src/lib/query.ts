@@ -9,6 +9,8 @@ import type {
   PendingBeerOfferSubmission,
   PendingLocationSubmission,
   ServingType,
+  User,
+  UserRole,
 } from "@/lib/types";
 
 function servingLabel(serving: ServingType): string {
@@ -441,6 +443,68 @@ export async function moderateBeerOfferSubmission(
         status: updatedOffer.location.status,
         createdById: updatedOffer.location.createdById,
       },
+    },
+  };
+}
+
+export async function getUsersForAdmin(): Promise<User[]> {
+  const users = await db.user.findMany({
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  return users.map((user) => ({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    role: user.role,
+    passwordHash: null,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }));
+}
+
+export async function updateUserRoleByAdmin(params: {
+  targetUserId: string;
+  role: UserRole;
+  actingAdminId: string;
+}): Promise<
+  | { outcome: "updated"; user: User }
+  | { outcome: "not_found" }
+  | { outcome: "cannot_demote_last_admin" }
+> {
+  const targetUser = await db.user.findUnique({
+    where: { id: params.targetUserId },
+  });
+
+  if (!targetUser) {
+    return { outcome: "not_found" };
+  }
+
+  if (targetUser.id === params.actingAdminId && params.role !== "admin") {
+    const adminCount = await db.user.count({
+      where: { role: "admin" },
+    });
+
+    if (adminCount <= 1) {
+      return { outcome: "cannot_demote_last_admin" };
+    }
+  }
+
+  const updatedUser = await db.user.update({
+    where: { id: params.targetUserId },
+    data: { role: params.role },
+  });
+
+  return {
+    outcome: "updated",
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      role: updatedUser.role,
+      passwordHash: null,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
     },
   };
 }

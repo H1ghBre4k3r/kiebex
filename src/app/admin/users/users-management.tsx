@@ -1,0 +1,141 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import type { UserRole } from "@/lib/types";
+import styles from "./users.module.css";
+
+type UserForAdmin = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: string;
+};
+
+type UsersManagementProps = {
+  currentAdminId: string;
+  users: UserForAdmin[];
+};
+
+type ApiErrorResponse = {
+  status?: "error";
+  error?: {
+    message?: string;
+  };
+};
+
+async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+  return body?.error?.message ?? fallback;
+}
+
+export function UsersManagement({ currentAdminId, users }: UsersManagementProps) {
+  const router = useRouter();
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>(
+    Object.fromEntries(users.map((user) => [user.id, user.role])),
+  );
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: "error" | "success"; message: string } | null>(
+    null,
+  );
+
+  async function updateRole(userId: string) {
+    const role = selectedRoles[userId];
+
+    if (!role) {
+      return;
+    }
+
+    setFeedback(null);
+    setPendingUserId(userId);
+
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/role`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role }),
+      });
+
+      if (!response.ok) {
+        const message = await parseErrorMessage(response, "Unable to update user role.");
+        setFeedback({ kind: "error", message });
+        setPendingUserId(null);
+        return;
+      }
+
+      setFeedback({ kind: "success", message: "User role updated." });
+      setPendingUserId(null);
+      router.refresh();
+    } catch {
+      setFeedback({ kind: "error", message: "Unable to update user role." });
+      setPendingUserId(null);
+    }
+  }
+
+  return (
+    <section className={styles.panel} aria-labelledby="users-management-heading">
+      <h2 id="users-management-heading">Users ({users.length})</h2>
+
+      {feedback && (
+        <p className={feedback.kind === "error" ? styles.error : styles.success} role="status">
+          {feedback.message}
+        </p>
+      )}
+
+      <ul className={styles.list}>
+        {users.map((user) => {
+          const pending = pendingUserId === user.id;
+          const roleChanged = selectedRoles[user.id] !== user.role;
+
+          return (
+            <li key={user.id} className={styles.item}>
+              <div className={styles.meta}>
+                <p>
+                  <strong>{user.displayName}</strong> ({user.email})
+                </p>
+                <p>Current role: {user.role}</p>
+                <p>Joined: {new Date(user.createdAt).toLocaleDateString("en-GB")}</p>
+              </div>
+
+              <div className={styles.controls}>
+                <label htmlFor={`role-${user.id}`}>Role</label>
+                <select
+                  id={`role-${user.id}`}
+                  value={selectedRoles[user.id] ?? user.role}
+                  onChange={(event) =>
+                    setSelectedRoles((current) => ({
+                      ...current,
+                      [user.id]: event.target.value as UserRole,
+                    }))
+                  }
+                  disabled={pending}
+                >
+                  <option value="user">user</option>
+                  <option value="moderator">moderator</option>
+                  <option value="admin">admin</option>
+                </select>
+
+                <button
+                  type="button"
+                  disabled={pending || !roleChanged}
+                  onClick={() => updateRole(user.id)}
+                >
+                  {pending ? "Saving..." : "Save Role"}
+                </button>
+              </div>
+
+              {user.id === currentAdminId && (
+                <p className={styles.notice}>
+                  This is your account. Last-admin protection applies.
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}

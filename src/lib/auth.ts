@@ -237,3 +237,13 @@ export async function requireModeratorUser(): Promise<AuthUser> {
 
   return user;
 }
+
+export async function requireAdminUser(): Promise<AuthUser> {
+  const user = await requireAuthUser();
+
+  if (user.role !== "admin") {
+    throw new ForbiddenError();
+  }
+
+  return user;
+}

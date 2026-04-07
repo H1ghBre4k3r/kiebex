@@ -68,6 +68,11 @@ export default async function Home({
                     Moderation
                   </Link>
                 )}
+                {authUser.role === "admin" && (
+                  <Link href="/admin/users" className={styles.authLink}>
+                    Users
+                  </Link>
+                )}
                 <LogoutButton className={styles.authButton} />
               </div>
             </>

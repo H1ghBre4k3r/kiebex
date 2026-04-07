@@ -35,6 +35,7 @@ The app supports filtering offers by:
 - `/register` - account creation page
 - `/contribute` - authenticated contribution forms for locations and offers
 - `/moderation` - moderator/admin queue for approving or rejecting submissions
+- `/admin/users` - admin-only role assignment interface
 - `/locations/[locationId]` - location detail page with all offers
 - `/api/v1/health` - health endpoint
 - `/api/v1/beers` - filtered beer offers
@@ -49,6 +50,8 @@ The app supports filtering offers by:
 - `/api/v1/moderation/submissions` - moderator list of pending locations/offers
 - `/api/v1/moderation/locations/[locationId]` (`PATCH`) - moderate pending location
 - `/api/v1/moderation/offers/[offerId]` (`PATCH`) - moderate pending offer
+- `/api/v1/admin/users` - admin list of users
+- `/api/v1/admin/users/[userId]/role` (`PATCH`) - admin role assignment
 
 ## Development
 
@@ -117,3 +120,9 @@ Schema and migrations live in `prisma/`, and application queries are in `src/lib
 - Public listing and detail queries only show `approved` locations/offers.
 - Offer submission is allowed for approved locations and for pending locations created by the same user.
 - Moderators/admins can review and approve/reject pending locations and offers via `/moderation`.
+
+## User and Role Management
+
+- New users are created with the `user` role by default.
+- Admins can assign `user`, `moderator`, and `admin` roles in `/admin/users`.
+- The API prevents removing the final remaining admin from admin role.
