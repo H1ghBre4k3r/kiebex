@@ -33,6 +33,7 @@ The app supports filtering offers by:
 - `/` - beer offer directory with filters
 - `/login` - sign-in page
 - `/register` - account creation page
+- `/contribute` - authenticated contribution forms for locations and offers
 - `/locations/[locationId]` - location detail page with all offers
 - `/api/v1/health` - health endpoint
 - `/api/v1/beers` - filtered beer offers
@@ -104,3 +105,10 @@ The app now uses a PostgreSQL database via Prisma with core entities:
 - `Review`
 
 Schema and migrations live in `prisma/`, and application queries are in `src/lib/query.ts`.
+
+## Moderation-Ready Contributions
+
+- New user-submitted locations are created with `pending` status.
+- New user-submitted offers are created with `pending` status.
+- Public listing and detail queries only show `approved` locations/offers.
+- Offer submission is allowed for approved locations and for pending locations created by the same user.

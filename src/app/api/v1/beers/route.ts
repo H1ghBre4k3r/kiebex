@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { UnauthorizedError, requireAuthUser } from "@/lib/auth";
-import { createBeerOffer, getBeerOffers } from "@/lib/query";
+import { createBeerOffer, getBeerOffers, getLocationContributionPermission } from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
 import { createBeerOfferBodySchema, parseBeerQueryParams } from "@/lib/validation";
 
@@ -32,8 +32,11 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  let userId: string;
+
   try {
-    await requireAuthUser();
+    const user = await requireAuthUser();
+    userId = user.id;
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -64,8 +67,26 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  const permission = await getLocationContributionPermission(userId, parsed.data.locationId);
+
+  if (permission === "missing") {
+    return jsonError(404, "LOCATION_NOT_FOUND", "No location found for the supplied locationId.");
+  }
+
+  if (permission === "forbidden") {
+    return jsonError(
+      403,
+      "LOCATION_PENDING_RESTRICTED",
+      "You can only submit offers for approved locations or locations you submitted.",
+    );
+  }
+
   try {
-    const offer = await createBeerOffer(parsed.data);
+    const offer = await createBeerOffer({
+      ...parsed.data,
+      createdById: userId,
+      status: "pending",
+    });
 
     return jsonOk({ offer }, { status: 201 });
   } catch (error) {

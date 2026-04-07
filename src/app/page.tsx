@@ -59,7 +59,12 @@ export default async function Home({
           {authUser ? (
             <>
               <p className={styles.authStatus}>Signed in as {authUser.displayName}</p>
-              <LogoutButton className={styles.authButton} />
+              <div className={styles.authLinks}>
+                <Link href="/contribute" className={styles.authLink}>
+                  Contribute
+                </Link>
+                <LogoutButton className={styles.authButton} />
+              </div>
             </>
           ) : (
             <>

@@ -37,6 +37,12 @@ enum ReviewStatus {
   rejected
 }
 
+enum SubmissionStatus {
+  pending
+  approved
+  rejected
+}
+
 model User {
   id          String   @id @default(cuid())
   email       String   @unique
@@ -47,6 +53,7 @@ model User {
   updatedAt   DateTime @updatedAt
 
   createdLocations Location[] @relation("LocationCreatedBy")
+  createdOffers    BeerOffer[] @relation("BeerOfferCreatedBy")
   reviews          Review[]
   sessions         Session[]
 }
@@ -71,6 +78,7 @@ model Location {
   locationType LocationType
   district     String
   address      String
+  status       SubmissionStatus @default(approved)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   createdById  String?
@@ -81,6 +89,7 @@ model Location {
 
   @@index([locationType])
   @@index([district])
+  @@index([status])
 }
 
 model BeerOffer {
@@ -91,10 +100,13 @@ model BeerOffer {
   serving    ServingType
   priceCents Int
   locationId String
+  status     SubmissionStatus @default(approved)
+  createdById String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
-  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  location  Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("BeerOfferCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([locationId, brand, variant, sizeMl, serving])
   @@index([brand])
@@ -103,6 +115,8 @@ model BeerOffer {
   @@index([serving])
   @@index([locationId])
   @@index([priceCents])
+  @@index([status])
+  @@index([createdById])
 }
 
 model Review {

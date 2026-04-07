@@ -48,6 +48,7 @@ export async function POST(request: Request): Promise<Response> {
     const location = await createLocation({
       ...parsed.data,
       createdById: userId,
+      status: "pending",
     });
 
     return jsonOk({ location }, { status: 201 });

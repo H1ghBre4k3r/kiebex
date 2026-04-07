@@ -50,6 +50,9 @@ export function getServingLabel(serving: ServingType): string {
 
 export async function getLocations(): Promise<Location[]> {
   const locations = await db.location.findMany({
+    where: {
+      status: "approved",
+    },
     orderBy: [{ name: "asc" }],
   });
 
@@ -59,7 +62,61 @@ export async function getLocations(): Promise<Location[]> {
     locationType: location.locationType,
     district: location.district,
     address: location.address,
+    status: location.status,
+    createdById: location.createdById,
   }));
+}
+
+export async function getContributableLocations(userId: string): Promise<Location[]> {
+  const locations = await db.location.findMany({
+    where: {
+      OR: [
+        { status: "approved" },
+        {
+          status: "pending",
+          createdById: userId,
+        },
+      ],
+    },
+    orderBy: [{ name: "asc" }],
+  });
+
+  return locations.map((location) => ({
+    id: location.id,
+    name: location.name,
+    locationType: location.locationType,
+    district: location.district,
+    address: location.address,
+    status: location.status,
+    createdById: location.createdById,
+  }));
+}
+
+export async function getLocationContributionPermission(
+  userId: string,
+  locationId: string,
+): Promise<"allowed" | "missing" | "forbidden"> {
+  const location = await db.location.findUnique({
+    where: { id: locationId },
+    select: {
+      status: true,
+      createdById: true,
+    },
+  });
+
+  if (!location) {
+    return "missing";
+  }
+
+  if (location.status === "approved") {
+    return "allowed";
+  }
+
+  if (location.status === "pending" && location.createdById === userId) {
+    return "allowed";
+  }
+
+  return "forbidden";
 }
 
 export async function getLocationById(locationId: string): Promise<Location | undefined> {
@@ -67,7 +124,7 @@ export async function getLocationById(locationId: string): Promise<Location | un
     where: { id: locationId },
   });
 
-  if (!location) {
+  if (!location || location.status !== "approved") {
     return undefined;
   }
 
@@ -77,6 +134,8 @@ export async function getLocationById(locationId: string): Promise<Location | un
     locationType: location.locationType,
     district: location.district,
     address: location.address,
+    status: location.status,
+    createdById: location.createdById,
   };
 }
 
@@ -88,11 +147,15 @@ export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWit
       sizeMl: query.sizeMl,
       serving: query.serving,
       locationId: query.locationId,
+      status: "approved",
       location: query.locationType
         ? {
             locationType: query.locationType,
+            status: "approved",
           }
-        : undefined,
+        : {
+            status: "approved",
+          },
     },
     include: {
       location: true,
@@ -114,7 +177,11 @@ export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWit
       locationType: offer.location.locationType,
       district: offer.location.district,
       address: offer.location.address,
+      status: offer.location.status,
+      createdById: offer.location.createdById,
     },
+    status: offer.status,
+    createdById: offer.createdById,
   }));
 }
 
@@ -130,6 +197,7 @@ export async function createLocation(input: CreateLocationInput): Promise<Locati
       district: input.district.trim(),
       address: input.address.trim(),
       createdById: input.createdById,
+      status: input.status ?? "pending",
     },
   });
 
@@ -139,6 +207,7 @@ export async function createLocation(input: CreateLocationInput): Promise<Locati
     locationType: location.locationType,
     district: location.district,
     address: location.address,
+    status: location.status,
     createdById: location.createdById,
   };
 }
@@ -152,6 +221,8 @@ export async function createBeerOffer(input: CreateBeerOfferInput): Promise<Beer
       serving: input.serving,
       priceCents: input.priceCents,
       locationId: input.locationId,
+      createdById: input.createdById,
+      status: input.status ?? "pending",
     },
     include: {
       location: true,
@@ -172,7 +243,10 @@ export async function createBeerOffer(input: CreateBeerOfferInput): Promise<Beer
       locationType: offer.location.locationType,
       district: offer.location.district,
       address: offer.location.address,
+      status: offer.location.status,
       createdById: offer.location.createdById,
     },
+    status: offer.status,
+    createdById: offer.createdById,
   };
 }

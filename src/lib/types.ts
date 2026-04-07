@@ -10,6 +10,8 @@ export type BeerOffer = {
   serving: ServingType;
   priceEur: number;
   locationId: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -20,6 +22,7 @@ export type Location = {
   locationType: LocationType;
   district: string;
   address: string;
+  status: SubmissionStatus;
   createdById?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -49,6 +52,8 @@ export type Session = {
 };
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export type SubmissionStatus = "pending" | "approved" | "rejected";
 
 export type Review = {
   id: string;
@@ -81,6 +86,7 @@ export type CreateLocationInput = {
   district: string;
   address: string;
   createdById?: string;
+  status?: SubmissionStatus;
 };
 
 export type CreateBeerOfferInput = {
@@ -90,4 +96,6 @@ export type CreateBeerOfferInput = {
   serving: ServingType;
   priceCents: number;
   locationId: string;
+  createdById?: string;
+  status?: SubmissionStatus;
 };
