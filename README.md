@@ -38,7 +38,18 @@ npm run lint
 npm run typecheck
 npm run build
 npm run format
+npm run test
+npm run test:integration
+npm run test:e2e
 ```
+
+## Testing
+
+- `npm run test`: unit and API route tests (Jest)
+- `npm run test:integration`: DB-backed query integration tests (requires `DATABASE_URL` and migrated DB)
+- `npm run test:e2e`: browser smoke tests (Playwright, runs against production build)
+
+CI runs lint, typecheck, Jest tests, DB integration tests, and Playwright smoke tests on every push and pull request.
 
 ## App Routes
 

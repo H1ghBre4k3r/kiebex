@@ -7,6 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "tsx integration-tests/run.ts",
+    "test:e2e": "playwright test",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
@@ -27,12 +32,16 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "jest": "^30.3.0",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5"
