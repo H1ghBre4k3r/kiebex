@@ -72,6 +72,9 @@ export default async function Home({
                 <Link href="/contribute" className={styles.authLink}>
                   Contribute
                 </Link>
+                <Link href="/profile" className={styles.authLink}>
+                  Profile
+                </Link>
                 {(authUser.role === "moderator" || authUser.role === "admin") && (
                   <Link href="/moderation" className={styles.authLink}>
                     Moderation

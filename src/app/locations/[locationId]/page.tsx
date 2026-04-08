@@ -10,6 +10,7 @@ import {
   getServingLabel,
   locationTypeLabel,
 } from "@/lib/query";
+import { OwnReviewActions } from "./own-review-actions";
 import { ReviewForm } from "./review-form";
 import styles from "./page.module.css";
 
@@ -108,14 +109,7 @@ export default async function LocationPage({
         ) : (
           <ul className={styles.reviewList}>
             {reviews.map((review) => (
-              <li key={review.id} className={styles.reviewItem}>
-                <p>
-                  <strong>{review.rating}/5</strong> by {review.author.displayName}
-                </p>
-                {review.title && <p>{review.title}</p>}
-                {review.body && <p>{review.body}</p>}
-                <p>{new Date(review.createdAt).toLocaleDateString("en-GB")}</p>
-              </li>
+              <OwnReviewActions key={review.id} review={review} authUserId={authUser?.id ?? null} />
             ))}
           </ul>
         )}

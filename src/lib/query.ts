@@ -642,6 +642,63 @@ export async function createReview(input: CreateReviewInput): Promise<Review> {
   };
 }
 
+export async function updateReview(
+  reviewId: string,
+  callerId: string,
+  input: {
+    rating: number;
+    title?: string | null;
+    body?: string | null;
+  },
+): Promise<ReviewWithAuthor | null> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { userId: true },
+  });
+
+  if (!existing || existing.userId !== callerId) {
+    return null;
+  }
+
+  const review = await db.review.update({
+    where: { id: reviewId },
+    data: {
+      rating: input.rating,
+      title: input.title?.trim() ? input.title.trim() : null,
+      body: input.body?.trim() ? input.body.trim() : null,
+    },
+    select: {
+      id: true,
+      locationId: true,
+      userId: true,
+      rating: true,
+      title: true,
+      body: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      user: { select: { id: true, displayName: true } },
+    },
+  });
+
+  return mapReview(review);
+}
+
+export async function deleteReview(reviewId: string, callerId: string): Promise<boolean> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { userId: true },
+  });
+
+  if (!existing || existing.userId !== callerId) {
+    return false;
+  }
+
+  await db.review.delete({ where: { id: reviewId } });
+
+  return true;
+}
+
 export async function createPriceUpdateProposal(input: {
   beerOfferId: string;
   proposedPriceCents: number;

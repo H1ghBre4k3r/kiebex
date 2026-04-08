@@ -78,3 +78,25 @@
   color: #0a5f18;
   font-weight: 700;
 }
+
+.reviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.reviewActions button {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.success {
+  color: #0a5f18;
+  font-weight: 700;
+}

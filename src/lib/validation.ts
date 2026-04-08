@@ -138,3 +138,38 @@ export function parseReviewQueryParams(
 export const resendVerificationBodySchema = z.object({
   email: z.string().trim().email().max(255),
 });
+
+export const updateProfileBodySchema = z
+  .object({
+    displayName: z.string().trim().min(2).max(80).optional(),
+    currentPassword: z.string().min(1).max(128).optional(),
+    newPassword: z
+      .string()
+      .min(8)
+      .max(128)
+      .regex(/[A-Za-z]/, "Password must include at least one letter.")
+      .regex(/[0-9]/, "Password must include at least one number.")
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.displayName && !data.newPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field to update is required.",
+      });
+    }
+
+    if (data.newPassword && !data.currentPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["currentPassword"],
+        message: "Current password is required to set a new password.",
+      });
+    }
+  });
+
+export const updateReviewBodySchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  title: z.string().trim().min(1).max(120).nullable().optional(),
+  body: z.string().trim().min(1).max(1500).nullable().optional(),
+});

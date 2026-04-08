@@ -306,3 +306,43 @@ export async function requireAdminUser(): Promise<AuthUser> {
 
   return user;
 }
+
+export async function updateDisplayName(userId: string, displayName: string): Promise<AuthUser> {
+  const normalized = normalizeDisplayName(displayName);
+
+  return db.user.update({
+    where: { id: userId },
+    data: { displayName: normalized },
+    select: authUserSelect,
+  });
+}
+
+export async function updatePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; code: "WRONG_PASSWORD" }> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true },
+  });
+
+  if (!user?.passwordHash) {
+    return { ok: false, code: "WRONG_PASSWORD" };
+  }
+
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+
+  if (!valid) {
+    return { ok: false, code: "WRONG_PASSWORD" };
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await db.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+
+  return { ok: true };
+}
