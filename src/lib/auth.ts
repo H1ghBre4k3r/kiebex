@@ -10,6 +10,7 @@ import type { AuthUser } from "@/lib/types";
 const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE_NAME = "kbi_session";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const VERIFICATION_TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
 
 const authUserSelect = {
   id: true,
@@ -36,6 +37,10 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 function hashSessionToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function hashVerificationToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
@@ -115,10 +120,14 @@ export async function registerUser(input: {
   }
 }
 
+export type AuthenticateResult =
+  | { ok: true; user: AuthUser }
+  | { ok: false; reason: "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" };
+
 export async function authenticateUser(input: {
   email: string;
   password: string;
-}): Promise<AuthUser | null> {
+}): Promise<AuthenticateResult> {
   const email = normalizeEmail(input.email);
 
   const user = await db.user.findUnique({
@@ -129,25 +138,75 @@ export async function authenticateUser(input: {
       displayName: true,
       role: true,
       passwordHash: true,
+      emailVerified: true,
     },
   });
 
   if (!user?.passwordHash) {
-    return null;
+    return { ok: false, reason: "INVALID_CREDENTIALS" };
   }
 
   const validPassword = await verifyPassword(input.password, user.passwordHash);
 
   if (!validPassword) {
-    return null;
+    return { ok: false, reason: "INVALID_CREDENTIALS" };
+  }
+
+  if (!user.emailVerified) {
+    return { ok: false, reason: "EMAIL_NOT_VERIFIED" };
   }
 
   return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+    },
   };
+}
+
+export async function createEmailVerificationToken(userId: string): Promise<string> {
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = hashVerificationToken(token);
+  const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_DURATION_MS);
+
+  // Invalidate any existing tokens for this user before creating a new one.
+  await db.emailVerificationToken.deleteMany({ where: { userId } });
+
+  await db.emailVerificationToken.create({
+    data: { userId, tokenHash, expiresAt },
+  });
+
+  return token;
+}
+
+export async function verifyEmailToken(rawToken: string): Promise<{ userId: string } | null> {
+  const tokenHash = hashVerificationToken(rawToken);
+
+  const record = await db.emailVerificationToken.findUnique({
+    where: { tokenHash },
+    select: { userId: true, expiresAt: true },
+  });
+
+  if (!record) {
+    return null;
+  }
+
+  if (record.expiresAt <= new Date()) {
+    await db.emailVerificationToken.deleteMany({ where: { tokenHash } });
+    return null;
+  }
+
+  await db.user.update({
+    where: { id: record.userId },
+    data: { emailVerified: true },
+  });
+
+  await db.emailVerificationToken.deleteMany({ where: { tokenHash } });
+
+  return { userId: record.userId };
 }
 
 export async function createSession(userId: string): Promise<void> {

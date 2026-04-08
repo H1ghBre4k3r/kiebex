@@ -1,0 +1,59 @@
+import "server-only";
+
+import { createTransport } from "nodemailer";
+import { logger } from "@/lib/logger";
+
+function isSmtpConfigured(): boolean {
+  return Boolean(process.env.SMTP_HOST);
+}
+
+export async function sendVerificationEmail(to: string, verificationUrl: string): Promise<void> {
+  const subject = "Verify your Kiel Beer Index account";
+  const text = [
+    "Welcome to Kiel Beer Index!",
+    "",
+    "Please verify your email address by visiting the link below:",
+    "",
+    verificationUrl,
+    "",
+    "This link expires in 24 hours.",
+    "",
+    "If you did not create an account, you can safely ignore this email.",
+  ].join("\n");
+
+  const html = `
+<p>Welcome to <strong>Kiel Beer Index</strong>!</p>
+<p>Please verify your email address by clicking the link below:</p>
+<p><a href="${verificationUrl}">${verificationUrl}</a></p>
+<p>This link expires in <strong>24 hours</strong>.</p>
+<p>If you did not create an account, you can safely ignore this email.</p>
+`.trim();
+
+  if (!isSmtpConfigured()) {
+    logger.info("Email verification (SMTP not configured — logging link instead)", {
+      to,
+      verificationUrl,
+    });
+    return;
+  }
+
+  const transport = createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    auth:
+      process.env.SMTP_USER && process.env.SMTP_PASS
+        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        : undefined,
+  });
+
+  await transport.sendMail({
+    from: process.env.SMTP_FROM ?? "noreply@kiel-beer-index.de",
+    to,
+    subject,
+    text,
+    html,
+  });
+
+  logger.info("Verification email sent", { to });
+}

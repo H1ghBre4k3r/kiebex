@@ -1,6 +1,12 @@
-import { createSession, registerUser } from "@/lib/auth";
+import { createEmailVerificationToken, registerUser } from "@/lib/auth";
+import { sendVerificationEmail } from "@/lib/email";
 import { jsonError, jsonOk } from "@/lib/http";
 import { registerBodySchema } from "@/lib/validation";
+
+function buildVerificationUrl(request: Request, token: string): string {
+  const appUrl = process.env.APP_URL ?? new URL(request.url).origin;
+  return `${appUrl}/verify-email?token=${token}`;
+}
 
 export async function POST(request: Request): Promise<Response> {
   let body: unknown;
@@ -31,11 +37,14 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(409, "EMAIL_IN_USE", "An account with this email already exists.");
   }
 
-  await createSession(result.user.id);
+  const token = await createEmailVerificationToken(result.user.id);
+  const verificationUrl = buildVerificationUrl(request, token);
+
+  await sendVerificationEmail(result.user.email, verificationUrl);
 
   return jsonOk(
     {
-      user: result.user,
+      message: "Account created. Please check your email to verify your address.",
     },
     { status: 201 },
   );

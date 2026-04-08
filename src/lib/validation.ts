@@ -134,3 +134,7 @@ export function parseReviewQueryParams(
     locationId: compactString(searchParams.get("locationId") ?? undefined),
   });
 }
+
+export const resendVerificationBodySchema = z.object({
+  email: z.string().trim().email().max(255),
+});
