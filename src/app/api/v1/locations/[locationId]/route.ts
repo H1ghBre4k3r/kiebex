@@ -1,4 +1,9 @@
-import { getLocationById, getLocationOffers } from "@/lib/query";
+import {
+  getLocationById,
+  getLocationOffers,
+  getLocationReviews,
+  getOfferPriceHistory,
+} from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
 
 export async function GET(
@@ -6,17 +11,26 @@ export async function GET(
   context: { params: Promise<{ locationId: string }> },
 ): Promise<Response> {
   const { locationId } = await context.params;
-  const location = getLocationById(locationId);
+  const location = await getLocationById(locationId);
 
   if (!location) {
     return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
   }
 
-  const offers = getLocationOffers(locationId);
+  const offers = await getLocationOffers(locationId);
+  const reviews = await getLocationReviews(locationId);
+  const offersWithHistory = await Promise.all(
+    offers.map(async (offer) => ({
+      ...offer,
+      priceHistory: await getOfferPriceHistory(offer.id),
+    })),
+  );
 
   return jsonOk({
     location,
-    count: offers.length,
-    offers,
+    count: offersWithHistory.length,
+    offers: offersWithHistory,
+    reviews,
+    reviewCount: reviews.length,
   });
 }

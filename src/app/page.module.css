@@ -23,6 +23,51 @@
   max-width: 70ch;
 }
 
+.authRow {
+  margin-top: 1rem;
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.authStatus {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.authLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.authLink,
+.authButton {
+  border: var(--border-regular);
+  min-height: 2.2rem;
+  padding: 0.35rem 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: #fff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.authButton {
+  cursor: pointer;
+  max-width: max-content;
+}
+
+.authButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .kicker {
   display: inline-block;
   margin-bottom: 0.7rem;

@@ -2,14 +2,33 @@ export type ServingType = "tap" | "bottle" | "can";
 
 export type LocationType = "pub" | "bar" | "restaurant" | "supermarket";
 
-export type BeerOffer = {
+export type UserRole = "user" | "moderator" | "admin";
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export type SubmissionStatus = "pending" | "approved" | "rejected";
+
+export type ModerationStatusDecision = Exclude<SubmissionStatus, "pending">;
+
+export type User = {
   id: string;
-  brand: string;
-  variant: string;
-  sizeMl: number;
-  serving: ServingType;
-  priceEur: number;
-  locationId: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  passwordHash?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type AuthUser = Pick<User, "id" | "email" | "displayName" | "role">;
+
+export type Session = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type Location = {
@@ -18,17 +37,186 @@ export type Location = {
   locationType: LocationType;
   district: string;
   address: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerStyle = {
+  id: string;
+  name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerBrand = {
+  id: string;
+  name: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerVariant = {
+  id: string;
+  name: string;
+  brandId: string;
+  styleId: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  brand?: BeerBrand;
+  style?: BeerStyle;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type BeerOffer = {
+  id: string;
+  brand: string;
+  variant: string;
+  variantId: string;
+  style: string;
+  sizeMl: number;
+  serving: ServingType;
+  priceEur: number;
+  locationId: string;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type BeerOfferWithLocation = BeerOffer & {
   location: Location;
 };
 
+export type OfferPriceHistory = {
+  id: string;
+  beerOfferId: string;
+  priceEur: number;
+  effectiveAt: Date;
+  priceUpdateProposalId?: string | null;
+  createdAt: Date;
+};
+
+export type PriceUpdateProposal = {
+  id: string;
+  beerOfferId: string;
+  proposedPriceEur: number;
+  status: SubmissionStatus;
+  createdById?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Review = {
+  id: string;
+  locationId: string;
+  userId: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  status: ReviewStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ReviewAuthor = {
+  id: string;
+  displayName: string;
+};
+
+export type ReviewWithAuthor = Review & {
+  author: ReviewAuthor;
+};
+
+export type LocationReviewSummary = {
+  locationId: string;
+  reviewCount: number;
+  averageRating: number | null;
+};
+
 export type BeerQuery = {
-  brand?: string;
-  variant?: string;
+  brandId?: string;
+  variantId?: string;
+  styleId?: string;
   sizeMl?: number;
   serving?: ServingType;
   locationType?: LocationType;
   locationId?: string;
+};
+
+export type CreateLocationInput = {
+  name: string;
+  locationType: LocationType;
+  district: string;
+  address: string;
+  createdById?: string;
+  status?: SubmissionStatus;
+};
+
+export type CreateBeerBrandInput = {
+  name: string;
+  createdById?: string;
+  status?: SubmissionStatus;
+};
+
+export type CreateBeerVariantInput = {
+  name: string;
+  brandId: string;
+  styleId: string;
+  createdById?: string;
+  status?: SubmissionStatus;
+};
+
+export type CreateBeerOfferInput = {
+  variantId: string;
+  sizeMl: number;
+  serving: ServingType;
+  priceCents: number;
+  locationId: string;
+  createdById?: string;
+  status?: SubmissionStatus;
+};
+
+export type CreateReviewInput = {
+  locationId: string;
+  userId: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  status?: ReviewStatus;
+};
+
+export type ModerationSubmitter = {
+  id: string;
+  displayName: string;
+  email: string;
+};
+
+export type PendingLocationSubmission = Location & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingBeerBrandSubmission = BeerBrand & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingBeerVariantSubmission = BeerVariant & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingBeerOfferSubmission = BeerOfferWithLocation & {
+  createdAt: Date;
+  submitter: ModerationSubmitter | null;
+};
+
+export type PendingPriceUpdateProposal = PriceUpdateProposal & {
+  offer: BeerOfferWithLocation;
+  submitter: ModerationSubmitter | null;
 };

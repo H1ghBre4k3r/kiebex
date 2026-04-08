@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  user
+  moderator
+  admin
+}
+
+enum LocationType {
+  pub
+  bar
+  restaurant
+  supermarket
+}
+
+enum ServingType {
+  tap
+  bottle
+  can
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum SubmissionStatus {
+  pending
+  approved
+  rejected
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String
+  role        UserRole @default(user)
+  passwordHash String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdLocations     Location[]            @relation("LocationCreatedBy")
+  createdOffers        BeerOffer[]           @relation("BeerOfferCreatedBy")
+  createdBeerBrands    BeerBrand[]           @relation("BeerBrandCreatedBy")
+  createdBeerVariants  BeerVariant[]         @relation("BeerVariantCreatedBy")
+  priceUpdateProposals PriceUpdateProposal[] @relation("PriceUpdateProposalCreatedBy")
+  reviews              Review[]
+  sessions             Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Location {
+  id           String       @id @default(cuid())
+  name         String
+  locationType LocationType
+  district     String
+  address      String
+  status       SubmissionStatus @default(approved)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  createdById  String?
+
+  createdBy User?      @relation("LocationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  offers    BeerOffer[]
+  reviews   Review[]
+
+  @@index([locationType])
+  @@index([district])
+  @@index([status])
+}
+
+model BeerStyle {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variants BeerVariant[]
+}
+
+model BeerBrand {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  status      SubmissionStatus @default(approved)
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  createdBy User?          @relation("BeerBrandCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  variants  BeerVariant[]
+
+  @@index([status])
+  @@index([createdById])
+}
+
+model BeerVariant {
+  id          String           @id @default(cuid())
+  name        String
+  brandId     String
+  styleId     String
+  status      SubmissionStatus @default(approved)
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  brand     BeerBrand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  style     BeerStyle   @relation(fields: [styleId], references: [id], onDelete: Restrict)
+  createdBy User?       @relation("BeerVariantCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  offers    BeerOffer[]
+
+  @@unique([brandId, name])
+  @@index([status])
+  @@index([brandId])
+  @@index([styleId])
+  @@index([createdById])
+}
+
+model BeerOffer {
+  id         String      @id @default(cuid())
+  brand      String
+  variant    String
+  variantId  String
+  sizeMl     Int
+  serving    ServingType
+  priceCents Int
+  locationId String
+  status     SubmissionStatus @default(approved)
+  createdById String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  location             Location              @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  variantRef           BeerVariant           @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  createdBy            User?                 @relation("BeerOfferCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  priceUpdateProposals PriceUpdateProposal[]
+  priceHistory         OfferPriceHistory[]
+
+  @@unique([locationId, brand, variant, sizeMl, serving])
+  @@unique([locationId, variantId, sizeMl, serving])
+  @@index([brand])
+  @@index([variant])
+  @@index([variantId])
+  @@index([sizeMl])
+  @@index([serving])
+  @@index([locationId])
+  @@index([priceCents])
+  @@index([status])
+  @@index([createdById])
+}
+
+model PriceUpdateProposal {
+  id                String           @id @default(cuid())
+  beerOfferId       String
+  proposedPriceCents Int
+  status            SubmissionStatus @default(pending)
+  createdById       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  beerOffer       BeerOffer           @relation(fields: [beerOfferId], references: [id], onDelete: Cascade)
+  createdBy       User?               @relation("PriceUpdateProposalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedHistory OfferPriceHistory[]
+
+  @@index([beerOfferId])
+  @@index([status])
+  @@index([createdById])
+}
+
+model OfferPriceHistory {
+  id                     String   @id @default(cuid())
+  beerOfferId            String
+  priceCents             Int
+  effectiveAt            DateTime @default(now())
+  priceUpdateProposalId  String?
+  createdAt              DateTime @default(now())
+
+  beerOffer           BeerOffer            @relation(fields: [beerOfferId], references: [id], onDelete: Cascade)
+  priceUpdateProposal PriceUpdateProposal? @relation(fields: [priceUpdateProposalId], references: [id], onDelete: SetNull)
+
+  @@index([beerOfferId, effectiveAt])
+  @@index([priceUpdateProposalId])
+}
+
+model Review {
+  id         String       @id @default(cuid())
+  locationId String
+  userId     String
+  rating     Int
+  title      String?
+  body       String?
+  status     ReviewStatus @default(pending)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+  @@index([userId])
+  @@index([status])
+}

@@ -1,10 +1,16 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
+import { getCurrentAuthUser } from "@/lib/auth";
 import {
+  formatEur,
+  getBeerBrands,
   getBeerOffers,
+  getBeerStyles,
+  getLocationReviewSummaries,
+  getBeerVariants,
   getLocations,
   getServingLabel,
   locationTypeLabel,
-  formatEur,
 } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import styles from "./page.module.css";
@@ -31,16 +37,22 @@ export default async function Home({
   const parsedQuery = parseBeerQueryRecord(rawSearchParams);
   const query = parsedQuery.success ? parsedQuery.data : {};
 
-  const offers = getBeerOffers(query);
-  const allOffers = getBeerOffers();
-  const locations = getLocations();
+  const [offers, allOffers, locations, authUser, brands, stylesList, variants] = await Promise.all([
+    getBeerOffers(query),
+    getBeerOffers(),
+    getLocations(),
+    getCurrentAuthUser(),
+    getBeerBrands(),
+    getBeerStyles(),
+    getBeerVariants({
+      brandId: query.brandId,
+    }),
+  ]);
 
-  const brands = [...new Set(allOffers.map((offer) => offer.brand))].sort((a, b) =>
-    a.localeCompare(b, "en-US"),
-  );
-  const variants = [...new Set(allOffers.map((offer) => offer.variant))].sort((a, b) =>
-    a.localeCompare(b, "en-US"),
-  );
+  const reviewSummaryByLocation = await getLocationReviewSummaries([
+    ...new Set(offers.map((offer) => offer.location.id)),
+  ]);
+
   const sizes = [...new Set(allOffers.map((offer) => offer.sizeMl))].sort((a, b) => a - b);
 
   return (
@@ -50,8 +62,43 @@ export default async function Home({
         <h1>Kiel Beer Index</h1>
         <p>
           Compare beer prices across pubs, bars, restaurants, and supermarkets in Kiel. Filter by
-          brand, beer style, serving, and size to find the best offer quickly.
+          brand, variant, style, serving, and size to find the best offer quickly.
         </p>
+        <div className={styles.authRow}>
+          {authUser ? (
+            <>
+              <p className={styles.authStatus}>Signed in as {authUser.displayName}</p>
+              <div className={styles.authLinks}>
+                <Link href="/contribute" className={styles.authLink}>
+                  Contribute
+                </Link>
+                {(authUser.role === "moderator" || authUser.role === "admin") && (
+                  <Link href="/moderation" className={styles.authLink}>
+                    Moderation
+                  </Link>
+                )}
+                {authUser.role === "admin" && (
+                  <Link href="/admin/users" className={styles.authLink}>
+                    Users
+                  </Link>
+                )}
+                <LogoutButton className={styles.authButton} />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className={styles.authStatus}>Contributors can add offers and location reviews.</p>
+              <div className={styles.authLinks}>
+                <Link href="/login" className={styles.authLink}>
+                  Sign In
+                </Link>
+                <Link href="/register" className={styles.authLink}>
+                  Create Account
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <main className={styles.main}>
@@ -72,11 +119,11 @@ export default async function Home({
           <form className={styles.filters} method="get">
             <label>
               Brand
-              <select name="brand" defaultValue={firstValue(rawSearchParams.brand)}>
+              <select name="brandId" defaultValue={firstValue(rawSearchParams.brandId)}>
                 <option value="">Any</option>
                 {brands.map((brand) => (
-                  <option key={brand} value={brand}>
-                    {brand}
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
                   </option>
                 ))}
               </select>
@@ -84,11 +131,23 @@ export default async function Home({
 
             <label>
               Variant
-              <select name="variant" defaultValue={firstValue(rawSearchParams.variant)}>
+              <select name="variantId" defaultValue={firstValue(rawSearchParams.variantId)}>
                 <option value="">Any</option>
                 {variants.map((variant) => (
-                  <option key={variant} value={variant}>
-                    {variant}
+                  <option key={variant.id} value={variant.id}>
+                    {variant.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Style
+              <select name="styleId" defaultValue={firstValue(rawSearchParams.styleId)}>
+                <option value="">Any</option>
+                {stylesList.map((style) => (
+                  <option key={style.id} value={style.id}>
+                    {style.name}
                   </option>
                 ))}
               </select>
@@ -176,6 +235,10 @@ export default async function Home({
 
                     <dl className={styles.meta}>
                       <div>
+                        <dt>Style</dt>
+                        <dd>{offer.style}</dd>
+                      </div>
+                      <div>
                         <dt>Size</dt>
                         <dd>{offer.sizeMl} ml</dd>
                       </div>
@@ -194,6 +257,24 @@ export default async function Home({
                       <div>
                         <dt>Type</dt>
                         <dd>{locationTypeLabel(offer.location.locationType)}</dd>
+                      </div>
+                      <div>
+                        <dt>Reviews</dt>
+                        <dd>
+                          {(() => {
+                            const summary = reviewSummaryByLocation.get(offer.location.id);
+
+                            if (
+                              !summary ||
+                              summary.reviewCount === 0 ||
+                              summary.averageRating === null
+                            ) {
+                              return "No reviews";
+                            }
+
+                            return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
+                          })()}
+                        </dd>
                       </div>
                     </dl>
                   </article>
