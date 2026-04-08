@@ -1,11 +1,11 @@
 name: Image
 
-permissions:
-  contents: read
-  packages: write
-
 on:
   workflow_call:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: kiebex
 
 jobs:
   publish-docker-image:
@@ -42,5 +42,5 @@ jobs:
           context: .
           push: ${{ github.ref_name == 'main' }}
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/kiebex:latest
-            ghcr.io/${{ env.OWNER_LC }}/kiebex:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:${{ github.sha }}
