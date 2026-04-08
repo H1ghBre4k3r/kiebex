@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   lint-typecheck-unit:
@@ -79,3 +79,10 @@ jobs:
 
       - name: E2E tests
         run: npm run test:e2e
+
+  image:
+    needs: 
+      - integration-and-e2e
+      - lint-typecheck-unit
+    uses: ./.github/workflows/image.yml
+    secrets: inherit
