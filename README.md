@@ -95,6 +95,8 @@ CI runs lint, typecheck, Jest tests, DB integration tests, and Playwright smoke 
 - `GET /api/v1/admin/users`
 - `PATCH /api/v1/admin/users/[userId]/role`
 
+Full API contract and examples: `docs/api-contract.md`
+
 ## Data Model
 
 Core Prisma models:
