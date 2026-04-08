@@ -123,6 +123,21 @@ export type Review = {
   updatedAt: Date;
 };
 
+export type ReviewAuthor = {
+  id: string;
+  displayName: string;
+};
+
+export type ReviewWithAuthor = Review & {
+  author: ReviewAuthor;
+};
+
+export type LocationReviewSummary = {
+  locationId: string;
+  reviewCount: number;
+  averageRating: number | null;
+};
+
 export type BeerQuery = {
   brandId?: string;
   variantId?: string;
@@ -164,6 +179,15 @@ export type CreateBeerOfferInput = {
   locationId: string;
   createdById?: string;
   status?: SubmissionStatus;
+};
+
+export type CreateReviewInput = {
+  locationId: string;
+  userId: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  status?: ReviewStatus;
 };
 
 export type ModerationSubmitter = {

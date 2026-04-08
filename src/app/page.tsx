@@ -6,6 +6,7 @@ import {
   getBeerBrands,
   getBeerOffers,
   getBeerStyles,
+  getLocationReviewSummaries,
   getBeerVariants,
   getLocations,
   getServingLabel,
@@ -48,6 +49,10 @@ export default async function Home({
     }),
   ]);
 
+  const reviewSummaryByLocation = await getLocationReviewSummaries([
+    ...new Set(offers.map((offer) => offer.location.id)),
+  ]);
+
   const sizes = [...new Set(allOffers.map((offer) => offer.sizeMl))].sort((a, b) => a - b);
 
   return (
@@ -82,7 +87,7 @@ export default async function Home({
             </>
           ) : (
             <>
-              <p className={styles.authStatus}>Contributors can add and review offers.</p>
+              <p className={styles.authStatus}>Contributors can add offers and location reviews.</p>
               <div className={styles.authLinks}>
                 <Link href="/login" className={styles.authLink}>
                   Sign In
@@ -252,6 +257,24 @@ export default async function Home({
                       <div>
                         <dt>Type</dt>
                         <dd>{locationTypeLabel(offer.location.locationType)}</dd>
+                      </div>
+                      <div>
+                        <dt>Reviews</dt>
+                        <dd>
+                          {(() => {
+                            const summary = reviewSummaryByLocation.get(offer.location.id);
+
+                            if (
+                              !summary ||
+                              summary.reviewCount === 0 ||
+                              summary.averageRating === null
+                            ) {
+                              return "No reviews";
+                            }
+
+                            return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
+                          })()}
+                        </dd>
                       </div>
                     </dl>
                   </article>

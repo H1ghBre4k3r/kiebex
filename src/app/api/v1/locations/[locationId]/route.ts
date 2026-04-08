@@ -1,4 +1,9 @@
-import { getLocationById, getLocationOffers, getOfferPriceHistory } from "@/lib/query";
+import {
+  getLocationById,
+  getLocationOffers,
+  getLocationReviews,
+  getOfferPriceHistory,
+} from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
 
 export async function GET(
@@ -13,6 +18,7 @@ export async function GET(
   }
 
   const offers = await getLocationOffers(locationId);
+  const reviews = await getLocationReviews(locationId);
   const offersWithHistory = await Promise.all(
     offers.map(async (offer) => ({
       ...offer,
@@ -24,5 +30,7 @@ export async function GET(
     location,
     count: offersWithHistory.length,
     offers: offersWithHistory,
+    reviews,
+    reviewCount: reviews.length,
   });
 }

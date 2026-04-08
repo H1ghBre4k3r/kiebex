@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCurrentAuthUser } from "@/lib/auth";
 import {
   formatEur,
   getLocationById,
   getLocationOffers,
+  getLocationReviews,
   getOfferPriceHistory,
   getServingLabel,
   locationTypeLabel,
 } from "@/lib/query";
+import { ReviewForm } from "./review-form";
 import styles from "./page.module.css";
 
 export default async function LocationPage({
@@ -22,7 +25,11 @@ export default async function LocationPage({
     notFound();
   }
 
-  const offers = await getLocationOffers(locationId);
+  const [offers, reviews, authUser] = await Promise.all([
+    getLocationOffers(locationId),
+    getLocationReviews(locationId),
+    getCurrentAuthUser(),
+  ]);
   const historyMap = new Map<string, Awaited<ReturnType<typeof getOfferPriceHistory>>>();
 
   await Promise.all(
@@ -81,6 +88,35 @@ export default async function LocationPage({
                 </li>
               );
             })}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="location-reviews-heading" className={styles.panel}>
+        <h2 id="location-reviews-heading">Reviews ({reviews.length})</h2>
+
+        {authUser ? (
+          <ReviewForm locationId={location.id} />
+        ) : (
+          <p>
+            <Link href="/login">Sign in</Link> to add a review.
+          </p>
+        )}
+
+        {reviews.length === 0 ? (
+          <p>No reviews yet for this location.</p>
+        ) : (
+          <ul className={styles.reviewList}>
+            {reviews.map((review) => (
+              <li key={review.id} className={styles.reviewItem}>
+                <p>
+                  <strong>{review.rating}/5</strong> by {review.author.displayName}
+                </p>
+                {review.title && <p>{review.title}</p>}
+                {review.body && <p>{review.body}</p>}
+                <p>{new Date(review.createdAt).toLocaleDateString("en-GB")}</p>
+              </li>
+            ))}
           </ul>
         )}
       </section>

@@ -147,6 +147,37 @@ const beerOfferSeed = [
   },
 ] as const;
 
+const reviewSeed = [
+  {
+    locationId: "pogue-mahone",
+    authorEmail: "anna@example.com",
+    rating: 5,
+    title: "Consistently great pint",
+    body: "Guinness is poured well and the service is friendly.",
+  },
+  {
+    locationId: "pogue-mahone",
+    authorEmail: "lars@example.com",
+    rating: 4,
+    title: "Good atmosphere",
+    body: "Slightly pricey, but a solid pub with fresh tap options.",
+  },
+  {
+    locationId: "foerde-brauhaus",
+    authorEmail: "anna@example.com",
+    rating: 4,
+    title: "Good food pairing",
+    body: "Beer menu fits the kitchen well and serving sizes are fair.",
+  },
+  {
+    locationId: "marktfrisch-kiel",
+    authorEmail: "lars@example.com",
+    rating: 3,
+    title: "Cheap and practical",
+    body: "Great prices, but the selection rotates a lot.",
+  },
+] as const;
+
 async function main() {
   const connectionString = process.env.DATABASE_URL;
 
@@ -167,6 +198,37 @@ async function main() {
     await prisma.beerBrand.deleteMany();
     await prisma.beerStyle.deleteMany();
     await prisma.location.deleteMany();
+
+    const anna = await prisma.user.upsert({
+      where: {
+        email: "anna@example.com",
+      },
+      update: {
+        displayName: "Anna",
+      },
+      create: {
+        email: "anna@example.com",
+        displayName: "Anna",
+      },
+    });
+
+    const lars = await prisma.user.upsert({
+      where: {
+        email: "lars@example.com",
+      },
+      update: {
+        displayName: "Lars",
+      },
+      create: {
+        email: "lars@example.com",
+        displayName: "Lars",
+      },
+    });
+
+    const reviewUserIdByEmail = new Map<string, string>([
+      [anna.email, anna.id],
+      [lars.email, lars.id],
+    ]);
 
     for (const location of locationSeed) {
       await prisma.location.create({
@@ -244,6 +306,25 @@ async function main() {
           id: `history-${offer.id}`,
           beerOfferId: offer.id,
           priceCents: offer.priceCents,
+        },
+      });
+    }
+
+    for (const review of reviewSeed) {
+      const userId = reviewUserIdByEmail.get(review.authorEmail);
+
+      if (!userId) {
+        throw new Error(`Missing seed user for email '${review.authorEmail}'.`);
+      }
+
+      await prisma.review.create({
+        data: {
+          locationId: review.locationId,
+          userId,
+          rating: review.rating,
+          title: review.title,
+          body: review.body,
+          status: "approved",
         },
       });
     }

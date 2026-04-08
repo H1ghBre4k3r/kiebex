@@ -7,6 +7,7 @@ import type {
   BeerVariant,
   CreateBeerBrandInput,
   CreateBeerOfferInput,
+  CreateReviewInput,
   CreateBeerVariantInput,
   CreateLocationInput,
   Location,
@@ -18,6 +19,9 @@ import type {
   PendingLocationSubmission,
   PendingPriceUpdateProposal,
   PriceUpdateProposal,
+  LocationReviewSummary,
+  Review,
+  ReviewWithAuthor,
   ServingType,
   SubmissionStatus,
   User,
@@ -182,6 +186,38 @@ function mapOfferWithLocation(offer: {
     status: offer.status,
     createdById: offer.createdById,
     location: mapLocation(offer.location),
+  };
+}
+
+function mapReview(review: {
+  id: string;
+  locationId: string;
+  userId: string;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  status: "pending" | "approved" | "rejected";
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: string;
+    displayName: string;
+  };
+}): ReviewWithAuthor {
+  return {
+    id: review.id,
+    locationId: review.locationId,
+    userId: review.userId,
+    rating: review.rating,
+    title: review.title,
+    body: review.body,
+    status: review.status,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+    author: {
+      id: review.user.id,
+      displayName: review.user.displayName,
+    },
   };
 }
 
@@ -422,6 +458,89 @@ export async function getLocationOffers(locationId: string): Promise<BeerOfferWi
   return getBeerOffers({ locationId });
 }
 
+export async function getLocationReviewPermission(
+  locationId: string,
+): Promise<"allowed" | "missing" | "forbidden"> {
+  const location = await db.location.findUnique({
+    where: { id: locationId },
+    select: {
+      status: true,
+    },
+  });
+
+  if (!location) {
+    return "missing";
+  }
+
+  if (location.status !== "approved") {
+    return "forbidden";
+  }
+
+  return "allowed";
+}
+
+export async function getLocationReviews(locationId: string): Promise<ReviewWithAuthor[]> {
+  const reviews = await db.review.findMany({
+    where: {
+      locationId,
+      status: "approved",
+      location: {
+        status: "approved",
+      },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          displayName: true,
+        },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }],
+  });
+
+  return reviews.map(mapReview);
+}
+
+export async function getLocationReviewSummaries(
+  locationIds: string[],
+): Promise<Map<string, LocationReviewSummary>> {
+  if (locationIds.length === 0) {
+    return new Map();
+  }
+
+  const aggregates = await db.review.groupBy({
+    by: ["locationId"],
+    where: {
+      locationId: {
+        in: locationIds,
+      },
+      status: "approved",
+      location: {
+        status: "approved",
+      },
+    },
+    _count: {
+      _all: true,
+    },
+    _avg: {
+      rating: true,
+    },
+  });
+
+  const map = new Map<string, LocationReviewSummary>();
+
+  for (const aggregate of aggregates) {
+    map.set(aggregate.locationId, {
+      locationId: aggregate.locationId,
+      reviewCount: aggregate._count._all,
+      averageRating: aggregate._avg.rating,
+    });
+  }
+
+  return map;
+}
+
 export async function createLocation(input: CreateLocationInput): Promise<Location> {
   const location = await db.location.create({
     data: {
@@ -496,6 +615,31 @@ export async function createBeerOffer(input: CreateBeerOfferInput): Promise<Beer
   });
 
   return mapOfferWithLocation(offer);
+}
+
+export async function createReview(input: CreateReviewInput): Promise<Review> {
+  const review = await db.review.create({
+    data: {
+      locationId: input.locationId,
+      userId: input.userId,
+      rating: input.rating,
+      title: input.title?.trim() ? input.title.trim() : null,
+      body: input.body?.trim() ? input.body.trim() : null,
+      status: input.status ?? "approved",
+    },
+  });
+
+  return {
+    id: review.id,
+    locationId: review.locationId,
+    userId: review.userId,
+    rating: review.rating,
+    title: review.title,
+    body: review.body,
+    status: review.status,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+  };
 }
 
 export async function createPriceUpdateProposal(input: {

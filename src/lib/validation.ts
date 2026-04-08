@@ -4,6 +4,7 @@ const servingTypes = ["tap", "bottle", "can"] as const;
 const locationTypes = ["pub", "bar", "restaurant", "supermarket"] as const;
 const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;
+const reviewStatuses = ["approved", "rejected"] as const;
 
 export const beerQuerySchema = z.object({
   brandId: z.string().trim().min(1).max(100).optional(),
@@ -53,6 +54,21 @@ export const createBeerOfferBodySchema = z.object({
   sizeMl: z.number().int().positive().max(2000),
   serving: z.enum(servingTypes),
   priceCents: z.number().int().positive().max(50000),
+  locationId: z.string().trim().min(1).max(100),
+});
+
+export const createReviewBodySchema = z.object({
+  locationId: z.string().trim().min(1).max(100),
+  rating: z.number().int().min(1).max(5),
+  title: z.string().trim().min(1).max(120).optional(),
+  body: z.string().trim().min(1).max(1500).optional(),
+});
+
+export const reviewModerationDecisionSchema = z.object({
+  status: z.enum(reviewStatuses),
+});
+
+export const reviewQuerySchema = z.object({
   locationId: z.string().trim().min(1).max(100),
 });
 
@@ -107,6 +123,14 @@ export function parseBeerQueryParams(
     sizeMl: compactString(searchParams.get("sizeMl") ?? undefined),
     serving: compactString(searchParams.get("serving") ?? undefined),
     locationType: compactString(searchParams.get("locationType") ?? undefined),
+    locationId: compactString(searchParams.get("locationId") ?? undefined),
+  });
+}
+
+export function parseReviewQueryParams(
+  searchParams: URLSearchParams,
+): ReturnType<typeof reviewQuerySchema.safeParse> {
+  return reviewQuerySchema.safeParse({
     locationId: compactString(searchParams.get("locationId") ?? undefined),
   });
 }

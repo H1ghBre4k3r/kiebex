@@ -28,3 +28,53 @@
   background: #fff;
   padding: 0.7rem;
 }
+
+.reviewForm {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.reviewForm label {
+  display: grid;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+
+.reviewForm input,
+.reviewForm select,
+.reviewForm textarea,
+.reviewForm button {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.45rem;
+}
+
+.reviewForm button {
+  font-weight: 700;
+  width: fit-content;
+}
+
+.reviewList {
+  list-style: none;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.reviewItem {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.error {
+  color: #7d1200;
+  font-weight: 700;
+}
+
+.success {
+  color: #0a5f18;
+  font-weight: 700;
+}
