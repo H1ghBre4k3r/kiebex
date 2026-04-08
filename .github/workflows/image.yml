@@ -32,7 +32,7 @@ jobs:
           OWNER: "${{ github.repository_owner }}"
 
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64/v8
           context: .
