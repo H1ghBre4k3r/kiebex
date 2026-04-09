@@ -45,6 +45,19 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
       ? variants.filter((v) => selectedBrands.includes(v.brandId))
       : variants;
 
+  // Merge variants with the same name into a single checkbox entry.
+  const variantGroups: { name: string; ids: string[] }[] = [];
+  const variantGroupIndex = new Map<string, number>();
+  for (const v of visibleVariants) {
+    const existing = variantGroupIndex.get(v.name);
+    if (existing !== undefined) {
+      variantGroups[existing].ids.push(v.id);
+    } else {
+      variantGroupIndex.set(v.name, variantGroups.length);
+      variantGroups.push({ name: v.name, ids: [v.id] });
+    }
+  }
+
   const hasAnyFilter =
     selectedBrands.length > 0 ||
     selectedVariants.length > 0 ||
@@ -82,6 +95,18 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
     const current = searchParams.getAll(key);
     const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     const url = buildUrl({ [key]: next });
+    startTransition(() => {
+      router.push(url, { scroll: false });
+    });
+  }
+
+  function toggleVariantGroup(ids: string[]) {
+    const current = searchParams.getAll("variantId");
+    const anySelected = ids.some((id) => current.includes(id));
+    const next = anySelected
+      ? current.filter((v) => !ids.includes(v))
+      : [...current, ...ids.filter((id) => !current.includes(id))];
+    const url = buildUrl({ variantId: next });
     startTransition(() => {
       router.push(url, { scroll: false });
     });
@@ -180,20 +205,20 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
         )}
 
         {/* Variant */}
-        {visibleVariants.length > 0 && (
+        {variantGroups.length > 0 && (
           <div className={styles.group}>
             <p className={styles.groupLabel}>Variant</p>
             <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
-              {visibleVariants.map((variant) => (
-                <li key={variant.id} className={styles.checkItem}>
+              {variantGroups.map((group) => (
+                <li key={group.name} className={styles.checkItem}>
                   <input
                     type="checkbox"
-                    id={`variant-${variant.id}`}
+                    id={`variant-${group.name}`}
                     className={styles.checkInput}
-                    checked={selectedVariants.includes(variant.id)}
-                    onChange={() => toggle("variantId", variant.id)}
+                    checked={group.ids.some((id) => selectedVariants.includes(id))}
+                    onChange={() => toggleVariantGroup(group.ids)}
                   />
-                  <label htmlFor={`variant-${variant.id}`}>{variant.name}</label>
+                  <label htmlFor={`variant-${group.name}`}>{group.name}</label>
                 </li>
               ))}
             </ul>

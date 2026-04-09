@@ -83,12 +83,23 @@ function buildActiveChips(
     });
   }
 
-  // Variant chips
-  for (const variantId of map.variantId ?? []) {
-    const variant = variants.find((v) => v.id === variantId);
+  // Variant chips — group by name so "Pils" (3 IDs) produces one chip, not three
+  const selectedVariantIds = new Set(map.variantId ?? []);
+  const variantChipGroups = new Map<string, string[]>();
+  for (const variant of variants) {
+    if (selectedVariantIds.has(variant.id)) {
+      const existing = variantChipGroups.get(variant.name) ?? [];
+      variantChipGroups.set(variant.name, [...existing, variant.id]);
+    }
+  }
+  for (const [name, ids] of variantChipGroups.entries()) {
+    let nextMap = map;
+    for (const id of ids) {
+      nextMap = removeOneValue(nextMap, "variantId", id);
+    }
     chips.push({
-      label: `Variant: ${variant?.name ?? variantId}`,
-      removeUrl: rawMapToUrl(removeOneValue(map, "variantId", variantId)),
+      label: `Variant: ${name}`,
+      removeUrl: rawMapToUrl(nextMap),
     });
   }
 
