@@ -226,6 +226,7 @@ export type ModerationAction = "approve" | "reject" | "delete" | "edit";
 export type ModerationContentType =
   | "location"
   | "brand"
+  | "style"
   | "variant"
   | "offer"
   | "price_update"

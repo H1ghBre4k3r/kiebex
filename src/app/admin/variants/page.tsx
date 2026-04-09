@@ -24,10 +24,6 @@ export default async function AdminVariantsPage() {
         <Link href="/">Back to offer directory</Link>
         {" | "}
         <Link href="/admin">Admin Hub</Link>
-        {" | "}
-        <Link href="/admin/users">User Management</Link>
-        {" | "}
-        <Link href="/admin/brands">Brand Management</Link>
       </p>
 
       <section className={styles.panel}>

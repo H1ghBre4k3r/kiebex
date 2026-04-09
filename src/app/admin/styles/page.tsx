@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
-import { getBeerBrands } from "@/lib/query";
-import { BrandsManagement } from "./brands-management";
-import styles from "./brands.module.css";
+import { getAllBeerStylesForAdmin } from "@/lib/query";
+import { StylesManagement } from "./styles-management";
+import styles from "./styles.module.css";
 
-export default async function AdminBrandsPage() {
+export default async function AdminStylesPage() {
   const authUser = await getCurrentAuthUser();
 
   if (!authUser) {
@@ -16,7 +16,7 @@ export default async function AdminBrandsPage() {
     redirect("/");
   }
 
-  const brands = await getBeerBrands();
+  const beerStyles = await getAllBeerStylesForAdmin();
 
   return (
     <main className={styles.page}>
@@ -27,17 +27,21 @@ export default async function AdminBrandsPage() {
       </p>
 
       <section className={styles.panel}>
-        <h1>Brand Management</h1>
-        <p>Edit or delete beer brands in the catalog.</p>
+        <h1>Style Management</h1>
+        <p>Create, rename, or delete beer styles. Styles in use by variants cannot be deleted.</p>
         <p className={styles.notice}>
           Signed in as <strong>{authUser.displayName}</strong> (admin).
         </p>
       </section>
 
       <section className={styles.panel}>
-        <h2>All Brands ({brands.length})</h2>
-        <BrandsManagement
-          brands={brands.map((b) => ({ id: b.id, name: b.name, status: b.status }))}
+        <h2>All Styles ({beerStyles.length})</h2>
+        <StylesManagement
+          beerStyles={beerStyles.map((s) => ({
+            id: s.id,
+            name: s.name,
+            variantCount: s.variantCount,
+          }))}
         />
       </section>
     </main>

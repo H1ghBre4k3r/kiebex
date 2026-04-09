@@ -7,7 +7,14 @@ import styles from "../moderation.module.css";
 const PAGE_SIZE = 25;
 
 type ModerationAction = "approve" | "reject" | "delete" | "edit";
-type ModerationContentType = "location" | "brand" | "variant" | "offer" | "price_update" | "review";
+type ModerationContentType =
+  | "location"
+  | "brand"
+  | "style"
+  | "variant"
+  | "offer"
+  | "price_update"
+  | "review";
 
 function auditActionLabel(action: ModerationAction): string {
   switch (action) {
@@ -28,6 +35,8 @@ function auditContentLabel(type: ModerationContentType): string {
       return "location";
     case "brand":
       return "brand";
+    case "style":
+      return "beer style";
     case "variant":
       return "variant";
     case "offer":
@@ -73,7 +82,15 @@ export default async function AuditLogPage({
   return (
     <main className={styles.page}>
       <p>
-        <Link href="/moderation">← Back to moderation</Link>
+        <Link href="/">Back to offer directory</Link>
+        {authUser.role === "admin" && (
+          <>
+            {" | "}
+            <Link href="/admin">Admin Hub</Link>
+          </>
+        )}
+        {" | "}
+        <Link href="/moderation">Moderation Queue</Link>
       </p>
 
       <section className={styles.panel}>

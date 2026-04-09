@@ -1707,3 +1707,68 @@ export async function editAdminVariant(
 
   return mapBeerVariant(updated);
 }
+
+// ---------------------------------------------------------------------------
+// Beer style admin management
+// ---------------------------------------------------------------------------
+
+export async function getAllBeerStylesForAdmin(): Promise<
+  Array<BeerStyle & { variantCount: number }>
+> {
+  const styles = await db.beerStyle.findMany({
+    orderBy: [{ name: "asc" }],
+    include: { _count: { select: { variants: true } } },
+  });
+
+  return styles.map((s) => ({
+    id: s.id,
+    name: s.name,
+    variantCount: s._count.variants,
+  }));
+}
+
+export async function createAdminStyle(name: string): Promise<BeerStyle | null> {
+  const existing = await db.beerStyle.findUnique({
+    where: { name: name.trim() },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return null;
+  }
+
+  const created = await db.beerStyle.create({ data: { name: name.trim() } });
+  return mapBeerStyle(created);
+}
+
+export async function editAdminStyle(styleId: string, name: string): Promise<BeerStyle | null> {
+  const existing = await db.beerStyle.findUnique({
+    where: { id: styleId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.beerStyle.update({
+    where: { id: styleId },
+    data: { name: name.trim() },
+  });
+
+  return mapBeerStyle(updated);
+}
+
+export async function deleteAdminStyle(styleId: string): Promise<boolean> {
+  const existing = await db.beerStyle.findUnique({
+    where: { id: styleId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.beerStyle.delete({ where: { id: styleId } });
+  return true;
+}

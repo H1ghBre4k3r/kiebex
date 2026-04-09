@@ -414,3 +414,55 @@ Possible domain errors:
 
 - `404 USER_NOT_FOUND`
 - `409 LAST_ADMIN_PROTECTION`
+
+### `POST /admin/styles`
+
+Creates a new beer style.
+
+Request body:
+
+```json
+{
+  "name": "Pale Ale"
+}
+```
+
+Success: `201` with `style`.
+
+Possible errors:
+
+- `401 UNAUTHORIZED`
+- `403 FORBIDDEN`
+- `400 INVALID_BODY`
+- `409 STYLE_NAME_CONFLICT`
+
+### `PUT /admin/styles/:styleId`
+
+Renames a beer style.
+
+Request body:
+
+```json
+{
+  "name": "American Pale Ale"
+}
+```
+
+Possible errors:
+
+- `401 UNAUTHORIZED`
+- `403 FORBIDDEN`
+- `400 INVALID_BODY`
+- `404 STYLE_NOT_FOUND`
+- `409 STYLE_NAME_CONFLICT`
+
+### `DELETE /admin/styles/:styleId`
+
+Deletes a beer style. Fails if any variants reference it.
+
+Possible errors:
+
+- `401 UNAUTHORIZED`
+- `403 FORBIDDEN`
+- `404 STYLE_NOT_FOUND`
+- `409 STYLE_IN_USE`

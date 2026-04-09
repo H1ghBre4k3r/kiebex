@@ -214,3 +214,11 @@ export const editAdminVariantBodySchema = z
   .refine((data) => data.name !== undefined || data.styleId !== undefined, {
     message: "At least one field to update is required.",
   });
+
+export const createAdminStyleBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
+
+export const editAdminStyleBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
