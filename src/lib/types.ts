@@ -220,3 +220,28 @@ export type PendingPriceUpdateProposal = PriceUpdateProposal & {
   offer: BeerOfferWithLocation;
   submitter: ModerationSubmitter | null;
 };
+
+export type ModerationAction = "approve" | "reject" | "delete" | "edit";
+
+export type ModerationContentType =
+  | "location"
+  | "brand"
+  | "variant"
+  | "offer"
+  | "price_update"
+  | "review";
+
+export type ModerationAuditLogEntry = {
+  id: string;
+  moderatorId: string | null;
+  moderatorName: string;
+  action: ModerationAction;
+  contentType: ModerationContentType;
+  contentId: string;
+  details: string | null;
+  createdAt: Date;
+};
+
+export type ModerationReview = ReviewWithAuthor & {
+  locationName: string;
+};

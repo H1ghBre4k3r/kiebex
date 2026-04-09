@@ -173,3 +173,31 @@ export const updateReviewBodySchema = z.object({
   title: z.string().trim().min(1).max(120).nullable().optional(),
   body: z.string().trim().min(1).max(1500).nullable().optional(),
 });
+
+export const editModerationLocationBodySchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    locationType: z.enum(locationTypes).optional(),
+    district: z.string().trim().min(2).max(80).optional(),
+    address: z.string().trim().min(5).max(200).optional(),
+  })
+  .refine((data) => data.name ?? data.locationType ?? data.district ?? data.address, {
+    message: "At least one field to update is required.",
+  });
+
+export const editModerationOfferBodySchema = z.object({
+  priceCents: z.number().int().positive().max(50000),
+});
+
+export const editModerationReviewBodySchema = z
+  .object({
+    rating: z.number().int().min(1).max(5).optional(),
+    title: z.string().trim().min(1).max(120).nullable().optional(),
+    body: z.string().trim().min(1).max(1500).nullable().optional(),
+  })
+  .refine(
+    (data) => data.rating !== undefined || data.title !== undefined || data.body !== undefined,
+    {
+      message: "At least one field to update is required.",
+    },
+  );

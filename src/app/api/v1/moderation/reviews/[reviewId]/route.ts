@@ -1,12 +1,12 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
 import {
-  deleteModerationLocation,
-  editModerationLocation,
+  deleteModerationReview,
+  editModerationReview,
   logModerationAction,
-  moderateLocationSubmission,
+  moderateReviewDecision,
 } from "@/lib/query";
-import { editModerationLocationBodySchema, moderationDecisionSchema } from "@/lib/validation";
+import { editModerationReviewBodySchema, reviewModerationDecisionSchema } from "@/lib/validation";
 
 async function withModerator(
   handler: (moderator: { id: string; displayName: string }) => Promise<Response>,
@@ -32,7 +32,7 @@ async function withModerator(
 
 export async function PATCH(
   request: Request,
-  context: { params: Promise<{ locationId: string }> },
+  context: { params: Promise<{ reviewId: string }> },
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     let body: unknown;
@@ -43,7 +43,7 @@ export async function PATCH(
       return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
     }
 
-    const parsed = moderationDecisionSchema.safeParse(body);
+    const parsed = reviewModerationDecisionSchema.safeParse(body);
 
     if (!parsed.success) {
       return jsonError(
@@ -57,32 +57,28 @@ export async function PATCH(
       );
     }
 
-    const { locationId } = await context.params;
-    const location = await moderateLocationSubmission(locationId, parsed.data.status);
+    const { reviewId } = await context.params;
+    const review = await moderateReviewDecision(reviewId, parsed.data.status);
 
-    if (!location) {
-      return jsonError(
-        404,
-        "LOCATION_SUBMISSION_NOT_FOUND",
-        `No pending location submission found for id '${locationId}'.`,
-      );
+    if (!review) {
+      return jsonError(404, "REVIEW_NOT_FOUND", `No review found for id '${reviewId}'.`);
     }
 
     await logModerationAction({
       moderatorId: moderator.id,
       moderatorName: moderator.displayName,
       action: parsed.data.status === "approved" ? "approve" : "reject",
-      contentType: "location",
-      contentId: locationId,
+      contentType: "review",
+      contentId: reviewId,
     });
 
-    return jsonOk({ location });
+    return jsonOk({ review });
   });
 }
 
 export async function PUT(
   request: Request,
-  context: { params: Promise<{ locationId: string }> },
+  context: { params: Promise<{ reviewId: string }> },
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     let body: unknown;
@@ -93,7 +89,7 @@ export async function PUT(
       return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
     }
 
-    const parsed = editModerationLocationBodySchema.safeParse(body);
+    const parsed = editModerationReviewBodySchema.safeParse(body);
 
     if (!parsed.success) {
       return jsonError(
@@ -107,44 +103,48 @@ export async function PUT(
       );
     }
 
-    const { locationId } = await context.params;
-    const location = await editModerationLocation(locationId, parsed.data);
+    const { reviewId } = await context.params;
+    const review = await editModerationReview(reviewId, parsed.data);
 
-    if (!location) {
-      return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
+    if (!review) {
+      return jsonError(404, "REVIEW_NOT_FOUND", `No review found for id '${reviewId}'.`);
     }
 
     await logModerationAction({
       moderatorId: moderator.id,
       moderatorName: moderator.displayName,
       action: "edit",
-      contentType: "location",
-      contentId: locationId,
-      details: { fields: Object.keys(parsed.data) },
+      contentType: "review",
+      contentId: reviewId,
+      details: {
+        fields: Object.keys(parsed.data).filter(
+          (k) => parsed.data[k as keyof typeof parsed.data] !== undefined,
+        ),
+      },
     });
 
-    return jsonOk({ location });
+    return jsonOk({ review });
   });
 }
 
 export async function DELETE(
   _request: Request,
-  context: { params: Promise<{ locationId: string }> },
+  context: { params: Promise<{ reviewId: string }> },
 ): Promise<Response> {
   return withModerator(async (moderator) => {
-    const { locationId } = await context.params;
-    const deleted = await deleteModerationLocation(locationId);
+    const { reviewId } = await context.params;
+    const deleted = await deleteModerationReview(reviewId);
 
     if (!deleted) {
-      return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
+      return jsonError(404, "REVIEW_NOT_FOUND", `No review found for id '${reviewId}'.`);
     }
 
     await logModerationAction({
       moderatorId: moderator.id,
       moderatorName: moderator.displayName,
       action: "delete",
-      contentType: "location",
-      contentId: locationId,
+      contentType: "review",
+      contentId: reviewId,
     });
 
     return jsonOk({ deleted: true });

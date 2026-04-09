@@ -1,14 +1,19 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderateBeerVariantSubmission } from "@/lib/query";
+import {
+  deleteModerationVariant,
+  logModerationAction,
+  moderateBeerVariantSubmission,
+} from "@/lib/query";
 import { moderationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ variantId: string }> },
+async function withModerator(
+  handler: (moderator: { id: string; displayName: string }) => Promise<Response>,
 ): Promise<Response> {
+  let moderator: { id: string; displayName: string };
+
   try {
-    await requireModeratorUser();
+    moderator = await requireModeratorUser();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -21,46 +26,87 @@ export async function PATCH(
     throw error;
   }
 
-  let body: unknown;
+  return handler(moderator);
+}
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ variantId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
 
-  const parsed = moderationDecisionSchema.safeParse(body);
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
 
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
-  }
+    const parsed = moderationDecisionSchema.safeParse(body);
 
-  const { variantId } = await context.params;
-  const result = await moderateBeerVariantSubmission(variantId, parsed.data.status);
-
-  if (result.outcome !== "updated") {
-    if (result.outcome === "missing") {
+    if (!parsed.success) {
       return jsonError(
-        404,
-        "VARIANT_SUBMISSION_NOT_FOUND",
-        `No pending beer variant submission found for id '${variantId}'.`,
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
       );
     }
 
-    return jsonError(
-      409,
-      "BRAND_NOT_APPROVED",
-      "Cannot approve a variant while its brand is not approved.",
-    );
-  }
+    const { variantId } = await context.params;
+    const result = await moderateBeerVariantSubmission(variantId, parsed.data.status);
 
-  return jsonOk({ variant: result.variant });
+    if (result.outcome !== "updated") {
+      if (result.outcome === "missing") {
+        return jsonError(
+          404,
+          "VARIANT_SUBMISSION_NOT_FOUND",
+          `No pending beer variant submission found for id '${variantId}'.`,
+        );
+      }
+
+      return jsonError(
+        409,
+        "BRAND_NOT_APPROVED",
+        "Cannot approve a variant while its brand is not approved.",
+      );
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: parsed.data.status === "approved" ? "approve" : "reject",
+      contentType: "variant",
+      contentId: variantId,
+    });
+
+    return jsonOk({ variant: result.variant });
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ variantId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    const { variantId } = await context.params;
+    const deleted = await deleteModerationVariant(variantId);
+
+    if (!deleted) {
+      return jsonError(404, "VARIANT_NOT_FOUND", `No beer variant found for id '${variantId}'.`);
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "delete",
+      contentType: "variant",
+      contentId: variantId,
+    });
+
+    return jsonOk({ deleted: true });
+  });
 }

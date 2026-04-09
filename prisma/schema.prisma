@@ -61,6 +61,7 @@ model User {
   reviews                   Review[]
   sessions                  Session[]
   emailVerificationTokens   EmailVerificationToken[]
+  moderationAuditLogs       ModerationAuditLog[]     @relation("ModerationAuditLogModerator")
 }
 
 model EmailVerificationToken {
@@ -239,4 +240,21 @@ model Review {
   @@index([locationId])
   @@index([userId])
   @@index([status])
+}
+
+model ModerationAuditLog {
+  id            String   @id @default(cuid())
+  moderatorId   String?
+  moderatorName String
+  action        String
+  contentType   String
+  contentId     String
+  details       String?
+  createdAt     DateTime @default(now())
+
+  moderator User? @relation("ModerationAuditLogModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([moderatorId])
+  @@index([contentType, contentId])
 }

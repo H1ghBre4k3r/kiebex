@@ -1,14 +1,20 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderateBeerOfferSubmission } from "@/lib/query";
-import { moderationDecisionSchema } from "@/lib/validation";
+import {
+  deleteModerationOffer,
+  editModerationOffer,
+  logModerationAction,
+  moderateBeerOfferSubmission,
+} from "@/lib/query";
+import { editModerationOfferBodySchema, moderationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ offerId: string }> },
+async function withModerator(
+  handler: (moderator: { id: string; displayName: string }) => Promise<Response>,
 ): Promise<Response> {
+  let moderator: { id: string; displayName: string };
+
   try {
-    await requireModeratorUser();
+    moderator = await requireModeratorUser();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -21,54 +27,142 @@ export async function PATCH(
     throw error;
   }
 
-  let body: unknown;
+  return handler(moderator);
+}
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ offerId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
 
-  const parsed = moderationDecisionSchema.safeParse(body);
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
 
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
-  }
+    const parsed = moderationDecisionSchema.safeParse(body);
 
-  const { offerId } = await context.params;
-  const result = await moderateBeerOfferSubmission(offerId, parsed.data.status);
-
-  if (result.outcome !== "updated") {
-    if (result.outcome === "missing") {
+    if (!parsed.success) {
       return jsonError(
-        404,
-        "OFFER_SUBMISSION_NOT_FOUND",
-        `No pending offer submission found for id '${offerId}'.`,
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
       );
     }
 
-    if (result.outcome === "location_not_approved") {
+    const { offerId } = await context.params;
+    const result = await moderateBeerOfferSubmission(offerId, parsed.data.status);
+
+    if (result.outcome !== "updated") {
+      if (result.outcome === "missing") {
+        return jsonError(
+          404,
+          "OFFER_SUBMISSION_NOT_FOUND",
+          `No pending offer submission found for id '${offerId}'.`,
+        );
+      }
+
+      if (result.outcome === "location_not_approved") {
+        return jsonError(
+          409,
+          "LOCATION_NOT_APPROVED",
+          "Cannot approve an offer while its location is not approved.",
+        );
+      }
+
       return jsonError(
         409,
-        "LOCATION_NOT_APPROVED",
-        "Cannot approve an offer while its location is not approved.",
+        "VARIANT_NOT_APPROVED",
+        "Cannot approve an offer while its variant or brand is not approved.",
       );
     }
 
-    return jsonError(
-      409,
-      "VARIANT_NOT_APPROVED",
-      "Cannot approve an offer while its variant or brand is not approved.",
-    );
-  }
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: parsed.data.status === "approved" ? "approve" : "reject",
+      contentType: "offer",
+      contentId: offerId,
+    });
 
-  return jsonOk({ offer: result.offer });
+    return jsonOk({ offer: result.offer });
+  });
+}
+
+export async function PUT(
+  request: Request,
+  context: { params: Promise<{ offerId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
+
+    const parsed = editModerationOfferBodySchema.safeParse(body);
+
+    if (!parsed.success) {
+      return jsonError(
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+    }
+
+    const { offerId } = await context.params;
+    const offer = await editModerationOffer(offerId, parsed.data.priceCents);
+
+    if (!offer) {
+      return jsonError(404, "OFFER_NOT_FOUND", `No offer found for id '${offerId}'.`);
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "edit",
+      contentType: "offer",
+      contentId: offerId,
+      details: { priceCents: parsed.data.priceCents },
+    });
+
+    return jsonOk({ offer });
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ offerId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    const { offerId } = await context.params;
+    const deleted = await deleteModerationOffer(offerId);
+
+    if (!deleted) {
+      return jsonError(404, "OFFER_NOT_FOUND", `No offer found for id '${offerId}'.`);
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "delete",
+      contentType: "offer",
+      contentId: offerId,
+    });
+
+    return jsonOk({ deleted: true });
+  });
 }

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
 import {
+  getAllReviewsForModeration,
+  getModerationAuditLog,
   getPendingBeerBrandSubmissions,
   getPendingBeerOfferSubmissions,
   getPendingBeerVariantSubmissions,
@@ -22,14 +24,23 @@ export default async function ModerationPage() {
     redirect("/");
   }
 
-  const [pendingLocations, pendingBrands, pendingVariants, pendingOffers, pendingPriceUpdates] =
-    await Promise.all([
-      getPendingLocationSubmissions(),
-      getPendingBeerBrandSubmissions(),
-      getPendingBeerVariantSubmissions(),
-      getPendingBeerOfferSubmissions(),
-      getPendingPriceUpdateProposals(),
-    ]);
+  const [
+    pendingLocations,
+    pendingBrands,
+    pendingVariants,
+    pendingOffers,
+    pendingPriceUpdates,
+    allReviews,
+    auditLog,
+  ] = await Promise.all([
+    getPendingLocationSubmissions(),
+    getPendingBeerBrandSubmissions(),
+    getPendingBeerVariantSubmissions(),
+    getPendingBeerOfferSubmissions(),
+    getPendingPriceUpdateProposals(),
+    getAllReviewsForModeration(),
+    getModerationAuditLog(50),
+  ]);
 
   return (
     <main className={styles.page}>
@@ -53,6 +64,8 @@ export default async function ModerationPage() {
         pendingVariants={pendingVariants}
         pendingOffers={pendingOffers}
         pendingPriceUpdates={pendingPriceUpdates}
+        allReviews={allReviews}
+        auditLog={auditLog}
       />
     </main>
   );
