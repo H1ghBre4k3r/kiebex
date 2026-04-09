@@ -96,6 +96,53 @@
   cursor: pointer;
 }
 
+.reviewStatus {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: var(--border-regular);
+}
+
+.adminActions button {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.adminForm {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: var(--border-regular);
+}
+
+.adminForm label {
+  display: grid;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+
+.adminForm input,
+.adminForm select {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.45rem;
+}
+
 .success {
   color: #0a5f18;
   font-weight: 700;

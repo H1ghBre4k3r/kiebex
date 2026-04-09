@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type {
@@ -1034,6 +1035,9 @@ export function ModerationClient({
               ))}
             </ul>
           )}
+          <p style={{ marginTop: "0.75rem" }}>
+            <Link href="/moderation/audit-log">View full audit log →</Link>
+          </p>
         </section>
       </div>
     </>

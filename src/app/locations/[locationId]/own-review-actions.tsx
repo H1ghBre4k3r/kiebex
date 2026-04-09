@@ -13,11 +13,13 @@ type ApiErrorBody = {
 type Props = {
   review: ReviewWithAuthor;
   authUserId: string | null;
+  isModerator?: boolean;
 };
 
-export function OwnReviewActions({ review, authUserId }: Props) {
+export function OwnReviewActions({ review, authUserId, isModerator = false }: Props) {
   const router = useRouter();
   const isOwn = authUserId !== null && review.author.id === authUserId;
+  const canAct = isOwn || isModerator;
 
   const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(String(review.rating));
@@ -25,8 +27,18 @@ export function OwnReviewActions({ review, authUserId }: Props) {
   const [body, setBody] = useState(review.body ?? "");
   const [savePending, setSavePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
+  const [moderatePending, setModeratePending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  /** For moderators, use moderation endpoint; for own review, use own-review endpoint. */
+  const editEndpoint = isModerator
+    ? `/api/v1/moderation/reviews/${review.id}`
+    : `/api/v1/reviews/${review.id}`;
+  const editMethod = isModerator ? "PUT" : "PATCH";
+  const deleteEndpoint = isModerator
+    ? `/api/v1/moderation/reviews/${review.id}`
+    : `/api/v1/reviews/${review.id}`;
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,8 +51,8 @@ export function OwnReviewActions({ review, authUserId }: Props) {
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`/api/v1/reviews/${review.id}`, {
-        method: "PATCH",
+      const response = await fetch(editEndpoint, {
+        method: editMethod,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           rating: Number(rating),
@@ -73,7 +85,7 @@ export function OwnReviewActions({ review, authUserId }: Props) {
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`/api/v1/reviews/${review.id}`, {
+      const response = await fetch(deleteEndpoint, {
         method: "DELETE",
       });
 
@@ -91,10 +103,44 @@ export function OwnReviewActions({ review, authUserId }: Props) {
     }
   }
 
+  async function handleModerate(status: "approved" | "rejected") {
+    if (moderatePending) {
+      return;
+    }
+
+    setModeratePending(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/v1/moderation/reviews/${review.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
+        setErrorMessage(err?.error?.message ?? "Unable to moderate. Please try again.");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setErrorMessage("Unable to moderate. Please try again.");
+    } finally {
+      setModeratePending(false);
+    }
+  }
+
   if (editing) {
     return (
       <li className={styles.reviewItem}>
-        <form className={styles.reviewForm} onSubmit={handleSave}>
+        <form
+          className={styles.reviewForm}
+          onSubmit={(e) => {
+            void handleSave(e);
+          }}
+        >
           <label htmlFor={`edit-rating-${review.id}`}>
             Rating
             <select
@@ -162,12 +208,13 @@ export function OwnReviewActions({ review, authUserId }: Props) {
     <li className={styles.reviewItem}>
       <p>
         <strong>{review.rating}/5</strong> by {review.author.displayName}
+        {isModerator && <span className={styles.reviewStatus}> [{review.status}]</span>}
       </p>
       {review.title && <p>{review.title}</p>}
       {review.body && <p>{review.body}</p>}
       <p>{new Date(review.createdAt).toLocaleDateString("en-GB")}</p>
 
-      {isOwn && (
+      {canAct && (
         <div className={styles.reviewActions}>
           {errorMessage && (
             <p className={styles.error} role="alert" aria-live="polite">
@@ -175,13 +222,40 @@ export function OwnReviewActions({ review, authUserId }: Props) {
             </p>
           )}
 
+          {isModerator && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleModerate("approved");
+                }}
+                disabled={moderatePending || review.status === "approved"}
+                aria-label="Approve review"
+              >
+                {moderatePending ? "…" : "Approve"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleModerate("rejected");
+                }}
+                disabled={moderatePending || review.status === "rejected"}
+                aria-label="Reject review"
+              >
+                {moderatePending ? "…" : "Reject"}
+              </button>
+            </>
+          )}
+
           {confirmDelete ? (
             <>
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => {
+                  void handleDelete();
+                }}
                 disabled={deletePending}
-                aria-label="Confirm delete"
+                aria-label="Confirm delete review"
               >
                 {deletePending ? "Deleting..." : "Confirm Delete"}
               </button>

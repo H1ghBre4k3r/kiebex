@@ -39,7 +39,7 @@ export default async function ModerationPage() {
     getPendingBeerOfferSubmissions(),
     getPendingPriceUpdateProposals(),
     getAllReviewsForModeration(),
-    getModerationAuditLog(50),
+    getModerationAuditLog(15),
   ]);
 
   return (

@@ -201,3 +201,16 @@ export const editModerationReviewBodySchema = z
       message: "At least one field to update is required.",
     },
   );
+
+export const editAdminBrandBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
+
+export const editAdminVariantBodySchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    styleId: z.string().min(1).optional(),
+  })
+  .refine((data) => data.name !== undefined || data.styleId !== undefined, {
+    message: "At least one field to update is required.",
+  });

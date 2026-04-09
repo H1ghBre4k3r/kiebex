@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
+import { AdminOfferActions } from "@/components/admin-offer-actions";
 import { getCurrentAuthUser } from "@/lib/auth";
 import {
   formatEur,
@@ -83,6 +84,16 @@ export default async function Home({
                 {authUser.role === "admin" && (
                   <Link href="/admin/users" className={styles.authLink}>
                     Users
+                  </Link>
+                )}
+                {authUser.role === "admin" && (
+                  <Link href="/admin/brands" className={styles.authLink}>
+                    Brands
+                  </Link>
+                )}
+                {authUser.role === "admin" && (
+                  <Link href="/admin/variants" className={styles.authLink}>
+                    Variants
                   </Link>
                 )}
                 <LogoutButton className={styles.authButton} />
@@ -280,6 +291,16 @@ export default async function Home({
                         </dd>
                       </div>
                     </dl>
+
+                    {authUser?.role === "admin" && (
+                      <AdminOfferActions
+                        offerId={offer.id}
+                        currentPriceCents={Math.round(offer.priceEur * 100)}
+                        className={styles.adminActions}
+                        buttonClassName={undefined}
+                        errorClassName={styles.adminError}
+                      />
+                    )}
                   </article>
                 </li>
               ))}

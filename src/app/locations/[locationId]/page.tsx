@@ -10,6 +10,8 @@ import {
   getServingLabel,
   locationTypeLabel,
 } from "@/lib/query";
+import { AdminOfferActions } from "@/components/admin-offer-actions";
+import { AdminLocationActions } from "./admin-location-actions";
 import { OwnReviewActions } from "./own-review-actions";
 import { ReviewForm } from "./review-form";
 import styles from "./page.module.css";
@@ -40,6 +42,9 @@ export default async function LocationPage({
     }),
   );
 
+  const isModerator = authUser?.role === "moderator" || authUser?.role === "admin";
+  const isAdmin = authUser?.role === "admin";
+
   return (
     <main className={styles.page}>
       <p>
@@ -52,6 +57,8 @@ export default async function LocationPage({
         <p>
           {locationTypeLabel(location.locationType)} in {location.district}
         </p>
+
+        {isAdmin && <AdminLocationActions location={location} />}
       </header>
 
       <section aria-labelledby="location-offers-heading" className={styles.panel}>
@@ -86,6 +93,15 @@ export default async function LocationPage({
                   ) : (
                     <p>No tracked price history yet.</p>
                   )}
+
+                  {isAdmin && (
+                    <AdminOfferActions
+                      offerId={offer.id}
+                      currentPriceCents={Math.round(offer.priceEur * 100)}
+                      className={styles.adminActions}
+                      errorClassName={styles.error}
+                    />
+                  )}
                 </li>
               );
             })}
@@ -109,7 +125,12 @@ export default async function LocationPage({
         ) : (
           <ul className={styles.reviewList}>
             {reviews.map((review) => (
-              <OwnReviewActions key={review.id} review={review} authUserId={authUser?.id ?? null} />
+              <OwnReviewActions
+                key={review.id}
+                review={review}
+                authUserId={authUser?.id ?? null}
+                isModerator={isModerator}
+              />
             ))}
           </ul>
         )}

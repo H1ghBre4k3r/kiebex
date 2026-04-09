@@ -309,6 +309,23 @@ export async function getBeerBrands(): Promise<BeerBrand[]> {
   return brands.map(mapBeerBrand);
 }
 
+export async function getAllBeerBrandsForAdmin(): Promise<BeerBrand[]> {
+  const brands = await db.beerBrand.findMany({
+    orderBy: [{ name: "asc" }],
+  });
+
+  return brands.map(mapBeerBrand);
+}
+
+export async function getAllBeerVariantsForAdmin(): Promise<BeerVariant[]> {
+  const variants = await db.beerVariant.findMany({
+    include: { brand: true, style: true },
+    orderBy: [{ brand: { name: "asc" } }, { name: "asc" }],
+  });
+
+  return variants.map(mapBeerVariant);
+}
+
 export async function getContributableBeerBrands(userId: string): Promise<BeerBrand[]> {
   const brands = await db.beerBrand.findMany({
     where: {
@@ -1337,6 +1354,36 @@ export async function getModerationAuditLog(limit = 100): Promise<ModerationAudi
   }));
 }
 
+export async function getModerationAuditLogPage(
+  page: number,
+  pageSize: number,
+): Promise<{ entries: ModerationAuditLogEntry[]; total: number }> {
+  const skip = (page - 1) * pageSize;
+
+  const [entries, total] = await Promise.all([
+    db.moderationAuditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    db.moderationAuditLog.count(),
+  ]);
+
+  return {
+    entries: entries.map((entry) => ({
+      id: entry.id,
+      moderatorId: entry.moderatorId,
+      moderatorName: entry.moderatorName,
+      action: entry.action as ModerationAction,
+      contentType: entry.contentType as ModerationContentType,
+      contentId: entry.contentId,
+      details: entry.details,
+      createdAt: entry.createdAt,
+    })),
+    total,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Reviews for moderation
 // ---------------------------------------------------------------------------
@@ -1616,4 +1663,47 @@ export async function editModerationOffer(
   });
 
   return mapOfferWithLocation(updated);
+}
+
+export async function editAdminBrand(brandId: string, name: string): Promise<BeerBrand | null> {
+  const existing = await db.beerBrand.findUnique({
+    where: { id: brandId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.beerBrand.update({
+    where: { id: brandId },
+    data: { name: name.trim() },
+  });
+
+  return mapBeerBrand(updated);
+}
+
+export async function editAdminVariant(
+  variantId: string,
+  input: { name?: string; styleId?: string },
+): Promise<BeerVariant | null> {
+  const existing = await db.beerVariant.findUnique({
+    where: { id: variantId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.beerVariant.update({
+    where: { id: variantId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.styleId !== undefined ? { styleId: input.styleId } : {}),
+    },
+    include: { brand: true, style: true },
+  });
+
+  return mapBeerVariant(updated);
 }

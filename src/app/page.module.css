@@ -221,6 +221,31 @@
   margin-left: 1.2rem;
 }
 
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: var(--border-regular);
+}
+
+.adminActions button {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.adminError {
+  color: #7d1200;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
 @media (min-width: 980px) {
   .main {
     grid-template-columns: minmax(270px, 330px) minmax(0, 1fr);
