@@ -1,14 +1,19 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderatePriceUpdateProposal } from "@/lib/query";
+import {
+  deleteModerationPriceUpdateProposal,
+  logModerationAction,
+  moderatePriceUpdateProposal,
+} from "@/lib/query";
 import { moderationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ proposalId: string }> },
+async function withModerator(
+  handler: (moderator: { id: string; displayName: string }) => Promise<Response>,
 ): Promise<Response> {
+  let moderator: { id: string; displayName: string };
+
   try {
-    await requireModeratorUser();
+    moderator = await requireModeratorUser();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -21,65 +26,110 @@ export async function PATCH(
     throw error;
   }
 
-  let body: unknown;
+  return handler(moderator);
+}
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ proposalId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
 
-  const parsed = moderationDecisionSchema.safeParse(body);
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
 
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
-  }
+    const parsed = moderationDecisionSchema.safeParse(body);
 
-  const { proposalId } = await context.params;
-  const result = await moderatePriceUpdateProposal(proposalId, parsed.data.status);
+    if (!parsed.success) {
+      return jsonError(
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+    }
 
-  if (result.outcome !== "updated") {
-    if (result.outcome === "missing") {
+    const { proposalId } = await context.params;
+    const result = await moderatePriceUpdateProposal(proposalId, parsed.data.status);
+
+    if (result.outcome !== "updated") {
+      if (result.outcome === "missing") {
+        return jsonError(
+          404,
+          "PRICE_UPDATE_PROPOSAL_NOT_FOUND",
+          `No pending price update proposal found for id '${proposalId}'.`,
+        );
+      }
+
+      if (result.outcome === "offer_not_approved") {
+        return jsonError(
+          409,
+          "OFFER_NOT_APPROVED",
+          "Cannot approve a price update while the offer is not approved.",
+        );
+      }
+
+      if (result.outcome === "location_not_approved") {
+        return jsonError(
+          409,
+          "LOCATION_NOT_APPROVED",
+          "Cannot approve a price update while the location is not approved.",
+        );
+      }
+
+      return jsonError(
+        409,
+        "VARIANT_NOT_APPROVED",
+        "Cannot approve a price update while the variant or brand is not approved.",
+      );
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: parsed.data.status === "approved" ? "approve" : "reject",
+      contentType: "price_update",
+      contentId: proposalId,
+    });
+
+    return jsonOk({
+      proposal: result.proposal,
+      offer: result.offer,
+    });
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ proposalId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    const { proposalId } = await context.params;
+    const deleted = await deleteModerationPriceUpdateProposal(proposalId);
+
+    if (!deleted) {
       return jsonError(
         404,
         "PRICE_UPDATE_PROPOSAL_NOT_FOUND",
-        `No pending price update proposal found for id '${proposalId}'.`,
+        `No price update proposal found for id '${proposalId}'.`,
       );
     }
 
-    if (result.outcome === "offer_not_approved") {
-      return jsonError(
-        409,
-        "OFFER_NOT_APPROVED",
-        "Cannot approve a price update while the offer is not approved.",
-      );
-    }
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "delete",
+      contentType: "price_update",
+      contentId: proposalId,
+    });
 
-    if (result.outcome === "location_not_approved") {
-      return jsonError(
-        409,
-        "LOCATION_NOT_APPROVED",
-        "Cannot approve a price update while the location is not approved.",
-      );
-    }
-
-    return jsonError(
-      409,
-      "VARIANT_NOT_APPROVED",
-      "Cannot approve a price update while the variant or brand is not approved.",
-    );
-  }
-
-  return jsonOk({
-    proposal: result.proposal,
-    offer: result.offer,
+    return jsonOk({ deleted: true });
   });
 }

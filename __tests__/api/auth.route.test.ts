@@ -1,48 +1,31 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-const mockedAuthenticateUser = jest.fn<
-  (input: { email: string; password: string }) => Promise<{
-    id: string;
-    email: string;
-    displayName: string;
-    role: "user" | "moderator" | "admin";
-  } | null>
->();
+type AuthUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: "user" | "moderator" | "admin";
+};
+
+type AuthenticateResult =
+  | { ok: true; user: AuthUser }
+  | { ok: false; reason: "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" };
+
+const mockedAuthenticateUser =
+  jest.fn<(input: { email: string; password: string }) => Promise<AuthenticateResult>>();
 const mockedCreateSession = jest.fn<(userId: string) => Promise<void>>();
-const mockedRegisterUser = jest.fn<
-  (input: { email: string; displayName: string; password: string }) => Promise<
-    | {
-        ok: true;
-        user: {
-          id: string;
-          email: string;
-          displayName: string;
-          role: "user" | "moderator" | "admin";
-        };
-      }
-    | {
-        ok: false;
-        code: "EMAIL_TAKEN";
-      }
-  >
->();
-const mockedGetCurrentAuthUser = jest.fn<
-  () => Promise<{
-    id: string;
-    email: string;
-    displayName: string;
-    role: "user" | "moderator" | "admin";
-  } | null>
->();
-const mockedRequireAuthUser = jest.fn<
-  () => Promise<{
-    id: string;
-    email: string;
-    displayName: string;
-    role: "user" | "moderator" | "admin";
-  }>
->();
+const mockedRegisterUser =
+  jest.fn<
+    (input: {
+      email: string;
+      displayName: string;
+      password: string;
+    }) => Promise<{ ok: true; user: AuthUser } | { ok: false; code: "EMAIL_TAKEN" }>
+  >();
+const mockedGetCurrentAuthUser = jest.fn<() => Promise<AuthUser | null>>();
+const mockedRequireAuthUser = jest.fn<() => Promise<AuthUser>>();
 const mockedClearCurrentSession = jest.fn<() => Promise<void>>();
+const mockedCreateEmailVerificationToken = jest.fn<(userId: string) => Promise<string>>();
 
 jest.mock("@/lib/auth", () => {
   class UnauthorizedError extends Error {
@@ -60,12 +43,20 @@ jest.mock("@/lib/auth", () => {
     getCurrentAuthUser: mockedGetCurrentAuthUser,
     requireAuthUser: mockedRequireAuthUser,
     clearCurrentSession: mockedClearCurrentSession,
+    createEmailVerificationToken: mockedCreateEmailVerificationToken,
   };
 });
 
+const mockedSendVerificationEmail =
+  jest.fn<(to: string, verificationUrl: string) => Promise<void>>();
+
+jest.mock("@/lib/email", () => ({
+  sendVerificationEmail: mockedSendVerificationEmail,
+}));
+
 describe("auth routes", () => {
   it("POST /auth/login returns 401 for invalid credentials", async () => {
-    mockedAuthenticateUser.mockResolvedValueOnce(null);
+    mockedAuthenticateUser.mockResolvedValueOnce({ ok: false, reason: "INVALID_CREDENTIALS" });
 
     const { POST } = await import("@/app/api/v1/auth/login/route");
     const response = await POST(
@@ -85,10 +76,13 @@ describe("auth routes", () => {
 
   it("POST /auth/login creates session and returns user", async () => {
     mockedAuthenticateUser.mockResolvedValueOnce({
-      id: "user-1",
-      email: "test@example.com",
-      displayName: "Test",
-      role: "user",
+      ok: true,
+      user: {
+        id: "user-1",
+        email: "test@example.com",
+        displayName: "Test",
+        role: "user",
+      },
     });
     mockedCreateSession.mockResolvedValueOnce();
 
@@ -144,7 +138,8 @@ describe("auth routes", () => {
         role: "user",
       },
     });
-    mockedCreateSession.mockResolvedValueOnce();
+    mockedCreateEmailVerificationToken.mockResolvedValueOnce("verification-token-abc");
+    mockedSendVerificationEmail.mockResolvedValueOnce();
 
     const { POST } = await import("@/app/api/v1/auth/register/route");
     const response = await POST(
@@ -160,13 +155,18 @@ describe("auth routes", () => {
     );
     const body = (await response.json()) as {
       status: string;
-      data: { user: { id: string } };
+      data: { message: string };
     };
 
     expect(response.status).toBe(201);
     expect(body.status).toBe("ok");
-    expect(body.data.user.id).toBe("user-2");
-    expect(mockedCreateSession).toHaveBeenCalledWith("user-2");
+    expect(body.data.message).toMatch(/verify/i);
+    expect(mockedCreateEmailVerificationToken).toHaveBeenCalledWith("user-2");
+    expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
+      "new@example.com",
+      expect.stringContaining("verification-token-abc"),
+    );
+    expect(mockedCreateSession).not.toHaveBeenCalled();
   });
 
   it("GET /auth/session returns unauthenticated when no user", async () => {

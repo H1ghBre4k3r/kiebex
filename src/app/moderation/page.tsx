@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
 import {
+  getAllReviewsForModeration,
+  getModerationAuditLog,
   getPendingBeerBrandSubmissions,
   getPendingBeerOfferSubmissions,
   getPendingBeerVariantSubmissions,
@@ -22,19 +24,37 @@ export default async function ModerationPage() {
     redirect("/");
   }
 
-  const [pendingLocations, pendingBrands, pendingVariants, pendingOffers, pendingPriceUpdates] =
-    await Promise.all([
-      getPendingLocationSubmissions(),
-      getPendingBeerBrandSubmissions(),
-      getPendingBeerVariantSubmissions(),
-      getPendingBeerOfferSubmissions(),
-      getPendingPriceUpdateProposals(),
-    ]);
+  const [
+    pendingLocations,
+    pendingBrands,
+    pendingVariants,
+    pendingOffers,
+    pendingPriceUpdates,
+    allReviews,
+    auditLog,
+  ] = await Promise.all([
+    getPendingLocationSubmissions(),
+    getPendingBeerBrandSubmissions(),
+    getPendingBeerVariantSubmissions(),
+    getPendingBeerOfferSubmissions(),
+    getPendingPriceUpdateProposals(),
+    getAllReviewsForModeration(),
+    getModerationAuditLog(15),
+  ]);
+
+  const newReviews = allReviews.filter((r) => r.status === "new" || r.status === "pending");
+  const approvedReviews = allReviews.filter((r) => r.status === "approved");
 
   return (
     <main className={styles.page}>
       <p>
         <Link href="/">Back to offer directory</Link>
+        {authUser.role === "admin" && (
+          <>
+            {" | "}
+            <Link href="/admin">Admin Hub</Link>
+          </>
+        )}
       </p>
 
       <section className={styles.panel}>
@@ -53,6 +73,9 @@ export default async function ModerationPage() {
         pendingVariants={pendingVariants}
         pendingOffers={pendingOffers}
         pendingPriceUpdates={pendingPriceUpdates}
+        newReviews={newReviews}
+        approvedReviews={approvedReviews}
+        auditLog={auditLog}
       />
     </main>
   );

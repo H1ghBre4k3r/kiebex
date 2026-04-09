@@ -11,6 +11,10 @@ import type {
   CreateBeerVariantInput,
   CreateLocationInput,
   Location,
+  ModerationAction,
+  ModerationAuditLogEntry,
+  ModerationContentType,
+  ModerationReview,
   ModerationStatusDecision,
   OfferPriceHistory,
   PendingBeerBrandSubmission,
@@ -21,6 +25,7 @@ import type {
   PriceUpdateProposal,
   LocationReviewSummary,
   Review,
+  ReviewStatus,
   ReviewWithAuthor,
   ServingType,
   SubmissionStatus,
@@ -196,7 +201,7 @@ function mapReview(review: {
   rating: number;
   title: string | null;
   body: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "new" | "pending" | "approved" | "rejected";
   createdAt: Date;
   updatedAt: Date;
   user: {
@@ -302,6 +307,23 @@ export async function getBeerBrands(): Promise<BeerBrand[]> {
   });
 
   return brands.map(mapBeerBrand);
+}
+
+export async function getAllBeerBrandsForAdmin(): Promise<BeerBrand[]> {
+  const brands = await db.beerBrand.findMany({
+    orderBy: [{ name: "asc" }],
+  });
+
+  return brands.map(mapBeerBrand);
+}
+
+export async function getAllBeerVariantsForAdmin(): Promise<BeerVariant[]> {
+  const variants = await db.beerVariant.findMany({
+    include: { brand: true, style: true },
+    orderBy: [{ brand: { name: "asc" } }, { name: "asc" }],
+  });
+
+  return variants.map(mapBeerVariant);
 }
 
 export async function getContributableBeerBrands(userId: string): Promise<BeerBrand[]> {
@@ -483,7 +505,7 @@ export async function getLocationReviews(locationId: string): Promise<ReviewWith
   const reviews = await db.review.findMany({
     where: {
       locationId,
-      status: "approved",
+      status: { in: ["new", "approved"] },
       location: {
         status: "approved",
       },
@@ -515,7 +537,7 @@ export async function getLocationReviewSummaries(
       locationId: {
         in: locationIds,
       },
-      status: "approved",
+      status: { in: ["new", "approved"] },
       location: {
         status: "approved",
       },
@@ -625,7 +647,7 @@ export async function createReview(input: CreateReviewInput): Promise<Review> {
       rating: input.rating,
       title: input.title?.trim() ? input.title.trim() : null,
       body: input.body?.trim() ? input.body.trim() : null,
-      status: input.status ?? "approved",
+      status: input.status ?? "new",
     },
   });
 
@@ -640,6 +662,63 @@ export async function createReview(input: CreateReviewInput): Promise<Review> {
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
   };
+}
+
+export async function updateReview(
+  reviewId: string,
+  callerId: string,
+  input: {
+    rating: number;
+    title?: string | null;
+    body?: string | null;
+  },
+): Promise<ReviewWithAuthor | null> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { userId: true },
+  });
+
+  if (!existing || existing.userId !== callerId) {
+    return null;
+  }
+
+  const review = await db.review.update({
+    where: { id: reviewId },
+    data: {
+      rating: input.rating,
+      title: input.title?.trim() ? input.title.trim() : null,
+      body: input.body?.trim() ? input.body.trim() : null,
+    },
+    select: {
+      id: true,
+      locationId: true,
+      userId: true,
+      rating: true,
+      title: true,
+      body: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      user: { select: { id: true, displayName: true } },
+    },
+  });
+
+  return mapReview(review);
+}
+
+export async function deleteReview(reviewId: string, callerId: string): Promise<boolean> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { userId: true },
+  });
+
+  if (!existing || existing.userId !== callerId) {
+    return false;
+  }
+
+  await db.review.delete({ where: { id: reviewId } });
+
+  return true;
 }
 
 export async function createPriceUpdateProposal(input: {
@@ -1231,4 +1310,465 @@ export async function updateUserRoleByAdmin(params: {
       updatedAt: updatedUser.updatedAt,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Moderation audit log
+// ---------------------------------------------------------------------------
+
+export async function logModerationAction(params: {
+  moderatorId: string;
+  moderatorName: string;
+  action: ModerationAction;
+  contentType: ModerationContentType;
+  contentId: string;
+  details?: Record<string, unknown>;
+}): Promise<void> {
+  await db.moderationAuditLog.create({
+    data: {
+      moderatorId: params.moderatorId,
+      moderatorName: params.moderatorName,
+      action: params.action,
+      contentType: params.contentType,
+      contentId: params.contentId,
+      details: params.details ? JSON.stringify(params.details) : null,
+    },
+  });
+}
+
+export async function getModerationAuditLog(limit = 100): Promise<ModerationAuditLogEntry[]> {
+  const entries = await db.moderationAuditLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+
+  return entries.map((entry) => ({
+    id: entry.id,
+    moderatorId: entry.moderatorId,
+    moderatorName: entry.moderatorName,
+    action: entry.action as ModerationAction,
+    contentType: entry.contentType as ModerationContentType,
+    contentId: entry.contentId,
+    details: entry.details,
+    createdAt: entry.createdAt,
+  }));
+}
+
+export async function getModerationAuditLogPage(
+  page: number,
+  pageSize: number,
+): Promise<{ entries: ModerationAuditLogEntry[]; total: number }> {
+  const skip = (page - 1) * pageSize;
+
+  const [entries, total] = await Promise.all([
+    db.moderationAuditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    db.moderationAuditLog.count(),
+  ]);
+
+  return {
+    entries: entries.map((entry) => ({
+      id: entry.id,
+      moderatorId: entry.moderatorId,
+      moderatorName: entry.moderatorName,
+      action: entry.action as ModerationAction,
+      contentType: entry.contentType as ModerationContentType,
+      contentId: entry.contentId,
+      details: entry.details,
+      createdAt: entry.createdAt,
+    })),
+    total,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reviews for moderation
+// ---------------------------------------------------------------------------
+
+export async function getAllReviewsForModeration(): Promise<ModerationReview[]> {
+  const reviews = await db.review.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      locationId: true,
+      userId: true,
+      rating: true,
+      title: true,
+      body: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      user: { select: { id: true, displayName: true } },
+      location: { select: { name: true } },
+    },
+  });
+
+  return reviews.map((review) => ({
+    id: review.id,
+    locationId: review.locationId,
+    userId: review.userId,
+    rating: review.rating,
+    title: review.title,
+    body: review.body,
+    status: review.status,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+    author: {
+      id: review.user.id,
+      displayName: review.user.displayName,
+    },
+    locationName: review.location.name,
+  }));
+}
+
+export async function moderateReviewDecision(
+  reviewId: string,
+  status: ReviewStatus,
+): Promise<ReviewWithAuthor | null> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const review = await db.review.update({
+    where: { id: reviewId },
+    data: { status },
+    select: {
+      id: true,
+      locationId: true,
+      userId: true,
+      rating: true,
+      title: true,
+      body: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      user: { select: { id: true, displayName: true } },
+    },
+  });
+
+  return mapReview(review);
+}
+
+export async function editModerationReview(
+  reviewId: string,
+  input: {
+    rating?: number;
+    title?: string | null;
+    body?: string | null;
+  },
+): Promise<ReviewWithAuthor | null> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const review = await db.review.update({
+    where: { id: reviewId },
+    data: {
+      ...(input.rating !== undefined ? { rating: input.rating } : {}),
+      ...(input.title !== undefined
+        ? { title: input.title?.trim() ? input.title.trim() : null }
+        : {}),
+      ...(input.body !== undefined ? { body: input.body?.trim() ? input.body.trim() : null } : {}),
+    },
+    select: {
+      id: true,
+      locationId: true,
+      userId: true,
+      rating: true,
+      title: true,
+      body: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      user: { select: { id: true, displayName: true } },
+    },
+  });
+
+  return mapReview(review);
+}
+
+export async function deleteModerationReview(reviewId: string): Promise<boolean> {
+  const existing = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.review.delete({ where: { id: reviewId } });
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Delete submissions (any status, moderator override)
+// ---------------------------------------------------------------------------
+
+export async function deleteModerationLocation(locationId: string): Promise<boolean> {
+  const existing = await db.location.findUnique({
+    where: { id: locationId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.location.delete({ where: { id: locationId } });
+
+  return true;
+}
+
+export async function deleteModerationBrand(brandId: string): Promise<boolean> {
+  const existing = await db.beerBrand.findUnique({
+    where: { id: brandId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.beerBrand.delete({ where: { id: brandId } });
+
+  return true;
+}
+
+export async function deleteModerationVariant(variantId: string): Promise<boolean> {
+  const existing = await db.beerVariant.findUnique({
+    where: { id: variantId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.beerVariant.delete({ where: { id: variantId } });
+
+  return true;
+}
+
+export async function deleteModerationOffer(offerId: string): Promise<boolean> {
+  const existing = await db.beerOffer.findUnique({
+    where: { id: offerId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.beerOffer.delete({ where: { id: offerId } });
+
+  return true;
+}
+
+export async function deleteModerationPriceUpdateProposal(proposalId: string): Promise<boolean> {
+  const existing = await db.priceUpdateProposal.findUnique({
+    where: { id: proposalId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.priceUpdateProposal.delete({ where: { id: proposalId } });
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Edit accepted submissions (moderator override)
+// ---------------------------------------------------------------------------
+
+export async function editModerationLocation(
+  locationId: string,
+  input: {
+    name?: string;
+    locationType?: Location["locationType"];
+    district?: string;
+    address?: string;
+  },
+): Promise<Location | null> {
+  const existing = await db.location.findUnique({
+    where: { id: locationId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.location.update({
+    where: { id: locationId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.locationType !== undefined ? { locationType: input.locationType } : {}),
+      ...(input.district !== undefined ? { district: input.district.trim() } : {}),
+      ...(input.address !== undefined ? { address: input.address.trim() } : {}),
+    },
+  });
+
+  return mapLocation(updated);
+}
+
+export async function editModerationOffer(
+  offerId: string,
+  priceCents: number,
+): Promise<BeerOfferWithLocation | null> {
+  const existing = await db.beerOffer.findUnique({
+    where: { id: offerId },
+    select: { id: true, status: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.$transaction(async (transaction) => {
+    const updatedOffer = await transaction.beerOffer.update({
+      where: { id: offerId },
+      data: { priceCents },
+      include: offerInclude(),
+    });
+
+    // Record a price history entry if the offer is approved.
+    if (existing.status === "approved") {
+      await transaction.offerPriceHistory.create({
+        data: {
+          beerOfferId: offerId,
+          priceCents,
+        },
+      });
+    }
+
+    return updatedOffer;
+  });
+
+  return mapOfferWithLocation(updated);
+}
+
+export async function editAdminBrand(brandId: string, name: string): Promise<BeerBrand | null> {
+  const existing = await db.beerBrand.findUnique({
+    where: { id: brandId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.beerBrand.update({
+    where: { id: brandId },
+    data: { name: name.trim() },
+  });
+
+  return mapBeerBrand(updated);
+}
+
+export async function editAdminVariant(
+  variantId: string,
+  input: { name?: string; styleId?: string },
+): Promise<BeerVariant | null> {
+  const existing = await db.beerVariant.findUnique({
+    where: { id: variantId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.beerVariant.update({
+    where: { id: variantId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.styleId !== undefined ? { styleId: input.styleId } : {}),
+    },
+    include: { brand: true, style: true },
+  });
+
+  return mapBeerVariant(updated);
+}
+
+// ---------------------------------------------------------------------------
+// Beer style admin management
+// ---------------------------------------------------------------------------
+
+export async function getAllBeerStylesForAdmin(): Promise<
+  Array<BeerStyle & { variantCount: number }>
+> {
+  const styles = await db.beerStyle.findMany({
+    orderBy: [{ name: "asc" }],
+    include: { _count: { select: { variants: true } } },
+  });
+
+  return styles.map((s) => ({
+    id: s.id,
+    name: s.name,
+    variantCount: s._count.variants,
+  }));
+}
+
+export async function createAdminStyle(name: string): Promise<BeerStyle | null> {
+  const existing = await db.beerStyle.findUnique({
+    where: { name: name.trim() },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return null;
+  }
+
+  const created = await db.beerStyle.create({ data: { name: name.trim() } });
+  return mapBeerStyle(created);
+}
+
+export async function editAdminStyle(styleId: string, name: string): Promise<BeerStyle | null> {
+  const existing = await db.beerStyle.findUnique({
+    where: { id: styleId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await db.beerStyle.update({
+    where: { id: styleId },
+    data: { name: name.trim() },
+  });
+
+  return mapBeerStyle(updated);
+}
+
+export async function deleteAdminStyle(styleId: string): Promise<boolean> {
+  const existing = await db.beerStyle.findUnique({
+    where: { id: styleId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await db.beerStyle.delete({ where: { id: styleId } });
+  return true;
 }

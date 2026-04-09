@@ -32,6 +32,7 @@ enum ServingType {
 }
 
 enum ReviewStatus {
+  new
   pending
   approved
   rejected
@@ -44,21 +45,37 @@ enum SubmissionStatus {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  displayName String
-  role        UserRole @default(user)
-  passwordHash String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  displayName   String
+  role          UserRole @default(user)
+  passwordHash  String?
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  createdLocations     Location[]            @relation("LocationCreatedBy")
-  createdOffers        BeerOffer[]           @relation("BeerOfferCreatedBy")
-  createdBeerBrands    BeerBrand[]           @relation("BeerBrandCreatedBy")
-  createdBeerVariants  BeerVariant[]         @relation("BeerVariantCreatedBy")
-  priceUpdateProposals PriceUpdateProposal[] @relation("PriceUpdateProposalCreatedBy")
-  reviews              Review[]
-  sessions             Session[]
+  createdLocations          Location[]                 @relation("LocationCreatedBy")
+  createdOffers             BeerOffer[]                @relation("BeerOfferCreatedBy")
+  createdBeerBrands         BeerBrand[]                @relation("BeerBrandCreatedBy")
+  createdBeerVariants       BeerVariant[]              @relation("BeerVariantCreatedBy")
+  priceUpdateProposals      PriceUpdateProposal[]      @relation("PriceUpdateProposalCreatedBy")
+  reviews                   Review[]
+  sessions                  Session[]
+  emailVerificationTokens   EmailVerificationToken[]
+  moderationAuditLogs       ModerationAuditLog[]     @relation("ModerationAuditLogModerator")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Session {
@@ -214,7 +231,7 @@ model Review {
   rating     Int
   title      String?
   body       String?
-  status     ReviewStatus @default(pending)
+  status     ReviewStatus @default(new)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -224,4 +241,21 @@ model Review {
   @@index([locationId])
   @@index([userId])
   @@index([status])
+}
+
+model ModerationAuditLog {
+  id            String   @id @default(cuid())
+  moderatorId   String?
+  moderatorName String
+  action        String
+  contentType   String
+  contentId     String
+  details       String?
+  createdAt     DateTime @default(now())
+
+  moderator User? @relation("ModerationAuditLogModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([moderatorId])
+  @@index([contentType, contentId])
 }

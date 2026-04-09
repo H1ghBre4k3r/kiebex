@@ -134,3 +134,91 @@ export function parseReviewQueryParams(
     locationId: compactString(searchParams.get("locationId") ?? undefined),
   });
 }
+
+export const resendVerificationBodySchema = z.object({
+  email: z.string().trim().email().max(255),
+});
+
+export const updateProfileBodySchema = z
+  .object({
+    displayName: z.string().trim().min(2).max(80).optional(),
+    currentPassword: z.string().min(1).max(128).optional(),
+    newPassword: z
+      .string()
+      .min(8)
+      .max(128)
+      .regex(/[A-Za-z]/, "Password must include at least one letter.")
+      .regex(/[0-9]/, "Password must include at least one number.")
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.displayName && !data.newPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field to update is required.",
+      });
+    }
+
+    if (data.newPassword && !data.currentPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["currentPassword"],
+        message: "Current password is required to set a new password.",
+      });
+    }
+  });
+
+export const updateReviewBodySchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  title: z.string().trim().min(1).max(120).nullable().optional(),
+  body: z.string().trim().min(1).max(1500).nullable().optional(),
+});
+
+export const editModerationLocationBodySchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    locationType: z.enum(locationTypes).optional(),
+    district: z.string().trim().min(2).max(80).optional(),
+    address: z.string().trim().min(5).max(200).optional(),
+  })
+  .refine((data) => data.name ?? data.locationType ?? data.district ?? data.address, {
+    message: "At least one field to update is required.",
+  });
+
+export const editModerationOfferBodySchema = z.object({
+  priceCents: z.number().int().positive().max(50000),
+});
+
+export const editModerationReviewBodySchema = z
+  .object({
+    rating: z.number().int().min(1).max(5).optional(),
+    title: z.string().trim().min(1).max(120).nullable().optional(),
+    body: z.string().trim().min(1).max(1500).nullable().optional(),
+  })
+  .refine(
+    (data) => data.rating !== undefined || data.title !== undefined || data.body !== undefined,
+    {
+      message: "At least one field to update is required.",
+    },
+  );
+
+export const editAdminBrandBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
+
+export const editAdminVariantBodySchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    styleId: z.string().min(1).optional(),
+  })
+  .refine((data) => data.name !== undefined || data.styleId !== undefined, {
+    message: "At least one field to update is required.",
+  });
+
+export const createAdminStyleBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
+
+export const editAdminStyleBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});

@@ -1,14 +1,20 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderateLocationSubmission } from "@/lib/query";
-import { moderationDecisionSchema } from "@/lib/validation";
+import {
+  deleteModerationLocation,
+  editModerationLocation,
+  logModerationAction,
+  moderateLocationSubmission,
+} from "@/lib/query";
+import { editModerationLocationBodySchema, moderationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ locationId: string }> },
+async function withModerator(
+  handler: (moderator: { id: string; displayName: string }) => Promise<Response>,
 ): Promise<Response> {
+  let moderator: { id: string; displayName: string };
+
   try {
-    await requireModeratorUser();
+    moderator = await requireModeratorUser();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -21,38 +27,126 @@ export async function PATCH(
     throw error;
   }
 
-  let body: unknown;
+  return handler(moderator);
+}
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ locationId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
 
-  const parsed = moderationDecisionSchema.safeParse(body);
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
 
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
-  }
+    const parsed = moderationDecisionSchema.safeParse(body);
 
-  const { locationId } = await context.params;
-  const location = await moderateLocationSubmission(locationId, parsed.data.status);
+    if (!parsed.success) {
+      return jsonError(
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+    }
 
-  if (!location) {
-    return jsonError(
-      404,
-      "LOCATION_SUBMISSION_NOT_FOUND",
-      `No pending location submission found for id '${locationId}'.`,
-    );
-  }
+    const { locationId } = await context.params;
+    const location = await moderateLocationSubmission(locationId, parsed.data.status);
 
-  return jsonOk({ location });
+    if (!location) {
+      return jsonError(
+        404,
+        "LOCATION_SUBMISSION_NOT_FOUND",
+        `No pending location submission found for id '${locationId}'.`,
+      );
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: parsed.data.status === "approved" ? "approve" : "reject",
+      contentType: "location",
+      contentId: locationId,
+    });
+
+    return jsonOk({ location });
+  });
+}
+
+export async function PUT(
+  request: Request,
+  context: { params: Promise<{ locationId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
+
+    const parsed = editModerationLocationBodySchema.safeParse(body);
+
+    if (!parsed.success) {
+      return jsonError(
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+    }
+
+    const { locationId } = await context.params;
+    const location = await editModerationLocation(locationId, parsed.data);
+
+    if (!location) {
+      return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "edit",
+      contentType: "location",
+      contentId: locationId,
+      details: { fields: Object.keys(parsed.data) },
+    });
+
+    return jsonOk({ location });
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ locationId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    const { locationId } = await context.params;
+    const deleted = await deleteModerationLocation(locationId);
+
+    if (!deleted) {
+      return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "delete",
+      contentType: "location",
+      contentId: locationId,
+    });
+
+    return jsonOk({ deleted: true });
+  });
 }

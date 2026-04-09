@@ -97,9 +97,125 @@
   background: #ffe3df;
 }
 
+.edit {
+  background: #ddeeff;
+}
+
+.delete {
+  background: #fff0cc;
+}
+
+.deleteConfirm {
+  background: #ffcccc;
+}
+
 .button:disabled {
   opacity: 0.7;
   cursor: wait;
+}
+
+.editForm {
+  display: grid;
+  gap: 0.5rem;
+  border: var(--border-regular);
+  padding: 0.75rem;
+  background: #f8f8f8;
+}
+
+.editLabel {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.editInput {
+  border: var(--border-regular);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.95rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auditItem {
+  gap: 0.2rem;
+}
+
+.auditMeta {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+/* Review status inline labels */
+.status_new {
+  color: #00337a;
+  font-weight: 700;
+}
+
+.status_approved {
+  color: #0a4a09;
+  font-weight: 700;
+}
+
+.status_rejected {
+  color: #5e0f00;
+  font-weight: 700;
+}
+
+.status_pending {
+  color: #665000;
+  font-weight: 700;
+}
+
+/* Audit action labels */
+.audit_approve {
+  color: #0a4a09;
+  font-weight: 700;
+}
+
+.audit_reject {
+  color: #5e0f00;
+  font-weight: 700;
+}
+
+.audit_delete {
+  color: #5e0f00;
+  font-weight: 700;
+}
+
+.audit_edit {
+  color: #00337a;
+  font-weight: 700;
+}
+
+/* Collapsible section toggle */
+.sectionToggle {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  width: 100%;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.sectionToggle:focus-visible {
+  outline: 3px solid var(--color-focus, #005fcc);
+  outline-offset: 2px;
+}
+
+.sectionToggleIndicator {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.sectionBody {
+  margin-top: 0.5rem;
 }
 
 @media (min-width: 1100px) {

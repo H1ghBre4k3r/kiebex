@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import styles from "../auth.module.css";
 
@@ -13,12 +12,13 @@ type ApiErrorBody = {
 };
 
 export function RegisterForm() {
-  const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,12 +50,28 @@ export function RegisterForm() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      setSubmittedEmail(email);
+      setSubmitted(true);
     } catch {
       setErrorMessage("Unable to create account. Please try again.");
       setPending(false);
     }
+  }
+
+  if (submitted) {
+    return (
+      <div>
+        <p className={styles.notice}>
+          A verification email has been sent to <strong>{submittedEmail}</strong>. Please click the
+          link in that email to activate your account.
+        </p>
+        <p>
+          <Link href="/login" className={styles.secondaryLink}>
+            Back to Sign In
+          </Link>
+        </p>
+      </div>
+    );
   }
 
   return (

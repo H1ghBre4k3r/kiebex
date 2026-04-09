@@ -22,6 +22,8 @@ export default async function AdminUsersPage() {
     <main className={styles.page}>
       <p>
         <Link href="/">Back to offer directory</Link>
+        {" | "}
+        <Link href="/admin">Admin Hub</Link>
       </p>
 
       <section className={styles.panel}>

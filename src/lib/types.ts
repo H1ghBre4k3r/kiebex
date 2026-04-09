@@ -4,7 +4,7 @@ export type LocationType = "pub" | "bar" | "restaurant" | "supermarket";
 
 export type UserRole = "user" | "moderator" | "admin";
 
-export type ReviewStatus = "pending" | "approved" | "rejected";
+export type ReviewStatus = "new" | "pending" | "approved" | "rejected";
 
 export type SubmissionStatus = "pending" | "approved" | "rejected";
 
@@ -219,4 +219,30 @@ export type PendingBeerOfferSubmission = BeerOfferWithLocation & {
 export type PendingPriceUpdateProposal = PriceUpdateProposal & {
   offer: BeerOfferWithLocation;
   submitter: ModerationSubmitter | null;
+};
+
+export type ModerationAction = "approve" | "reject" | "delete" | "edit";
+
+export type ModerationContentType =
+  | "location"
+  | "brand"
+  | "style"
+  | "variant"
+  | "offer"
+  | "price_update"
+  | "review";
+
+export type ModerationAuditLogEntry = {
+  id: string;
+  moderatorId: string | null;
+  moderatorName: string;
+  action: ModerationAction;
+  contentType: ModerationContentType;
+  contentId: string;
+  details: string | null;
+  createdAt: Date;
+};
+
+export type ModerationReview = ReviewWithAuthor & {
+  locationName: string;
 };

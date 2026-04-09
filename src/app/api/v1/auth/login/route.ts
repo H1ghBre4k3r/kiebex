@@ -25,15 +25,21 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const user = await authenticateUser(parsed.data);
+  const result = await authenticateUser(parsed.data);
 
-  if (!user) {
+  if (!result.ok) {
+    if (result.reason === "EMAIL_NOT_VERIFIED") {
+      return jsonError(
+        403,
+        "EMAIL_NOT_VERIFIED",
+        "Please verify your email address before signing in.",
+      );
+    }
+
     return jsonError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
   }
 
-  await createSession(user.id);
+  await createSession(result.user.id);
 
-  return jsonOk({
-    user,
-  });
+  return jsonOk({ user: result.user });
 }

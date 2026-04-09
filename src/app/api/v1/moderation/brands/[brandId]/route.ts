@@ -1,14 +1,19 @@
 import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { moderateBeerBrandSubmission } from "@/lib/query";
+import {
+  deleteModerationBrand,
+  logModerationAction,
+  moderateBeerBrandSubmission,
+} from "@/lib/query";
 import { moderationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ brandId: string }> },
+async function withModerator(
+  handler: (moderator: { id: string; displayName: string }) => Promise<Response>,
 ): Promise<Response> {
+  let moderator: { id: string; displayName: string };
+
   try {
-    await requireModeratorUser();
+    moderator = await requireModeratorUser();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -21,38 +26,79 @@ export async function PATCH(
     throw error;
   }
 
-  let body: unknown;
+  return handler(moderator);
+}
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ brandId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    let body: unknown;
 
-  const parsed = moderationDecisionSchema.safeParse(body);
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+    }
 
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
-  }
+    const parsed = moderationDecisionSchema.safeParse(body);
 
-  const { brandId } = await context.params;
-  const brand = await moderateBeerBrandSubmission(brandId, parsed.data.status);
+    if (!parsed.success) {
+      return jsonError(
+        400,
+        "INVALID_BODY",
+        "One or more fields are invalid.",
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+    }
 
-  if (!brand) {
-    return jsonError(
-      404,
-      "BRAND_SUBMISSION_NOT_FOUND",
-      `No pending beer brand submission found for id '${brandId}'.`,
-    );
-  }
+    const { brandId } = await context.params;
+    const brand = await moderateBeerBrandSubmission(brandId, parsed.data.status);
 
-  return jsonOk({ brand });
+    if (!brand) {
+      return jsonError(
+        404,
+        "BRAND_SUBMISSION_NOT_FOUND",
+        `No pending beer brand submission found for id '${brandId}'.`,
+      );
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: parsed.data.status === "approved" ? "approve" : "reject",
+      contentType: "brand",
+      contentId: brandId,
+    });
+
+    return jsonOk({ brand });
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ brandId: string }> },
+): Promise<Response> {
+  return withModerator(async (moderator) => {
+    const { brandId } = await context.params;
+    const deleted = await deleteModerationBrand(brandId);
+
+    if (!deleted) {
+      return jsonError(404, "BRAND_NOT_FOUND", `No beer brand found for id '${brandId}'.`);
+    }
+
+    await logModerationAction({
+      moderatorId: moderator.id,
+      moderatorName: moderator.displayName,
+      action: "delete",
+      contentType: "brand",
+      contentId: brandId,
+    });
+
+    return jsonOk({ deleted: true });
+  });
 }
