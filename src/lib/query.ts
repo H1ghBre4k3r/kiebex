@@ -447,22 +447,18 @@ export async function getVariantContributionPermission(
 export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWithLocation[]> {
   const offers = await db.beerOffer.findMany({
     where: {
-      sizeMl: query.sizeMl,
-      serving: query.serving,
-      locationId: query.locationId,
+      sizeMl: query.sizeMl?.length ? { in: query.sizeMl } : undefined,
+      serving: query.serving?.length ? { in: query.serving } : undefined,
+      locationId: query.locationId?.length ? { in: query.locationId } : undefined,
       status: "approved",
-      location: query.locationType
-        ? {
-            locationType: query.locationType,
-            status: "approved",
-          }
-        : {
-            status: "approved",
-          },
+      location: {
+        locationType: query.locationType?.length ? { in: query.locationType } : undefined,
+        status: "approved",
+      },
       variantRef: {
-        id: query.variantId,
-        brandId: query.brandId,
-        styleId: query.styleId,
+        id: query.variantId?.length ? { in: query.variantId } : undefined,
+        brandId: query.brandId?.length ? { in: query.brandId } : undefined,
+        styleId: query.styleId?.length ? { in: query.styleId } : undefined,
         status: "approved",
         brand: {
           status: "approved",
@@ -470,14 +466,14 @@ export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWit
       },
     },
     include: offerInclude(),
-    orderBy: [{ priceCents: "asc" }],
+    orderBy: [{ priceCents: query.sort === "price_desc" ? "desc" : "asc" }],
   });
 
   return offers.map(mapOfferWithLocation);
 }
 
 export async function getLocationOffers(locationId: string): Promise<BeerOfferWithLocation[]> {
-  return getBeerOffers({ locationId });
+  return getBeerOffers({ locationId: [locationId] });
 }
 
 export async function getLocationReviewPermission(

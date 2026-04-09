@@ -1,0 +1,113 @@
+.panel {
+  border: var(--border-heavy);
+  background: var(--surface);
+  box-shadow: var(--shadow-block);
+  padding: 1rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.panelHeader h2 {
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.clearAll {
+  border: var(--border-regular);
+  background: var(--ink);
+  color: #fff;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.clearAll:hover {
+  opacity: 0.85;
+}
+
+.groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.groupLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom: var(--border-regular);
+  padding-bottom: 0.25rem;
+}
+
+.checkList {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+}
+
+.scrollable {
+  max-height: 200px;
+  overflow-y: auto;
+  border: var(--border-regular);
+  padding: 0.35rem 0.45rem;
+  background: #fff;
+}
+
+.checkItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkInput {
+  accent-color: var(--ink);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.radioList {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+}
+
+.radioItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.radioInput {
+  accent-color: var(--ink);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.pending {
+  opacity: 0.6;
+  pointer-events: none;
+}

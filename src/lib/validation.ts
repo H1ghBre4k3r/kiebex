@@ -5,15 +5,17 @@ const locationTypes = ["pub", "bar", "restaurant", "supermarket"] as const;
 const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;
 const reviewStatuses = ["approved", "rejected"] as const;
+const sortOrders = ["price_asc", "price_desc"] as const;
 
 export const beerQuerySchema = z.object({
-  brandId: z.string().trim().min(1).max(100).optional(),
-  variantId: z.string().trim().min(1).max(100).optional(),
-  styleId: z.string().trim().min(1).max(100).optional(),
-  sizeMl: z.coerce.number().int().positive().max(2000).optional(),
-  serving: z.enum(servingTypes).optional(),
-  locationType: z.enum(locationTypes).optional(),
-  locationId: z.string().trim().min(1).max(100).optional(),
+  brandId: z.array(z.string().trim().min(1).max(100)).optional(),
+  variantId: z.array(z.string().trim().min(1).max(100)).optional(),
+  styleId: z.array(z.string().trim().min(1).max(100)).optional(),
+  sizeMl: z.array(z.coerce.number().int().positive().max(2000)).optional(),
+  serving: z.array(z.enum(servingTypes)).optional(),
+  locationType: z.array(z.enum(locationTypes)).optional(),
+  locationId: z.array(z.string().trim().min(1).max(100)).optional(),
+  sort: z.enum(sortOrders).optional(),
 });
 
 export const registerBodySchema = z.object({
@@ -99,17 +101,32 @@ function compactString(value: string | undefined): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function allValues(value: SearchValue): string[] | undefined {
+  const arr = Array.isArray(value) ? value : value !== undefined ? [value] : [];
+  const compact = arr.map((v) => v.trim()).filter((v) => v.length > 0);
+  return compact.length > 0 ? compact : undefined;
+}
+
+function getAllParam(params: URLSearchParams, key: string): string[] | undefined {
+  const values = params
+    .getAll(key)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+  return values.length > 0 ? values : undefined;
+}
+
 export function parseBeerQueryRecord(
   record: Record<string, SearchValue>,
 ): ReturnType<typeof beerQuerySchema.safeParse> {
   return beerQuerySchema.safeParse({
-    brandId: compactString(firstValue(record.brandId)),
-    variantId: compactString(firstValue(record.variantId)),
-    styleId: compactString(firstValue(record.styleId)),
-    sizeMl: compactString(firstValue(record.sizeMl)),
-    serving: compactString(firstValue(record.serving)),
-    locationType: compactString(firstValue(record.locationType)),
-    locationId: compactString(firstValue(record.locationId)),
+    brandId: allValues(record.brandId),
+    variantId: allValues(record.variantId),
+    styleId: allValues(record.styleId),
+    sizeMl: allValues(record.sizeMl),
+    serving: allValues(record.serving),
+    locationType: allValues(record.locationType),
+    locationId: allValues(record.locationId),
+    sort: compactString(firstValue(record.sort)),
   });
 }
 
@@ -117,13 +134,14 @@ export function parseBeerQueryParams(
   searchParams: URLSearchParams,
 ): ReturnType<typeof beerQuerySchema.safeParse> {
   return beerQuerySchema.safeParse({
-    brandId: compactString(searchParams.get("brandId") ?? undefined),
-    variantId: compactString(searchParams.get("variantId") ?? undefined),
-    styleId: compactString(searchParams.get("styleId") ?? undefined),
-    sizeMl: compactString(searchParams.get("sizeMl") ?? undefined),
-    serving: compactString(searchParams.get("serving") ?? undefined),
-    locationType: compactString(searchParams.get("locationType") ?? undefined),
-    locationId: compactString(searchParams.get("locationId") ?? undefined),
+    brandId: getAllParam(searchParams, "brandId"),
+    variantId: getAllParam(searchParams, "variantId"),
+    styleId: getAllParam(searchParams, "styleId"),
+    sizeMl: getAllParam(searchParams, "sizeMl"),
+    serving: getAllParam(searchParams, "serving"),
+    locationType: getAllParam(searchParams, "locationType"),
+    locationId: getAllParam(searchParams, "locationId"),
+    sort: compactString(searchParams.get("sort") ?? undefined),
   });
 }
 
