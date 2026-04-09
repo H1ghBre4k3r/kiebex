@@ -20,7 +20,8 @@ type ModerationClientProps = {
   pendingVariants: PendingBeerVariantSubmission[];
   pendingOffers: PendingBeerOfferSubmission[];
   pendingPriceUpdates: PendingPriceUpdateProposal[];
-  allReviews: ModerationReview[];
+  newReviews: ModerationReview[];
+  approvedReviews: ModerationReview[];
   auditLog: ModerationAuditLogEntry[];
 };
 
@@ -77,6 +78,7 @@ function formatDateTime(value: Date): string {
 function reviewStatusLabel(status: ModerationReview["status"]): string {
   if (status === "approved") return "Approved";
   if (status === "rejected") return "Rejected";
+  if (status === "new") return "New";
   return "Pending";
 }
 
@@ -97,13 +99,42 @@ async function parseErrorMessage(response: Response, fallback: string): Promise<
   return body?.error?.message ?? fallback;
 }
 
+function CollapsibleSection({
+  id,
+  heading,
+  children,
+}: {
+  id: string;
+  heading: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className={styles.panel} aria-labelledby={id}>
+      <button
+        id={id}
+        type="button"
+        className={styles.sectionToggle}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className={styles.sectionToggleIndicator}>{open ? "▼" : "▶"}</span>
+        {heading}
+      </button>
+      {open && <div className={styles.sectionBody}>{children}</div>}
+    </section>
+  );
+}
+
 export function ModerationClient({
   pendingLocations,
   pendingBrands,
   pendingVariants,
   pendingOffers,
   pendingPriceUpdates,
-  allReviews,
+  newReviews,
+  approvedReviews,
   auditLog,
 }: ModerationClientProps) {
   const router = useRouter();
@@ -365,8 +396,10 @@ export function ModerationClient({
 
       <div className={styles.grid}>
         {/* Pending Locations */}
-        <section className={styles.panel} aria-labelledby="pending-locations-heading">
-          <h2 id="pending-locations-heading">Pending Locations ({pendingLocations.length})</h2>
+        <CollapsibleSection
+          id="pending-locations-heading"
+          heading={`Pending Locations (${pendingLocations.length})`}
+        >
           {pendingLocations.length === 0 ? (
             <p className={styles.notice}>No pending location submissions.</p>
           ) : (
@@ -526,11 +559,13 @@ export function ModerationClient({
               })}
             </ul>
           )}
-        </section>
+        </CollapsibleSection>
 
         {/* Pending Brands */}
-        <section className={styles.panel} aria-labelledby="pending-brands-heading">
-          <h2 id="pending-brands-heading">Pending Brands ({pendingBrands.length})</h2>
+        <CollapsibleSection
+          id="pending-brands-heading"
+          heading={`Pending Brands (${pendingBrands.length})`}
+        >
           {pendingBrands.length === 0 ? (
             <p className={styles.notice}>No pending beer brand submissions.</p>
           ) : (
@@ -593,11 +628,13 @@ export function ModerationClient({
               })}
             </ul>
           )}
-        </section>
+        </CollapsibleSection>
 
         {/* Pending Variants */}
-        <section className={styles.panel} aria-labelledby="pending-variants-heading">
-          <h2 id="pending-variants-heading">Pending Variants ({pendingVariants.length})</h2>
+        <CollapsibleSection
+          id="pending-variants-heading"
+          heading={`Pending Variants (${pendingVariants.length})`}
+        >
           {pendingVariants.length === 0 ? (
             <p className={styles.notice}>No pending beer variant submissions.</p>
           ) : (
@@ -662,11 +699,13 @@ export function ModerationClient({
               })}
             </ul>
           )}
-        </section>
+        </CollapsibleSection>
 
         {/* Pending Offers */}
-        <section className={styles.panel} aria-labelledby="pending-offers-heading">
-          <h2 id="pending-offers-heading">Pending Offers ({pendingOffers.length})</h2>
+        <CollapsibleSection
+          id="pending-offers-heading"
+          heading={`Pending Offers (${pendingOffers.length})`}
+        >
           {pendingOffers.length === 0 ? (
             <p className={styles.notice}>No pending offer submissions.</p>
           ) : (
@@ -784,13 +823,13 @@ export function ModerationClient({
               })}
             </ul>
           )}
-        </section>
+        </CollapsibleSection>
 
         {/* Pending Price Updates */}
-        <section className={styles.panel} aria-labelledby="pending-price-updates-heading">
-          <h2 id="pending-price-updates-heading">
-            Pending Price Updates ({pendingPriceUpdates.length})
-          </h2>
+        <CollapsibleSection
+          id="pending-price-updates-heading"
+          heading={`Pending Price Updates (${pendingPriceUpdates.length})`}
+        >
           {pendingPriceUpdates.length === 0 ? (
             <p className={styles.notice}>No pending price update proposals.</p>
           ) : (
@@ -866,16 +905,15 @@ export function ModerationClient({
               })}
             </ul>
           )}
-        </section>
+        </CollapsibleSection>
 
-        {/* All Reviews */}
-        <section className={styles.panel} aria-labelledby="reviews-heading">
-          <h2 id="reviews-heading">Reviews ({allReviews.length})</h2>
-          {allReviews.length === 0 ? (
-            <p className={styles.notice}>No reviews yet.</p>
+        {/* New Reviews (queue) */}
+        <CollapsibleSection id="new-reviews-heading" heading={`New Reviews (${newReviews.length})`}>
+          {newReviews.length === 0 ? (
+            <p className={styles.notice}>No new reviews awaiting moderation.</p>
           ) : (
             <ul className={styles.list}>
-              {allReviews.map((review) => {
+              {newReviews.map((review) => {
                 const isEditing = editingReviewId === review.id;
 
                 return (
@@ -1011,35 +1049,151 @@ export function ModerationClient({
               })}
             </ul>
           )}
-        </section>
+        </CollapsibleSection>
 
-        {/* Audit Log */}
-        <section className={styles.panel} aria-labelledby="audit-log-heading">
-          <h2 id="audit-log-heading">Audit Log (last {auditLog.length})</h2>
-          {auditLog.length === 0 ? (
-            <p className={styles.notice}>No moderation actions recorded yet.</p>
+        {/* Approved Reviews (reference) */}
+        <CollapsibleSection
+          id="approved-reviews-heading"
+          heading={`Approved Reviews (${approvedReviews.length})`}
+        >
+          {approvedReviews.length === 0 ? (
+            <p className={styles.notice}>No approved reviews yet.</p>
           ) : (
             <ul className={styles.list}>
-              {auditLog.map((entry) => (
-                <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
-                  <p>
-                    <strong>{entry.moderatorName}</strong>{" "}
-                    <span className={styles[`audit_${entry.action}`]}>
-                      {auditActionLabel(entry.action)}
-                    </span>{" "}
-                    {auditContentLabel(entry.contentType)}{" "}
-                    <code>{entry.contentId.slice(0, 8)}…</code>
-                  </p>
-                  <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
-                </li>
-              ))}
+              {approvedReviews.map((review) => {
+                const isEditing = editingReviewId === review.id;
+
+                return (
+                  <li key={review.id} className={styles.item}>
+                    <h3>
+                      {"★".repeat(review.rating)}
+                      {"☆".repeat(5 - review.rating)} {review.title ? `— ${review.title}` : ""}
+                    </h3>
+                    <div className={styles.meta}>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span className={styles[`status_${review.status}`]}>
+                          {reviewStatusLabel(review.status)}
+                        </span>
+                      </p>
+                      <p>Location: {review.locationName}</p>
+                      {review.body && <p>{review.body}</p>}
+                      <p>
+                        By {review.author.displayName} on {formatDate(review.createdAt)}
+                      </p>
+                    </div>
+                    {isEditing && (
+                      <div className={styles.editForm}>
+                        <label className={styles.editLabel}>
+                          Rating (1–5, leave blank to keep)
+                          <input
+                            className={styles.editInput}
+                            type="number"
+                            min="1"
+                            max="5"
+                            step="1"
+                            placeholder={String(review.rating)}
+                            value={reviewEditFields.rating}
+                            onChange={(e) =>
+                              setReviewEditFields((f) => ({ ...f, rating: e.target.value }))
+                            }
+                          />
+                        </label>
+                        <label className={styles.editLabel}>
+                          Title (blank to clear)
+                          <input
+                            className={styles.editInput}
+                            type="text"
+                            placeholder={review.title ?? ""}
+                            value={reviewEditFields.title}
+                            onChange={(e) =>
+                              setReviewEditFields((f) => ({ ...f, title: e.target.value }))
+                            }
+                          />
+                        </label>
+                        <label className={styles.editLabel}>
+                          Body (blank to clear)
+                          <textarea
+                            className={styles.editInput}
+                            rows={3}
+                            placeholder={review.body ?? ""}
+                            value={reviewEditFields.body}
+                            onChange={(e) =>
+                              setReviewEditFields((f) => ({ ...f, body: e.target.value }))
+                            }
+                          />
+                        </label>
+                        <div className={styles.actions}>
+                          <button
+                            type="button"
+                            className={`${styles.button} ${styles.approve}`}
+                            disabled={!!pendingAction}
+                            onClick={() => void editReview(review.id)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.button}
+                            onClick={() => setEditingReviewId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className={styles.actions}>
+                      <button
+                        type="button"
+                        className={`${styles.button} ${styles.edit}`}
+                        disabled={!!pendingAction}
+                        onClick={() => {
+                          setEditingReviewId(isEditing ? null : review.id);
+                          setReviewEditFields({ rating: "", title: "", body: "" });
+                        }}
+                      >
+                        {isEditing ? "Cancel Edit" : "Edit"}
+                      </button>
+                      <DeleteButton
+                        itemKey={`review:${review.id}`}
+                        label="review"
+                        endpoint="/api/v1/moderation/reviews"
+                        id={review.id}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
-          <p style={{ marginTop: "0.75rem" }}>
-            <Link href="/moderation/audit-log">View full audit log →</Link>
-          </p>
-        </section>
+        </CollapsibleSection>
       </div>
+
+      {/* Audit Log — always visible, full width */}
+      <section className={styles.panel} aria-labelledby="audit-log-heading">
+        <h2 id="audit-log-heading">Audit Log (last {auditLog.length})</h2>
+        {auditLog.length === 0 ? (
+          <p className={styles.notice}>No moderation actions recorded yet.</p>
+        ) : (
+          <ul className={styles.list}>
+            {auditLog.map((entry) => (
+              <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
+                <p>
+                  <strong>{entry.moderatorName}</strong>{" "}
+                  <span className={styles[`audit_${entry.action}`]}>
+                    {auditActionLabel(entry.action)}
+                  </span>{" "}
+                  {auditContentLabel(entry.contentType)} <code>{entry.contentId.slice(0, 8)}…</code>
+                </p>
+                <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p style={{ marginTop: "0.75rem" }}>
+          <Link href="/moderation/audit-log">View full audit log →</Link>
+        </p>
+      </section>
     </>
   );
 }

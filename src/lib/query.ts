@@ -201,7 +201,7 @@ function mapReview(review: {
   rating: number;
   title: string | null;
   body: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "new" | "pending" | "approved" | "rejected";
   createdAt: Date;
   updatedAt: Date;
   user: {
@@ -505,7 +505,7 @@ export async function getLocationReviews(locationId: string): Promise<ReviewWith
   const reviews = await db.review.findMany({
     where: {
       locationId,
-      status: "approved",
+      status: { in: ["new", "approved"] },
       location: {
         status: "approved",
       },
@@ -537,7 +537,7 @@ export async function getLocationReviewSummaries(
       locationId: {
         in: locationIds,
       },
-      status: "approved",
+      status: { in: ["new", "approved"] },
       location: {
         status: "approved",
       },
@@ -647,7 +647,7 @@ export async function createReview(input: CreateReviewInput): Promise<Review> {
       rating: input.rating,
       title: input.title?.trim() ? input.title.trim() : null,
       body: input.body?.trim() ? input.body.trim() : null,
-      status: input.status ?? "approved",
+      status: input.status ?? "new",
     },
   });
 

@@ -76,24 +76,14 @@ export default async function Home({
                 <Link href="/profile" className={styles.authLink}>
                   Profile
                 </Link>
-                {(authUser.role === "moderator" || authUser.role === "admin") && (
+                {authUser.role === "moderator" && (
                   <Link href="/moderation" className={styles.authLink}>
                     Moderation
                   </Link>
                 )}
                 {authUser.role === "admin" && (
-                  <Link href="/admin/users" className={styles.authLink}>
-                    Users
-                  </Link>
-                )}
-                {authUser.role === "admin" && (
-                  <Link href="/admin/brands" className={styles.authLink}>
-                    Brands
-                  </Link>
-                )}
-                {authUser.role === "admin" && (
-                  <Link href="/admin/variants" className={styles.authLink}>
-                    Variants
+                  <Link href="/admin" className={styles.authLink}>
+                    Admin
                   </Link>
                 )}
                 <LogoutButton className={styles.authButton} />

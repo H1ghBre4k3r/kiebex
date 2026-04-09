@@ -23,6 +23,8 @@ export default async function AdminBrandsPage() {
       <p>
         <Link href="/">Back to offer directory</Link>
         {" | "}
+        <Link href="/admin">Admin Hub</Link>
+        {" | "}
         <Link href="/admin/users">User Management</Link>
         {" | "}
         <Link href="/admin/variants">Variant Management</Link>

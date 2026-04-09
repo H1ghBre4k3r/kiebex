@@ -42,10 +42,19 @@ export default async function ModerationPage() {
     getModerationAuditLog(15),
   ]);
 
+  const newReviews = allReviews.filter((r) => r.status === "new" || r.status === "pending");
+  const approvedReviews = allReviews.filter((r) => r.status === "approved");
+
   return (
     <main className={styles.page}>
       <p>
         <Link href="/">Back to offer directory</Link>
+        {authUser.role === "admin" && (
+          <>
+            {" | "}
+            <Link href="/admin">Admin Hub</Link>
+          </>
+        )}
       </p>
 
       <section className={styles.panel}>
@@ -64,7 +73,8 @@ export default async function ModerationPage() {
         pendingVariants={pendingVariants}
         pendingOffers={pendingOffers}
         pendingPriceUpdates={pendingPriceUpdates}
-        allReviews={allReviews}
+        newReviews={newReviews}
+        approvedReviews={approvedReviews}
         auditLog={auditLog}
       />
     </main>

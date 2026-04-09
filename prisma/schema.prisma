@@ -32,6 +32,7 @@ enum ServingType {
 }
 
 enum ReviewStatus {
+  new
   pending
   approved
   rejected
@@ -230,7 +231,7 @@ model Review {
   rating     Int
   title      String?
   body       String?
-  status     ReviewStatus @default(pending)
+  status     ReviewStatus @default(new)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 

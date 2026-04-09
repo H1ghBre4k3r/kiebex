@@ -4,7 +4,7 @@ export type LocationType = "pub" | "bar" | "restaurant" | "supermarket";
 
 export type UserRole = "user" | "moderator" | "admin";
 
-export type ReviewStatus = "pending" | "approved" | "rejected";
+export type ReviewStatus = "new" | "pending" | "approved" | "rejected";
 
 export type SubmissionStatus = "pending" | "approved" | "rejected";
 
