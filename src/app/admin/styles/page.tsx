@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { getAllBeerStylesForAdmin } from "@/lib/query";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StylesManagement } from "./styles-management";
 import styles from "./styles.module.css";
 
@@ -20,11 +20,12 @@ export default async function AdminStylesPage() {
 
   return (
     <main className={styles.page}>
-      <p>
-        <Link href="/">Back to offer directory</Link>
-        {" | "}
-        <Link href="/admin">Admin Hub</Link>
-      </p>
+      <Breadcrumbs
+        crumbs={[
+          { label: "Back to offer directory", href: "/" },
+          { label: "Admin Hub", href: "/admin" },
+        ]}
+      />
 
       <section className={styles.panel}>
         <h1>Style Management</h1>

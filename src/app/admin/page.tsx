@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import styles from "./users/users.module.css";
 
 export default async function AdminPage() {
@@ -16,9 +17,7 @@ export default async function AdminPage() {
 
   return (
     <main className={styles.page}>
-      <p>
-        <Link href="/">Back to offer directory</Link>
-      </p>
+      <Breadcrumbs crumbs={[{ label: "Back to offer directory", href: "/" }]} />
 
       <section className={styles.panel}>
         <h1>Admin</h1>
