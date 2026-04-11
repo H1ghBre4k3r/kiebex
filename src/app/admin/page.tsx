@@ -54,6 +54,11 @@ export default async function AdminPage() {
             <p>Edit or delete beer variants in the catalog.</p>
             <Link href="/admin/variants">Go to Variants →</Link>
           </li>
+          <li className={styles.item}>
+            <h3>Location Management</h3>
+            <p>Edit or delete approved locations.</p>
+            <Link href="/admin/locations">Go to Locations →</Link>
+          </li>
         </ul>
       </section>
     </main>
