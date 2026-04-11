@@ -5,6 +5,8 @@ metadata:
   namespace: kiebex
   labels:
     app: kiebex
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   selector:
     app: kiebex

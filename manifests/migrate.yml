@@ -5,6 +5,10 @@ metadata:
   namespace: kiebex
   labels:
     app: kiebex
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   backoffLimit: 3
   ttlSecondsAfterFinished: 300

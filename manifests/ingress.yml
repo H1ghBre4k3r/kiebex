@@ -3,6 +3,8 @@ kind: IngressRoute
 metadata:
   name: kiebex-ingress
   namespace: kiebex
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   entryPoints:
     - websecure
