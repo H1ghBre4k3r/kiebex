@@ -240,3 +240,8 @@ export const createAdminStyleBodySchema = z.object({
 export const editAdminStyleBodySchema = z.object({
   name: z.string().trim().min(2).max(120),
 });
+
+export const changeEmailBodySchema = z.object({
+  newEmail: z.string().trim().email().max(255),
+  currentPassword: z.string().min(1).max(128),
+});

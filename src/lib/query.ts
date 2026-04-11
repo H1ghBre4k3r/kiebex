@@ -1270,6 +1270,15 @@ export async function moderatePriceUpdateProposal(
   };
 }
 
+export async function getUserPendingEmail(userId: string): Promise<string | null> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { pendingEmail: true },
+  });
+
+  return user?.pendingEmail ?? null;
+}
+
 export async function getUsersForAdmin(): Promise<User[]> {
   const users = await db.user.findMany({
     orderBy: [{ createdAt: "asc" }],

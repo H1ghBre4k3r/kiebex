@@ -47,6 +47,7 @@ enum SubmissionStatus {
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
+  pendingEmail  String?
   displayName   String
   role          UserRole @default(user)
   passwordHash  String?

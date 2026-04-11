@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
+import { getUserPendingEmail } from "@/lib/query";
 import { ProfileForm } from "./profile-form";
 import styles from "../auth.module.css";
 
@@ -13,6 +14,8 @@ export default async function ProfilePage() {
   if (!user) {
     redirect("/login");
   }
+
+  const pendingEmail = await getUserPendingEmail(user.id);
 
   return (
     <main className={styles.page}>
@@ -30,7 +33,11 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      <ProfileForm initialDisplayName={user.displayName} />
+      <ProfileForm
+        initialDisplayName={user.displayName}
+        currentEmail={user.email}
+        pendingEmail={pendingEmail}
+      />
     </main>
   );
 }

@@ -57,3 +57,57 @@ export async function sendVerificationEmail(to: string, verificationUrl: string)
 
   logger.info("Verification email sent", { to });
 }
+
+export async function sendEmailChangeVerificationEmail(
+  to: string,
+  verificationUrl: string,
+): Promise<void> {
+  const subject = "Confirm your new Kiel Beer Index email address";
+  const text = [
+    "You requested an email address change on Kiel Beer Index.",
+    "",
+    "Please confirm your new email address by visiting the link below:",
+    "",
+    verificationUrl,
+    "",
+    "This link expires in 24 hours.",
+    "",
+    "If you did not request this change, you can safely ignore this email.",
+  ].join("\n");
+
+  const html = `
+<p>You requested an email address change on <strong>Kiel Beer Index</strong>.</p>
+<p>Please confirm your new email address by clicking the link below:</p>
+<p><a href="${verificationUrl}">${verificationUrl}</a></p>
+<p>This link expires in <strong>24 hours</strong>.</p>
+<p>If you did not request this change, you can safely ignore this email.</p>
+`.trim();
+
+  if (!isSmtpConfigured()) {
+    logger.info("Email change verification (SMTP not configured — logging link instead)", {
+      to,
+      verificationUrl,
+    });
+    return;
+  }
+
+  const transport = createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    auth:
+      process.env.SMTP_USER && process.env.SMTP_PASS
+        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        : undefined,
+  });
+
+  await transport.sendMail({
+    from: process.env.SMTP_FROM ?? "noreply@kiel-beer-index.de",
+    to,
+    subject,
+    text,
+    html,
+  });
+
+  logger.info("Email change verification email sent", { to });
+}

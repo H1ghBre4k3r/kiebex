@@ -38,6 +38,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
   );
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [verifyingUserId, setVerifyingUserId] = useState<string | null>(null);
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: "error" | "success"; message: string } | null>(
     null,
   );
@@ -102,6 +103,30 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
     }
   }
 
+  async function resendVerification(userId: string) {
+    setFeedback(null);
+    setResendingUserId(userId);
+
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/resend-verification`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const message = await parseErrorMessage(response, "Unable to resend verification email.");
+        setFeedback({ kind: "error", message });
+        setResendingUserId(null);
+        return;
+      }
+
+      setFeedback({ kind: "success", message: "Verification email sent." });
+      setResendingUserId(null);
+    } catch {
+      setFeedback({ kind: "error", message: "Unable to resend verification email." });
+      setResendingUserId(null);
+    }
+  }
+
   return (
     <section className={styles.panel} aria-labelledby="users-management-heading">
       <h2 id="users-management-heading">Users ({users.length})</h2>
@@ -116,6 +141,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
         {users.map((user) => {
           const pending = pendingUserId === user.id;
           const verifying = verifyingUserId === user.id;
+          const resending = resendingUserId === user.id;
           const roleChanged = selectedRoles[user.id] !== user.role;
 
           return (
@@ -170,6 +196,16 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
                     onClick={() => verifyUser(user.id)}
                   >
                     {verifying ? "Verifying..." : "Verify Email"}
+                  </button>
+                )}
+
+                {!user.emailVerified && (
+                  <button
+                    type="button"
+                    disabled={resending}
+                    onClick={() => resendVerification(user.id)}
+                  >
+                    {resending ? "Sending..." : "Resend Verification Email"}
                   </button>
                 )}
               </div>
