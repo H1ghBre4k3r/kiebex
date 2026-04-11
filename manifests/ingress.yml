@@ -1,0 +1,16 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kiebex-ingress
+  namespace: kiebex
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`kiel.beer`)
+      kind: Rule
+      services:
+        - name: kiebex-service
+          port: 80
+  tls:
+    certResolver: le
