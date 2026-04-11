@@ -5,6 +5,37 @@
   padding: 1rem;
 }
 
+/* Mobile toggle button — hidden on desktop */
+.toggle {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+.toggle:focus-visible {
+  outline: 3px dashed var(--accent);
+  outline-offset: 3px;
+}
+
+/* Collapsible body */
+.body {
+  display: none;
+}
+
+.bodyOpen {
+  display: block;
+  margin-top: 0.75rem;
+}
+
 .panelHeader {
   display: flex;
   align-items: baseline;
@@ -110,4 +141,17 @@
 .pending {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* Desktop: always show body, hide toggle button */
+@media (min-width: 980px) {
+  .toggle {
+    display: none;
+  }
+
+  .body,
+  .bodyOpen {
+    display: block;
+    margin-top: 0;
+  }
 }
