@@ -10,6 +10,7 @@ type UserForAdmin = {
   email: string;
   displayName: string;
   role: UserRole;
+  emailVerified: boolean;
   createdAt: string;
 };
 
@@ -36,6 +37,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
     Object.fromEntries(users.map((user) => [user.id, user.role])),
   );
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [verifyingUserId, setVerifyingUserId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: "error" | "success"; message: string } | null>(
     null,
   );
@@ -75,6 +77,31 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
     }
   }
 
+  async function verifyUser(userId: string) {
+    setFeedback(null);
+    setVerifyingUserId(userId);
+
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/verify`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const message = await parseErrorMessage(response, "Unable to verify user.");
+        setFeedback({ kind: "error", message });
+        setVerifyingUserId(null);
+        return;
+      }
+
+      setFeedback({ kind: "success", message: "User email verified." });
+      setVerifyingUserId(null);
+      router.refresh();
+    } catch {
+      setFeedback({ kind: "error", message: "Unable to verify user." });
+      setVerifyingUserId(null);
+    }
+  }
+
   return (
     <section className={styles.panel} aria-labelledby="users-management-heading">
       <h2 id="users-management-heading">Users ({users.length})</h2>
@@ -88,6 +115,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
       <ul className={styles.list}>
         {users.map((user) => {
           const pending = pendingUserId === user.id;
+          const verifying = verifyingUserId === user.id;
           const roleChanged = selectedRoles[user.id] !== user.role;
 
           return (
@@ -97,6 +125,14 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
                   <strong>{user.displayName}</strong> ({user.email})
                 </p>
                 <p>Current role: {user.role}</p>
+                <p>
+                  Email:{" "}
+                  {user.emailVerified ? (
+                    <span className={styles.verified}>verified</span>
+                  ) : (
+                    <span className={styles.unverified}>unverified</span>
+                  )}
+                </p>
                 <p>Joined: {new Date(user.createdAt).toLocaleDateString("en-GB")}</p>
               </div>
 
@@ -125,6 +161,17 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
                 >
                   {pending ? "Saving..." : "Save Role"}
                 </button>
+
+                {!user.emailVerified && (
+                  <button
+                    type="button"
+                    className={styles.verifyButton}
+                    disabled={verifying}
+                    onClick={() => verifyUser(user.id)}
+                  >
+                    {verifying ? "Verifying..." : "Verify Email"}
+                  </button>
+                )}
               </div>
 
               {user.id === currentAdminId && (
