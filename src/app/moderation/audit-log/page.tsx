@@ -7,7 +7,6 @@ import styles from "../moderation.module.css";
 
 const PAGE_SIZE = 25;
 
-type ModerationAction = "approve" | "reject" | "delete" | "edit";
 type ModerationContentType =
   | "location"
   | "brand"
@@ -17,36 +16,84 @@ type ModerationContentType =
   | "price_update"
   | "review";
 
-function auditActionLabel(action: ModerationAction): string {
-  switch (action) {
-    case "approve":
-      return "approved";
-    case "reject":
-      return "rejected";
-    case "delete":
-      return "deleted";
-    case "edit":
-      return "edited";
+type AuditDetails = {
+  name?: string;
+  variant?: string;
+  brand?: string;
+  location?: string;
+  priceEur?: number;
+  priceCents?: number;
+  proposedPriceEur?: number;
+  rating?: number;
+  title?: string | null;
+  author?: string;
+  fields?: string[];
+};
+
+function parseDetails(json: string | null): AuditDetails | null {
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as AuditDetails;
+  } catch {
+    return null;
   }
 }
 
-function auditContentLabel(type: ModerationContentType): string {
-  switch (type) {
-    case "location":
-      return "location";
-    case "brand":
-      return "brand";
-    case "style":
-      return "beer style";
-    case "variant":
-      return "variant";
-    case "offer":
-      return "offer";
-    case "price_update":
-      return "price update";
-    case "review":
-      return "review";
+function formatAuditContext(
+  contentType: ModerationContentType,
+  details: AuditDetails | null,
+): string | null {
+  if (!details) return null;
+
+  if (
+    contentType === "brand" ||
+    contentType === "location" ||
+    contentType === "style" ||
+    contentType === "variant"
+  ) {
+    return details.name ?? null;
   }
+
+  if (contentType === "offer") {
+    const label =
+      details.variant && details.brand
+        ? `${details.brand} ${details.variant}`
+        : (details.variant ?? details.brand ?? null);
+    const atLocation = details.location ? ` @ ${details.location}` : "";
+    const price =
+      details.priceEur != null
+        ? ` — €${details.priceEur.toFixed(2)}`
+        : details.priceCents != null
+          ? ` — €${(details.priceCents / 100).toFixed(2)}`
+          : "";
+    return label ? `${label}${atLocation}${price}` : null;
+  }
+
+  if (contentType === "price_update") {
+    const label =
+      details.variant && details.brand
+        ? `${details.brand} ${details.variant}`
+        : (details.variant ?? details.brand ?? null);
+    const atLocation = details.location ? ` @ ${details.location}` : "";
+    const price =
+      details.proposedPriceEur != null ? ` — €${details.proposedPriceEur.toFixed(2)}` : "";
+    return label ? `${label}${atLocation}${price}` : null;
+  }
+
+  if (contentType === "review") {
+    const parts: string[] = [];
+    if (details.rating != null) parts.push(`${details.rating}★`);
+    if (details.title) parts.push(`"${details.title}"`);
+    if (details.author) parts.push(`by ${details.author}`);
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
+
+  return null;
+}
+
+function formatEditedFields(details: AuditDetails | null): string | null {
+  if (!details?.fields || details.fields.length === 0) return null;
+  return `edited: ${details.fields.join(", ")}`;
 }
 
 function formatDateTime(date: Date): string {
@@ -111,21 +158,38 @@ export default async function AuditLogPage({
           <p className={styles.notice}>No moderation actions recorded yet.</p>
         ) : (
           <ul className={styles.list}>
-            {entries.map((entry) => (
-              <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
-                <p>
-                  <strong>{entry.moderatorName}</strong>{" "}
-                  <span
-                    className={styles[`audit_${entry.action}` as keyof typeof styles] as string}
-                  >
-                    {auditActionLabel(entry.action as ModerationAction)}
-                  </span>{" "}
-                  {auditContentLabel(entry.contentType as ModerationContentType)}{" "}
-                  <code>{entry.contentId.slice(0, 8)}…</code>
-                </p>
-                <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
-              </li>
-            ))}
+            {entries.map((entry) => {
+              const details = parseDetails(entry.details);
+              const context = formatAuditContext(entry.contentType, details);
+              const editedFields = entry.action === "edit" ? formatEditedFields(details) : null;
+              const moderatorLabel = entry.currentModeratorName ?? entry.moderatorName;
+              return (
+                <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
+                  <p>
+                    <strong>{moderatorLabel}</strong>{" "}
+                    <span
+                      className={styles[`audit_${entry.action}` as keyof typeof styles] as string}
+                    >
+                      {entry.action}
+                    </span>{" "}
+                    {entry.contentType.replace("_", " ")}
+                    {context && (
+                      <>
+                        {" "}
+                        <span className={styles.auditContext}>({context})</span>
+                      </>
+                    )}
+                    {editedFields && (
+                      <>
+                        {" "}
+                        <span className={styles.auditMeta}>[{editedFields}]</span>
+                      </>
+                    )}
+                  </p>
+                  <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
 

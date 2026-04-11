@@ -240,6 +240,7 @@ export type ModerationAuditLogEntry = {
   id: string;
   moderatorId: string | null;
   moderatorName: string;
+  currentModeratorName: string | null;
   action: ModerationAction;
   contentType: ModerationContentType;
   contentId: string;

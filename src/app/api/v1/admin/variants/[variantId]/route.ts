@@ -65,7 +65,7 @@ export async function PUT(
       action: "edit",
       contentType: "variant",
       contentId: variantId,
-      details: { fields: Object.keys(parsed.data) },
+      details: { name: variant.name, fields: Object.keys(parsed.data) },
     });
 
     return jsonOk({ variant });
@@ -78,9 +78,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withAdmin(async (admin) => {
     const { variantId } = await context.params;
-    const deleted = await deleteModerationVariant(variantId);
+    const result = await deleteModerationVariant(variantId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "VARIANT_NOT_FOUND", `No variant found for id '${variantId}'.`);
     }
 
@@ -90,6 +90,7 @@ export async function DELETE(
       action: "delete",
       contentType: "variant",
       contentId: variantId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

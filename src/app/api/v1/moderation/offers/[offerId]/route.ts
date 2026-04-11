@@ -90,6 +90,12 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "offer",
       contentId: offerId,
+      details: {
+        variant: result.offer.variant,
+        brand: result.offer.brand,
+        location: result.offer.location.name,
+        priceEur: result.offer.priceEur,
+      },
     });
 
     return jsonOk({ offer: result.offer });
@@ -136,7 +142,12 @@ export async function PUT(
       action: "edit",
       contentType: "offer",
       contentId: offerId,
-      details: { priceCents: parsed.data.priceCents },
+      details: {
+        variant: offer.variant,
+        brand: offer.brand,
+        location: offer.location.name,
+        priceCents: parsed.data.priceCents,
+      },
     });
 
     return jsonOk({ offer });
@@ -149,9 +160,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { offerId } = await context.params;
-    const deleted = await deleteModerationOffer(offerId);
+    const result = await deleteModerationOffer(offerId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "OFFER_NOT_FOUND", `No offer found for id '${offerId}'.`);
     }
 
@@ -161,6 +172,12 @@ export async function DELETE(
       action: "delete",
       contentType: "offer",
       contentId: offerId,
+      details: {
+        variant: result.variant,
+        brand: result.brand,
+        location: result.location,
+        priceEur: result.priceEur,
+      },
     });
 
     return jsonOk({ deleted: true });

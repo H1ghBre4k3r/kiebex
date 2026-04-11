@@ -74,6 +74,7 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "location",
       contentId: locationId,
+      details: { name: location.name },
     });
 
     return jsonOk({ location });
@@ -120,7 +121,7 @@ export async function PUT(
       action: "edit",
       contentType: "location",
       contentId: locationId,
-      details: { fields: Object.keys(parsed.data) },
+      details: { name: location.name, fields: Object.keys(parsed.data) },
     });
 
     return jsonOk({ location });
@@ -133,9 +134,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { locationId } = await context.params;
-    const deleted = await deleteModerationLocation(locationId);
+    const result = await deleteModerationLocation(locationId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
     }
 
@@ -145,6 +146,7 @@ export async function DELETE(
       action: "delete",
       contentType: "location",
       contentId: locationId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

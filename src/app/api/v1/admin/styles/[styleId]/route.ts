@@ -95,10 +95,10 @@ export async function DELETE(
   return withAdmin(async (admin) => {
     const { styleId } = await context.params;
 
-    let deleted: boolean;
+    let result: { deleted: false } | { deleted: true; name: string };
 
     try {
-      deleted = await deleteAdminStyle(styleId);
+      result = await deleteAdminStyle(styleId);
     } catch (error) {
       if (isKnownRequestError(error) && error.code === "P2003") {
         return jsonError(
@@ -111,7 +111,7 @@ export async function DELETE(
       throw error;
     }
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "STYLE_NOT_FOUND", `No beer style found for id '${styleId}'.`);
     }
 
@@ -121,6 +121,7 @@ export async function DELETE(
       action: "delete",
       contentType: "style",
       contentId: styleId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

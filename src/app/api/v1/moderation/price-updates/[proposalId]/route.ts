@@ -97,6 +97,12 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "price_update",
       contentId: proposalId,
+      details: {
+        variant: result.offer.variant,
+        brand: result.offer.brand,
+        location: result.offer.location.name,
+        proposedPriceEur: result.proposal.proposedPriceEur,
+      },
     });
 
     return jsonOk({
@@ -112,9 +118,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { proposalId } = await context.params;
-    const deleted = await deleteModerationPriceUpdateProposal(proposalId);
+    const result = await deleteModerationPriceUpdateProposal(proposalId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(
         404,
         "PRICE_UPDATE_PROPOSAL_NOT_FOUND",
@@ -128,6 +134,12 @@ export async function DELETE(
       action: "delete",
       contentType: "price_update",
       contentId: proposalId,
+      details: {
+        variant: result.variant,
+        brand: result.brand,
+        location: result.location,
+        proposedPriceEur: result.proposedPriceEur,
+      },
     });
 
     return jsonOk({ deleted: true });

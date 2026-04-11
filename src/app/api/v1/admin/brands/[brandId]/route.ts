@@ -78,9 +78,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withAdmin(async (admin) => {
     const { brandId } = await context.params;
-    const deleted = await deleteModerationBrand(brandId);
+    const result = await deleteModerationBrand(brandId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "BRAND_NOT_FOUND", `No brand found for id '${brandId}'.`);
     }
 
@@ -90,6 +90,7 @@ export async function DELETE(
       action: "delete",
       contentType: "brand",
       contentId: brandId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

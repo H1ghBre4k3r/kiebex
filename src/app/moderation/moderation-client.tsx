@@ -82,16 +82,84 @@ function reviewStatusLabel(status: ModerationReview["status"]): string {
   return "Pending";
 }
 
-function auditActionLabel(action: ModerationAuditLogEntry["action"]): string {
-  if (action === "approve") return "Approved";
-  if (action === "reject") return "Rejected";
-  if (action === "delete") return "Deleted";
-  return "Edited";
+type AuditDetails = {
+  name?: string;
+  variant?: string;
+  brand?: string;
+  location?: string;
+  priceEur?: number;
+  priceCents?: number;
+  proposedPriceEur?: number;
+  rating?: number;
+  title?: string | null;
+  author?: string;
+  fields?: string[];
+};
+
+function parseDetails(json: string | null): AuditDetails | null {
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as AuditDetails;
+  } catch {
+    return null;
+  }
 }
 
-function auditContentLabel(type: ModerationAuditLogEntry["contentType"]): string {
-  if (type === "price_update") return "Price Update";
-  return type.charAt(0).toUpperCase() + type.slice(1);
+function formatAuditContext(
+  contentType: ModerationAuditLogEntry["contentType"],
+  details: AuditDetails | null,
+): string | null {
+  if (!details) return null;
+
+  if (
+    contentType === "brand" ||
+    contentType === "location" ||
+    contentType === "style" ||
+    contentType === "variant"
+  ) {
+    return details.name ?? null;
+  }
+
+  if (contentType === "offer") {
+    const label =
+      details.variant && details.brand
+        ? `${details.brand} ${details.variant}`
+        : (details.variant ?? details.brand ?? null);
+    const atLocation = details.location ? ` @ ${details.location}` : "";
+    const price =
+      details.priceEur != null
+        ? ` — €${details.priceEur.toFixed(2)}`
+        : details.priceCents != null
+          ? ` — €${(details.priceCents / 100).toFixed(2)}`
+          : "";
+    return label ? `${label}${atLocation}${price}` : null;
+  }
+
+  if (contentType === "price_update") {
+    const label =
+      details.variant && details.brand
+        ? `${details.brand} ${details.variant}`
+        : (details.variant ?? details.brand ?? null);
+    const atLocation = details.location ? ` @ ${details.location}` : "";
+    const price =
+      details.proposedPriceEur != null ? ` — €${details.proposedPriceEur.toFixed(2)}` : "";
+    return label ? `${label}${atLocation}${price}` : null;
+  }
+
+  if (contentType === "review") {
+    const parts: string[] = [];
+    if (details.rating != null) parts.push(`${details.rating}★`);
+    if (details.title) parts.push(`"${details.title}"`);
+    if (details.author) parts.push(`by ${details.author}`);
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
+
+  return null;
+}
+
+function formatEditedFields(details: AuditDetails | null): string | null {
+  if (!details?.fields || details.fields.length === 0) return null;
+  return `edited: ${details.fields.join(", ")}`;
 }
 
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -1176,18 +1244,38 @@ export function ModerationClient({
           <p className={styles.notice}>No moderation actions recorded yet.</p>
         ) : (
           <ul className={styles.list}>
-            {auditLog.map((entry) => (
-              <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
-                <p>
-                  <strong>{entry.moderatorName}</strong>{" "}
-                  <span className={styles[`audit_${entry.action}`]}>
-                    {auditActionLabel(entry.action)}
-                  </span>{" "}
-                  {auditContentLabel(entry.contentType)} <code>{entry.contentId.slice(0, 8)}…</code>
-                </p>
-                <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
-              </li>
-            ))}
+            {auditLog.map((entry) => {
+              const details = parseDetails(entry.details);
+              const context = formatAuditContext(entry.contentType, details);
+              const editedFields = entry.action === "edit" ? formatEditedFields(details) : null;
+              const moderatorLabel = entry.currentModeratorName ?? entry.moderatorName;
+              return (
+                <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
+                  <p>
+                    <strong>{moderatorLabel}</strong>{" "}
+                    <span
+                      className={styles[`audit_${entry.action}` as keyof typeof styles] as string}
+                    >
+                      {entry.action}
+                    </span>{" "}
+                    {entry.contentType.replace("_", " ")}
+                    {context && (
+                      <>
+                        {" "}
+                        <span className={styles.auditContext}>({context})</span>
+                      </>
+                    )}
+                    {editedFields && (
+                      <>
+                        {" "}
+                        <span className={styles.auditMeta}>[{editedFields}]</span>
+                      </>
+                    )}
+                  </p>
+                  <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
         <p style={{ marginTop: "0.75rem" }}>

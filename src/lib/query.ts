@@ -1411,12 +1411,14 @@ export async function getModerationAuditLog(limit = 100): Promise<ModerationAudi
   const entries = await db.moderationAuditLog.findMany({
     orderBy: { createdAt: "desc" },
     take: limit,
+    include: { moderator: { select: { displayName: true } } },
   });
 
   return entries.map((entry) => ({
     id: entry.id,
     moderatorId: entry.moderatorId,
     moderatorName: entry.moderatorName,
+    currentModeratorName: entry.moderator?.displayName ?? null,
     action: entry.action as ModerationAction,
     contentType: entry.contentType as ModerationContentType,
     contentId: entry.contentId,
@@ -1436,6 +1438,7 @@ export async function getModerationAuditLogPage(
       orderBy: { createdAt: "desc" },
       skip,
       take: pageSize,
+      include: { moderator: { select: { displayName: true } } },
     }),
     db.moderationAuditLog.count(),
   ]);
@@ -1445,6 +1448,7 @@ export async function getModerationAuditLogPage(
       id: entry.id,
       moderatorId: entry.moderatorId,
       moderatorName: entry.moderatorName,
+      currentModeratorName: entry.moderator?.displayName ?? null,
       action: entry.action as ModerationAction,
       contentType: entry.contentType as ModerationContentType,
       contentId: entry.contentId,
@@ -1571,98 +1575,140 @@ export async function editModerationReview(
   return mapReview(review);
 }
 
-export async function deleteModerationReview(reviewId: string): Promise<boolean> {
+export async function deleteModerationReview(
+  reviewId: string,
+): Promise<
+  { deleted: false } | { deleted: true; rating: number; title: string | null; author: string }
+> {
   const existing = await db.review.findUnique({
     where: { id: reviewId },
-    select: { id: true },
+    select: {
+      id: true,
+      rating: true,
+      title: true,
+      user: { select: { displayName: true } },
+    },
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.review.delete({ where: { id: reviewId } });
 
-  return true;
+  return {
+    deleted: true,
+    rating: existing.rating,
+    title: existing.title,
+    author: existing.user.displayName,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Delete submissions (any status, moderator override)
 // ---------------------------------------------------------------------------
 
-export async function deleteModerationLocation(locationId: string): Promise<boolean> {
+export async function deleteModerationLocation(
+  locationId: string,
+): Promise<{ deleted: false } | { deleted: true; name: string }> {
   const existing = await db.location.findUnique({
     where: { id: locationId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.location.delete({ where: { id: locationId } });
 
-  return true;
+  return { deleted: true, name: existing.name };
 }
 
-export async function deleteModerationBrand(brandId: string): Promise<boolean> {
+export async function deleteModerationBrand(
+  brandId: string,
+): Promise<{ deleted: false } | { deleted: true; name: string }> {
   const existing = await db.beerBrand.findUnique({
     where: { id: brandId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.beerBrand.delete({ where: { id: brandId } });
 
-  return true;
+  return { deleted: true, name: existing.name };
 }
 
-export async function deleteModerationVariant(variantId: string): Promise<boolean> {
+export async function deleteModerationVariant(
+  variantId: string,
+): Promise<{ deleted: false } | { deleted: true; name: string }> {
   const existing = await db.beerVariant.findUnique({
     where: { id: variantId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.beerVariant.delete({ where: { id: variantId } });
 
-  return true;
+  return { deleted: true, name: existing.name };
 }
 
-export async function deleteModerationOffer(offerId: string): Promise<boolean> {
+export async function deleteModerationOffer(
+  offerId: string,
+): Promise<
+  | { deleted: false }
+  | { deleted: true; variant: string; brand: string; location: string; priceEur: number }
+> {
   const existing = await db.beerOffer.findUnique({
     where: { id: offerId },
-    select: { id: true },
+    include: offerInclude(),
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.beerOffer.delete({ where: { id: offerId } });
 
-  return true;
+  return {
+    deleted: true,
+    variant: existing.variantRef.name,
+    brand: existing.variantRef.brand.name,
+    location: existing.location.name,
+    priceEur: existing.priceCents / 100,
+  };
 }
 
-export async function deleteModerationPriceUpdateProposal(proposalId: string): Promise<boolean> {
+export async function deleteModerationPriceUpdateProposal(
+  proposalId: string,
+): Promise<
+  | { deleted: false }
+  | { deleted: true; variant: string; brand: string; location: string; proposedPriceEur: number }
+> {
   const existing = await db.priceUpdateProposal.findUnique({
     where: { id: proposalId },
-    select: { id: true },
+    include: { beerOffer: { include: offerInclude() } },
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.priceUpdateProposal.delete({ where: { id: proposalId } });
 
-  return true;
+  return {
+    deleted: true,
+    variant: existing.beerOffer.variantRef.name,
+    brand: existing.beerOffer.variantRef.brand.name,
+    location: existing.beerOffer.location.name,
+    proposedPriceEur: existing.proposedPriceCents / 100,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1830,16 +1876,18 @@ export async function editAdminStyle(styleId: string, name: string): Promise<Bee
   return mapBeerStyle(updated);
 }
 
-export async function deleteAdminStyle(styleId: string): Promise<boolean> {
+export async function deleteAdminStyle(
+  styleId: string,
+): Promise<{ deleted: false } | { deleted: true; name: string }> {
   const existing = await db.beerStyle.findUnique({
     where: { id: styleId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (!existing) {
-    return false;
+    return { deleted: false };
   }
 
   await db.beerStyle.delete({ where: { id: styleId } });
-  return true;
+  return { deleted: true, name: existing.name };
 }

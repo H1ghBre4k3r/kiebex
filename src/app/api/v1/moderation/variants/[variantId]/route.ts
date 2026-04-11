@@ -81,6 +81,7 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "variant",
       contentId: variantId,
+      details: { name: result.variant.name },
     });
 
     return jsonOk({ variant: result.variant });
@@ -93,9 +94,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { variantId } = await context.params;
-    const deleted = await deleteModerationVariant(variantId);
+    const result = await deleteModerationVariant(variantId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "VARIANT_NOT_FOUND", `No beer variant found for id '${variantId}'.`);
     }
 
@@ -105,6 +106,7 @@ export async function DELETE(
       action: "delete",
       contentType: "variant",
       contentId: variantId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });
