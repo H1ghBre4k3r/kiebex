@@ -89,3 +89,17 @@
   opacity: 0.7;
   cursor: wait;
 }
+
+.verifyButton {
+  background: #1a5c1a !important;
+}
+
+.verified {
+  color: #0a4a09;
+  font-weight: 700;
+}
+
+.unverified {
+  color: #5e0f00;
+  font-weight: 700;
+}

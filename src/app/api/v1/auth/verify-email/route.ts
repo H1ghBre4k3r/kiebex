@@ -1,10 +1,32 @@
 import { createSession, verifyEmailToken } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 const verifyEmailBodySchema = z.object({
   token: z.string().min(1).max(128),
 });
+
+/**
+ * GET /api/v1/auth/verify-email?token=...
+ *
+ * Used by email verification links. Verifies the token, creates a session
+ * (sets the cookie), and redirects. Cookie writes are only permitted in
+ * Route Handlers and Server Actions, not in Server Component renders.
+ */
+export async function GET(request: Request): Promise<Response> {
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get("token") ?? "";
+
+  const result = token ? await verifyEmailToken(token) : null;
+
+  if (!result) {
+    redirect("/verify-email?error=invalid");
+  }
+
+  await createSession(result.userId);
+  redirect("/");
+}
 
 export async function POST(request: Request): Promise<Response> {
   let body: unknown;

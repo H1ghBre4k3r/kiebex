@@ -16,6 +16,7 @@ export type User = {
   displayName: string;
   role: UserRole;
   passwordHash?: string | null;
+  emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

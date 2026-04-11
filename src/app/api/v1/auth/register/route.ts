@@ -5,7 +5,7 @@ import { registerBodySchema } from "@/lib/validation";
 
 function buildVerificationUrl(request: Request, token: string): string {
   const appUrl = process.env.APP_URL ?? new URL(request.url).origin;
-  return `${appUrl}/verify-email?token=${token}`;
+  return `${appUrl}/api/v1/auth/verify-email?token=${token}`;
 }
 
 export async function POST(request: Request): Promise<Response> {

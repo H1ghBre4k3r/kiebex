@@ -1281,6 +1281,7 @@ export async function getUsersForAdmin(): Promise<User[]> {
     displayName: user.displayName,
     role: user.role,
     passwordHash: null,
+    emailVerified: user.emailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }));
@@ -1326,6 +1327,47 @@ export async function updateUserRoleByAdmin(params: {
       displayName: updatedUser.displayName,
       role: updatedUser.role,
       passwordHash: null,
+      emailVerified: updatedUser.emailVerified,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+    },
+  };
+}
+
+export async function verifyUserByAdmin(params: {
+  targetUserId: string;
+}): Promise<
+  { outcome: "verified"; user: User } | { outcome: "not_found" } | { outcome: "already_verified" }
+> {
+  const targetUser = await db.user.findUnique({
+    where: { id: params.targetUserId },
+  });
+
+  if (!targetUser) {
+    return { outcome: "not_found" };
+  }
+
+  if (targetUser.emailVerified) {
+    return { outcome: "already_verified" };
+  }
+
+  const updatedUser = await db.user.update({
+    where: { id: params.targetUserId },
+    data: {
+      emailVerified: true,
+      emailVerificationTokens: { deleteMany: {} },
+    },
+  });
+
+  return {
+    outcome: "verified",
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      role: updatedUser.role,
+      passwordHash: null,
+      emailVerified: updatedUser.emailVerified,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
     },

@@ -41,6 +41,7 @@ export default async function AdminUsersPage() {
           email: user.email,
           displayName: user.displayName,
           role: user.role,
+          emailVerified: user.emailVerified,
           createdAt: user.createdAt.toISOString(),
         }))}
       />
