@@ -94,6 +94,20 @@ type AuditDetails = {
   title?: string | null;
   author?: string;
   fields?: string[];
+  locationType?: string;
+  district?: string;
+  address?: string;
+  style?: string;
+  sizeMl?: number;
+  serving?: string;
+  previousName?: string;
+  previousLocationType?: string;
+  previousDistrict?: string;
+  previousAddress?: string;
+  previousStyle?: string;
+  previousPriceEur?: number;
+  currentPriceEur?: number;
+  locationName?: string;
 };
 
 function parseDetails(json: string | null): AuditDetails | null {
@@ -111,13 +125,40 @@ function formatAuditContext(
 ): string | null {
   if (!details) return null;
 
-  if (
-    contentType === "brand" ||
-    contentType === "location" ||
-    contentType === "style" ||
-    contentType === "variant"
-  ) {
+  if (contentType === "brand" || contentType === "style") {
+    if (details.previousName !== undefined && details.previousName !== details.name) {
+      return `${details.previousName} → ${details.name}`;
+    }
     return details.name ?? null;
+  }
+
+  if (contentType === "location") {
+    const meta: string[] = [];
+    if (details.locationType) meta.push(details.locationType);
+    if (details.district) meta.push(details.district);
+    const suffix = meta.length > 0 ? ` (${meta.join(", ")})` : "";
+    if (details.previousName !== undefined && details.previousName !== details.name) {
+      return `${details.previousName} → ${details.name}${suffix}`;
+    }
+    return details.name ? `${details.name}${suffix}` : null;
+  }
+
+  if (contentType === "variant") {
+    if (details.previousName !== undefined) {
+      const namePart =
+        details.previousName !== details.name
+          ? `${details.previousName} → ${details.name}`
+          : (details.name ?? details.previousName ?? null);
+      const styleChanged =
+        details.previousStyle !== undefined && details.previousStyle !== details.style;
+      const stylePart = styleChanged ? `style: ${details.previousStyle} → ${details.style}` : null;
+      const parts = [namePart, stylePart].filter(Boolean);
+      return parts.length > 0 ? parts.join(", ") : null;
+    }
+    const label =
+      details.brand && details.name ? `${details.brand} ${details.name}` : (details.name ?? null);
+    const suffix = details.style ? ` (${details.style})` : "";
+    return label ? `${label}${suffix}` : null;
   }
 
   if (contentType === "offer") {
@@ -125,14 +166,21 @@ function formatAuditContext(
       details.variant && details.brand
         ? `${details.brand} ${details.variant}`
         : (details.variant ?? details.brand ?? null);
+    const meta: string[] = [];
+    if (details.style) meta.push(details.style);
+    if (details.sizeMl != null) meta.push(`${details.sizeMl}ml`);
+    if (details.serving) meta.push(details.serving);
+    const metaSuffix = meta.length > 0 ? ` (${meta.join(", ")})` : "";
     const atLocation = details.location ? ` @ ${details.location}` : "";
-    const price =
-      details.priceEur != null
-        ? ` — €${details.priceEur.toFixed(2)}`
-        : details.priceCents != null
-          ? ` — €${(details.priceCents / 100).toFixed(2)}`
-          : "";
-    return label ? `${label}${atLocation}${price}` : null;
+    let price = "";
+    if (details.previousPriceEur != null && details.priceCents != null) {
+      price = ` — €${details.previousPriceEur.toFixed(2)} → €${(details.priceCents / 100).toFixed(2)}`;
+    } else if (details.priceEur != null) {
+      price = ` — €${details.priceEur.toFixed(2)}`;
+    } else if (details.priceCents != null) {
+      price = ` — €${(details.priceCents / 100).toFixed(2)}`;
+    }
+    return label ? `${label}${metaSuffix}${atLocation}${price}` : null;
   }
 
   if (contentType === "price_update") {
@@ -141,8 +189,12 @@ function formatAuditContext(
         ? `${details.brand} ${details.variant}`
         : (details.variant ?? details.brand ?? null);
     const atLocation = details.location ? ` @ ${details.location}` : "";
-    const price =
-      details.proposedPriceEur != null ? ` — €${details.proposedPriceEur.toFixed(2)}` : "";
+    let price = "";
+    if (details.currentPriceEur != null && details.proposedPriceEur != null) {
+      price = ` — €${details.currentPriceEur.toFixed(2)} → €${details.proposedPriceEur.toFixed(2)}`;
+    } else if (details.proposedPriceEur != null) {
+      price = ` — €${details.proposedPriceEur.toFixed(2)}`;
+    }
     return label ? `${label}${atLocation}${price}` : null;
   }
 
@@ -151,6 +203,7 @@ function formatAuditContext(
     if (details.rating != null) parts.push(`${details.rating}★`);
     if (details.title) parts.push(`"${details.title}"`);
     if (details.author) parts.push(`by ${details.author}`);
+    if (details.locationName) parts.push(`@ ${details.locationName}`);
     return parts.length > 0 ? parts.join(" ") : null;
   }
 

@@ -53,9 +53,9 @@ export async function PUT(
     }
 
     const { variantId } = await context.params;
-    const variant = await editAdminVariant(variantId, parsed.data);
+    const result = await editAdminVariant(variantId, parsed.data);
 
-    if (!variant) {
+    if (!result) {
       return jsonError(404, "VARIANT_NOT_FOUND", `No variant found for id '${variantId}'.`);
     }
 
@@ -65,10 +65,16 @@ export async function PUT(
       action: "edit",
       contentType: "variant",
       contentId: variantId,
-      details: { name: variant.name, fields: Object.keys(parsed.data) },
+      details: {
+        name: result.variant.name,
+        previousName: result.previousName,
+        style: result.variant.style?.name,
+        previousStyle: result.previousStyle,
+        fields: Object.keys(parsed.data),
+      },
     });
 
-    return jsonOk({ variant });
+    return jsonOk({ variant: result.variant });
   });
 }
 

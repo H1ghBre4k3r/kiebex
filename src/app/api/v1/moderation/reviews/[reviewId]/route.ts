@@ -70,7 +70,12 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "review",
       contentId: reviewId,
-      details: { rating: review.rating, title: review.title, author: review.author.displayName },
+      details: {
+        rating: review.rating,
+        title: review.title,
+        author: review.author.displayName,
+        locationName: review.locationName,
+      },
     });
 
     return jsonOk({ review });
@@ -121,6 +126,7 @@ export async function PUT(
         rating: review.rating,
         title: review.title,
         author: review.author.displayName,
+        locationName: review.locationName,
         fields: Object.keys(parsed.data).filter(
           (k) => parsed.data[k as keyof typeof parsed.data] !== undefined,
         ),
@@ -149,7 +155,12 @@ export async function DELETE(
       action: "delete",
       contentType: "review",
       contentId: reviewId,
-      details: { rating: result.rating, title: result.title, author: result.author },
+      details: {
+        rating: result.rating,
+        title: result.title,
+        author: result.author,
+        locationName: result.locationName,
+      },
     });
 
     return jsonOk({ deleted: true });

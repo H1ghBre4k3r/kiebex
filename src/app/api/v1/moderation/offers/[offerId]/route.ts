@@ -93,6 +93,9 @@ export async function PATCH(
       details: {
         variant: result.offer.variant,
         brand: result.offer.brand,
+        style: result.offer.style,
+        sizeMl: result.offer.sizeMl,
+        serving: result.offer.serving,
         location: result.offer.location.name,
         priceEur: result.offer.priceEur,
       },
@@ -130,9 +133,9 @@ export async function PUT(
     }
 
     const { offerId } = await context.params;
-    const offer = await editModerationOffer(offerId, parsed.data.priceCents);
+    const result = await editModerationOffer(offerId, parsed.data.priceCents);
 
-    if (!offer) {
+    if (!result) {
       return jsonError(404, "OFFER_NOT_FOUND", `No offer found for id '${offerId}'.`);
     }
 
@@ -143,14 +146,18 @@ export async function PUT(
       contentType: "offer",
       contentId: offerId,
       details: {
-        variant: offer.variant,
-        brand: offer.brand,
-        location: offer.location.name,
+        variant: result.offer.variant,
+        brand: result.offer.brand,
+        style: result.offer.style,
+        sizeMl: result.offer.sizeMl,
+        serving: result.offer.serving,
+        location: result.offer.location.name,
         priceCents: parsed.data.priceCents,
+        previousPriceEur: result.previousPriceEur,
       },
     });
 
-    return jsonOk({ offer });
+    return jsonOk({ offer: result.offer });
   });
 }
 
@@ -175,6 +182,9 @@ export async function DELETE(
       details: {
         variant: result.variant,
         brand: result.brand,
+        style: result.style,
+        sizeMl: result.sizeMl,
+        serving: result.serving,
         location: result.location,
         priceEur: result.priceEur,
       },

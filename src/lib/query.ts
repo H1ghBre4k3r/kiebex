@@ -1174,7 +1174,12 @@ export async function moderatePriceUpdateProposal(
   proposalId: string,
   status: ModerationStatusDecision,
 ): Promise<
-  | { outcome: "updated"; proposal: PriceUpdateProposal; offer: BeerOfferWithLocation }
+  | {
+      outcome: "updated";
+      proposal: PriceUpdateProposal;
+      offer: BeerOfferWithLocation;
+      previousPriceEur: number;
+    }
   | { outcome: "missing" | "offer_not_approved" | "location_not_approved" | "variant_not_approved" }
 > {
   const proposal = await db.priceUpdateProposal.findUnique({
@@ -1267,6 +1272,7 @@ export async function moderatePriceUpdateProposal(
       updatedAt: updatedProposal.updatedAt,
     },
     offer: mapOfferWithLocation(updatedOffer),
+    previousPriceEur: proposal.beerOffer.priceCents / 100,
   };
 }
 
@@ -1502,7 +1508,7 @@ export async function getAllReviewsForModeration(): Promise<ModerationReview[]> 
 export async function moderateReviewDecision(
   reviewId: string,
   status: ReviewStatus,
-): Promise<ReviewWithAuthor | null> {
+): Promise<ModerationReview | null> {
   const existing = await db.review.findUnique({
     where: { id: reviewId },
     select: { id: true },
@@ -1526,10 +1532,14 @@ export async function moderateReviewDecision(
       createdAt: true,
       updatedAt: true,
       user: { select: { id: true, displayName: true } },
+      location: { select: { name: true } },
     },
   });
 
-  return mapReview(review);
+  return {
+    ...mapReview(review),
+    locationName: review.location.name,
+  };
 }
 
 export async function editModerationReview(
@@ -1539,7 +1549,7 @@ export async function editModerationReview(
     title?: string | null;
     body?: string | null;
   },
-): Promise<ReviewWithAuthor | null> {
+): Promise<ModerationReview | null> {
   const existing = await db.review.findUnique({
     where: { id: reviewId },
     select: { id: true },
@@ -1569,16 +1579,21 @@ export async function editModerationReview(
       createdAt: true,
       updatedAt: true,
       user: { select: { id: true, displayName: true } },
+      location: { select: { name: true } },
     },
   });
 
-  return mapReview(review);
+  return {
+    ...mapReview(review),
+    locationName: review.location.name,
+  };
 }
 
 export async function deleteModerationReview(
   reviewId: string,
 ): Promise<
-  { deleted: false } | { deleted: true; rating: number; title: string | null; author: string }
+  | { deleted: false }
+  | { deleted: true; rating: number; title: string | null; author: string; locationName: string }
 > {
   const existing = await db.review.findUnique({
     where: { id: reviewId },
@@ -1587,6 +1602,7 @@ export async function deleteModerationReview(
       rating: true,
       title: true,
       user: { select: { displayName: true } },
+      location: { select: { name: true } },
     },
   });
 
@@ -1601,6 +1617,7 @@ export async function deleteModerationReview(
     rating: existing.rating,
     title: existing.title,
     author: existing.user.displayName,
+    locationName: existing.location.name,
   };
 }
 
@@ -1610,10 +1627,13 @@ export async function deleteModerationReview(
 
 export async function deleteModerationLocation(
   locationId: string,
-): Promise<{ deleted: false } | { deleted: true; name: string }> {
+): Promise<
+  | { deleted: false }
+  | { deleted: true; name: string; locationType: string; district: string; address: string }
+> {
   const existing = await db.location.findUnique({
     where: { id: locationId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, locationType: true, district: true, address: true },
   });
 
   if (!existing) {
@@ -1622,7 +1642,13 @@ export async function deleteModerationLocation(
 
   await db.location.delete({ where: { id: locationId } });
 
-  return { deleted: true, name: existing.name };
+  return {
+    deleted: true,
+    name: existing.name,
+    locationType: existing.locationType,
+    district: existing.district,
+    address: existing.address,
+  };
 }
 
 export async function deleteModerationBrand(
@@ -1644,10 +1670,15 @@ export async function deleteModerationBrand(
 
 export async function deleteModerationVariant(
   variantId: string,
-): Promise<{ deleted: false } | { deleted: true; name: string }> {
+): Promise<{ deleted: false } | { deleted: true; name: string; brand: string; style: string }> {
   const existing = await db.beerVariant.findUnique({
     where: { id: variantId },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      brand: { select: { name: true } },
+      style: { select: { name: true } },
+    },
   });
 
   if (!existing) {
@@ -1656,14 +1687,26 @@ export async function deleteModerationVariant(
 
   await db.beerVariant.delete({ where: { id: variantId } });
 
-  return { deleted: true, name: existing.name };
+  return {
+    deleted: true,
+    name: existing.name,
+    brand: existing.brand.name,
+    style: existing.style.name,
+  };
 }
 
-export async function deleteModerationOffer(
-  offerId: string,
-): Promise<
+export async function deleteModerationOffer(offerId: string): Promise<
   | { deleted: false }
-  | { deleted: true; variant: string; brand: string; location: string; priceEur: number }
+  | {
+      deleted: true;
+      variant: string;
+      brand: string;
+      style: string;
+      sizeMl: number;
+      serving: string;
+      location: string;
+      priceEur: number;
+    }
 > {
   const existing = await db.beerOffer.findUnique({
     where: { id: offerId },
@@ -1680,16 +1723,24 @@ export async function deleteModerationOffer(
     deleted: true,
     variant: existing.variantRef.name,
     brand: existing.variantRef.brand.name,
+    style: existing.variantRef.style.name,
+    sizeMl: existing.sizeMl,
+    serving: existing.serving,
     location: existing.location.name,
     priceEur: existing.priceCents / 100,
   };
 }
 
-export async function deleteModerationPriceUpdateProposal(
-  proposalId: string,
-): Promise<
+export async function deleteModerationPriceUpdateProposal(proposalId: string): Promise<
   | { deleted: false }
-  | { deleted: true; variant: string; brand: string; location: string; proposedPriceEur: number }
+  | {
+      deleted: true;
+      variant: string;
+      brand: string;
+      location: string;
+      proposedPriceEur: number;
+      currentPriceEur: number;
+    }
 > {
   const existing = await db.priceUpdateProposal.findUnique({
     where: { id: proposalId },
@@ -1708,6 +1759,7 @@ export async function deleteModerationPriceUpdateProposal(
     brand: existing.beerOffer.variantRef.brand.name,
     location: existing.beerOffer.location.name,
     proposedPriceEur: existing.proposedPriceCents / 100,
+    currentPriceEur: existing.beerOffer.priceCents / 100,
   };
 }
 
@@ -1723,10 +1775,16 @@ export async function editModerationLocation(
     district?: string;
     address?: string;
   },
-): Promise<Location | null> {
+): Promise<{
+  location: Location;
+  previousName: string;
+  previousLocationType: string;
+  previousDistrict: string;
+  previousAddress: string;
+} | null> {
   const existing = await db.location.findUnique({
     where: { id: locationId },
-    select: { id: true },
+    select: { id: true, name: true, locationType: true, district: true, address: true },
   });
 
   if (!existing) {
@@ -1743,16 +1801,22 @@ export async function editModerationLocation(
     },
   });
 
-  return mapLocation(updated);
+  return {
+    location: mapLocation(updated),
+    previousName: existing.name,
+    previousLocationType: existing.locationType,
+    previousDistrict: existing.district,
+    previousAddress: existing.address,
+  };
 }
 
 export async function editModerationOffer(
   offerId: string,
   priceCents: number,
-): Promise<BeerOfferWithLocation | null> {
+): Promise<{ offer: BeerOfferWithLocation; previousPriceEur: number } | null> {
   const existing = await db.beerOffer.findUnique({
     where: { id: offerId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, priceCents: true },
   });
 
   if (!existing) {
@@ -1779,13 +1843,16 @@ export async function editModerationOffer(
     return updatedOffer;
   });
 
-  return mapOfferWithLocation(updated);
+  return { offer: mapOfferWithLocation(updated), previousPriceEur: existing.priceCents / 100 };
 }
 
-export async function editAdminBrand(brandId: string, name: string): Promise<BeerBrand | null> {
+export async function editAdminBrand(
+  brandId: string,
+  name: string,
+): Promise<{ brand: BeerBrand; previousName: string } | null> {
   const existing = await db.beerBrand.findUnique({
     where: { id: brandId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (!existing) {
@@ -1797,16 +1864,16 @@ export async function editAdminBrand(brandId: string, name: string): Promise<Bee
     data: { name: name.trim() },
   });
 
-  return mapBeerBrand(updated);
+  return { brand: mapBeerBrand(updated), previousName: existing.name };
 }
 
 export async function editAdminVariant(
   variantId: string,
   input: { name?: string; styleId?: string },
-): Promise<BeerVariant | null> {
+): Promise<{ variant: BeerVariant; previousName: string; previousStyle: string } | null> {
   const existing = await db.beerVariant.findUnique({
     where: { id: variantId },
-    select: { id: true },
+    select: { id: true, name: true, style: { select: { name: true } } },
   });
 
   if (!existing) {
@@ -1822,7 +1889,11 @@ export async function editAdminVariant(
     include: { brand: true, style: true },
   });
 
-  return mapBeerVariant(updated);
+  return {
+    variant: mapBeerVariant(updated),
+    previousName: existing.name,
+    previousStyle: existing.style.name,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1858,10 +1929,13 @@ export async function createAdminStyle(name: string): Promise<BeerStyle | null> 
   return mapBeerStyle(created);
 }
 
-export async function editAdminStyle(styleId: string, name: string): Promise<BeerStyle | null> {
+export async function editAdminStyle(
+  styleId: string,
+  name: string,
+): Promise<{ style: BeerStyle; previousName: string } | null> {
   const existing = await db.beerStyle.findUnique({
     where: { id: styleId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (!existing) {
@@ -1873,7 +1947,7 @@ export async function editAdminStyle(styleId: string, name: string): Promise<Bee
     data: { name: name.trim() },
   });
 
-  return mapBeerStyle(updated);
+  return { style: mapBeerStyle(updated), previousName: existing.name };
 }
 
 export async function deleteAdminStyle(

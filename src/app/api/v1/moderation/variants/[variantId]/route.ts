@@ -81,7 +81,11 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "variant",
       contentId: variantId,
-      details: { name: result.variant.name },
+      details: {
+        name: result.variant.name,
+        brand: result.variant.brand?.name,
+        style: result.variant.style?.name,
+      },
     });
 
     return jsonOk({ variant: result.variant });
@@ -106,7 +110,7 @@ export async function DELETE(
       action: "delete",
       contentType: "variant",
       contentId: variantId,
-      details: { name: result.name },
+      details: { name: result.name, brand: result.brand, style: result.style },
     });
 
     return jsonOk({ deleted: true });

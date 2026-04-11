@@ -102,6 +102,7 @@ export async function PATCH(
         brand: result.offer.brand,
         location: result.offer.location.name,
         proposedPriceEur: result.proposal.proposedPriceEur,
+        currentPriceEur: result.previousPriceEur,
       },
     });
 
@@ -139,6 +140,7 @@ export async function DELETE(
         brand: result.brand,
         location: result.location,
         proposedPriceEur: result.proposedPriceEur,
+        currentPriceEur: result.currentPriceEur,
       },
     });
 
