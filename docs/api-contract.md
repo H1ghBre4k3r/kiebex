@@ -66,15 +66,16 @@ Example response:
 
 ### `GET /beers` (public)
 
-Query parameters (all optional):
+Query parameters (all optional, filter params accept multiple values via repeated keys):
 
-- `brandId` (string)
-- `variantId` (string)
-- `styleId` (string)
-- `sizeMl` (integer, `1..2000`)
-- `serving` (`tap | bottle | can`)
-- `locationType` (`pub | bar | restaurant | supermarket`)
-- `locationId` (string)
+- `brandId` (string, repeatable — e.g. `?brandId=a&brandId=b`)
+- `variantId` (string, repeatable)
+- `styleId` (string, repeatable)
+- `sizeMl` (integer `1..2000`, repeatable)
+- `serving` (`tap | bottle | can`, repeatable)
+- `locationType` (`pub | bar | restaurant | supermarket`, repeatable)
+- `locationId` (string, repeatable)
+- `sort` (`price_asc | price_desc`, default `price_asc`, single value)
 
 Example:
 

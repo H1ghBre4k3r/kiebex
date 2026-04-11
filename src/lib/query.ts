@@ -444,40 +444,60 @@ export async function getVariantContributionPermission(
   return "forbidden";
 }
 
+export const BEER_OFFERS_PAGE_SIZE = 20;
+
+function buildBeerOffersWhere(query: BeerQuery) {
+  return {
+    sizeMl: query.sizeMl?.length ? { in: query.sizeMl } : undefined,
+    serving: query.serving?.length ? { in: query.serving } : undefined,
+    locationId: query.locationId?.length ? { in: query.locationId } : undefined,
+    status: "approved" as const,
+    location: {
+      locationType: query.locationType?.length ? { in: query.locationType } : undefined,
+      status: "approved" as const,
+    },
+    variantRef: {
+      id: query.variantId?.length ? { in: query.variantId } : undefined,
+      brandId: query.brandId?.length ? { in: query.brandId } : undefined,
+      styleId: query.styleId?.length ? { in: query.styleId } : undefined,
+      status: "approved" as const,
+      brand: { status: "approved" as const },
+    },
+  };
+}
+
 export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWithLocation[]> {
   const offers = await db.beerOffer.findMany({
-    where: {
-      sizeMl: query.sizeMl,
-      serving: query.serving,
-      locationId: query.locationId,
-      status: "approved",
-      location: query.locationType
-        ? {
-            locationType: query.locationType,
-            status: "approved",
-          }
-        : {
-            status: "approved",
-          },
-      variantRef: {
-        id: query.variantId,
-        brandId: query.brandId,
-        styleId: query.styleId,
-        status: "approved",
-        brand: {
-          status: "approved",
-        },
-      },
-    },
+    where: buildBeerOffersWhere(query),
     include: offerInclude(),
-    orderBy: [{ priceCents: "asc" }],
+    orderBy: [{ priceCents: query.sort === "price_desc" ? "desc" : "asc" }],
   });
 
   return offers.map(mapOfferWithLocation);
 }
 
+export async function getBeerOffersPage(
+  query: BeerQuery,
+  page: number,
+): Promise<{ offers: BeerOfferWithLocation[]; total: number }> {
+  const where = buildBeerOffersWhere(query);
+
+  const [total, rows] = await Promise.all([
+    db.beerOffer.count({ where }),
+    db.beerOffer.findMany({
+      where,
+      include: offerInclude(),
+      orderBy: [{ priceCents: query.sort === "price_desc" ? "desc" : "asc" }],
+      skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
+      take: BEER_OFFERS_PAGE_SIZE,
+    }),
+  ]);
+
+  return { offers: rows.map(mapOfferWithLocation), total };
+}
+
 export async function getLocationOffers(locationId: string): Promise<BeerOfferWithLocation[]> {
-  return getBeerOffers({ locationId });
+  return getBeerOffers({ locationId: [locationId] });
 }
 
 export async function getLocationReviewPermission(

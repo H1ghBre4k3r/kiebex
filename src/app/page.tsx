@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
@@ -6,6 +7,8 @@ import {
   formatEur,
   getBeerBrands,
   getBeerOffers,
+  getBeerOffersPage,
+  BEER_OFFERS_PAGE_SIZE,
   getBeerStyles,
   getLocationReviewSummaries,
   getBeerVariants,
@@ -14,19 +17,153 @@ import {
   locationTypeLabel,
 } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
+import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";
+import { FilterPanel } from "./filter-panel";
 import styles from "./page.module.css";
 
 type SearchValue = string | string[] | undefined;
 
-const LOCATION_TYPES = ["pub", "bar", "restaurant", "supermarket"] as const;
-const SERVING_TYPES = ["tap", "bottle", "can"] as const;
+type RawMap = Record<string, string[]>;
 
-function firstValue(value: SearchValue): string {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
+function toRawMap(raw: Record<string, SearchValue>): RawMap {
+  const map: RawMap = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (Array.isArray(value)) {
+      const compact = value.filter(Boolean);
+      if (compact.length > 0) map[key] = compact;
+    } else if (value) {
+      map[key] = [value];
+    }
+  }
+  return map;
+}
+
+function rawMapToUrl(map: RawMap): string {
+  const params = new URLSearchParams();
+  for (const [key, values] of Object.entries(map)) {
+    for (const value of values) {
+      params.append(key, value);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
+}
+
+function removeOneValue(map: RawMap, key: string, value: string): RawMap {
+  const next = { ...map };
+  next[key] = (next[key] ?? []).filter((v) => v !== value);
+  if (next[key].length === 0) delete next[key];
+  return next;
+}
+
+type ActiveChip = { label: string; removeUrl: string };
+
+function buildActiveChips(
+  raw: Record<string, SearchValue>,
+  brands: BeerBrand[],
+  stylesList: BeerStyle[],
+  variants: BeerVariant[],
+  locations: Location[],
+): ActiveChip[] {
+  const chips: ActiveChip[] = [];
+  const map = toRawMap(raw);
+
+  // Brand chips
+  for (const brandId of map.brandId ?? []) {
+    const brand = brands.find((b) => b.id === brandId);
+    chips.push({
+      label: `Brand: ${brand?.name ?? brandId}`,
+      removeUrl: rawMapToUrl(removeOneValue(map, "brandId", brandId)),
+    });
   }
 
-  return value ?? "";
+  // Variant chips — group by name so "Pils" (3 IDs) produces one chip, not three
+  const selectedVariantIds = new Set(map.variantId ?? []);
+  const variantChipGroups = new Map<string, string[]>();
+  for (const variant of variants) {
+    if (selectedVariantIds.has(variant.id)) {
+      const existing = variantChipGroups.get(variant.name) ?? [];
+      variantChipGroups.set(variant.name, [...existing, variant.id]);
+    }
+  }
+  for (const [name, ids] of variantChipGroups.entries()) {
+    let nextMap = map;
+    for (const id of ids) {
+      nextMap = removeOneValue(nextMap, "variantId", id);
+    }
+    chips.push({
+      label: `Variant: ${name}`,
+      removeUrl: rawMapToUrl(nextMap),
+    });
+  }
+
+  // Style chips
+  for (const styleId of map.styleId ?? []) {
+    const style = stylesList.find((s) => s.id === styleId);
+    chips.push({
+      label: `Style: ${style?.name ?? styleId}`,
+      removeUrl: rawMapToUrl(removeOneValue(map, "styleId", styleId)),
+    });
+  }
+
+  // Size chips
+  for (const sizeMl of map.sizeMl ?? []) {
+    chips.push({
+      label: `Size: ${sizeMl} ml`,
+      removeUrl: rawMapToUrl(removeOneValue(map, "sizeMl", sizeMl)),
+    });
+  }
+
+  // Serving chips
+  for (const serving of map.serving ?? []) {
+    chips.push({
+      label: `Serving: ${getServingLabel(serving as "tap" | "bottle" | "can")}`,
+      removeUrl: rawMapToUrl(removeOneValue(map, "serving", serving)),
+    });
+  }
+
+  // Location type chips
+  for (const locationType of map.locationType ?? []) {
+    chips.push({
+      label: `Type: ${locationTypeLabel(locationType as "pub" | "bar" | "restaurant" | "supermarket")}`,
+      removeUrl: rawMapToUrl(removeOneValue(map, "locationType", locationType)),
+    });
+  }
+
+  // Location chips
+  for (const locationId of map.locationId ?? []) {
+    const location = locations.find((l) => l.id === locationId);
+    chips.push({
+      label: `Location: ${location?.name ?? locationId}`,
+      removeUrl: rawMapToUrl(removeOneValue(map, "locationId", locationId)),
+    });
+  }
+
+  // Sort chip — only when not the default
+  const sort = (map.sort ?? [])[0];
+  if (sort && sort !== "price_asc") {
+    chips.push({
+      label: "Sort: Price High to Low",
+      removeUrl: rawMapToUrl(removeOneValue(map, "sort", sort)),
+    });
+  }
+
+  return chips;
+}
+
+function buildPageUrl(raw: Record<string, SearchValue>, targetPage: number): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(raw)) {
+    if (key === "page") continue;
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, v);
+    } else if (value) {
+      params.append(key, value);
+    }
+  }
+  if (targetPage > 1) params.set("page", String(targetPage));
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
 }
 
 export default async function Home({
@@ -38,23 +175,33 @@ export default async function Home({
   const parsedQuery = parseBeerQueryRecord(rawSearchParams);
   const query = parsedQuery.success ? parsedQuery.data : {};
 
-  const [offers, allOffers, locations, authUser, brands, stylesList, variants] = await Promise.all([
-    getBeerOffers(query),
-    getBeerOffers(),
-    getLocations(),
-    getCurrentAuthUser(),
-    getBeerBrands(),
-    getBeerStyles(),
-    getBeerVariants({
-      brandId: query.brandId,
-    }),
-  ]);
+  const rawPage = rawSearchParams.page;
+  const page = Math.max(
+    1,
+    parseInt(String(Array.isArray(rawPage) ? rawPage[0] : (rawPage ?? "1")), 10) || 1,
+  );
+
+  const [pageResult, allOffers, locations, authUser, brands, stylesList, variants] =
+    await Promise.all([
+      getBeerOffersPage(query, page),
+      getBeerOffers(),
+      getLocations(),
+      getCurrentAuthUser(),
+      getBeerBrands(),
+      getBeerStyles(),
+      getBeerVariants(),
+    ]);
+
+  const { offers, total } = pageResult;
+  const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);
 
   const reviewSummaryByLocation = await getLocationReviewSummaries([
     ...new Set(offers.map((offer) => offer.location.id)),
   ]);
 
   const sizes = [...new Set(allOffers.map((offer) => offer.sizeMl))].sort((a, b) => a - b);
+  const activeChips = buildActiveChips(rawSearchParams, brands, stylesList, variants, locations);
+  const sortDesc = query.sort === "price_desc";
 
   return (
     <div className={styles.page}>
@@ -106,8 +253,24 @@ export default async function Home({
       </header>
 
       <main className={styles.main}>
-        <section className={styles.panel} aria-labelledby="filter-heading">
-          <h2 id="filter-heading">Filter Offers</h2>
+        <Suspense
+          fallback={
+            <section className={styles.panel} aria-labelledby="filter-heading">
+              <h2 id="filter-heading">Filter Offers</h2>
+            </section>
+          }
+        >
+          <FilterPanel
+            brands={brands.map((b) => ({ id: b.id, name: b.name }))}
+            variants={variants.map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }))}
+            stylesList={stylesList.map((s) => ({ id: s.id, name: s.name }))}
+            sizes={sizes}
+            locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+          />
+        </Suspense>
+
+        <section className={styles.panel} aria-labelledby="results-heading">
+          <h2 id="results-heading">Offers ({total})</h2>
 
           {!parsedQuery.success && (
             <div className={styles.errorBox} role="alert" aria-live="polite">
@@ -120,181 +283,133 @@ export default async function Home({
             </div>
           )}
 
-          <form className={styles.filters} method="get">
-            <label>
-              Brand
-              <select name="brandId" defaultValue={firstValue(rawSearchParams.brandId)}>
-                <option value="">Any</option>
-                {brands.map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Variant
-              <select name="variantId" defaultValue={firstValue(rawSearchParams.variantId)}>
-                <option value="">Any</option>
-                {variants.map((variant) => (
-                  <option key={variant.id} value={variant.id}>
-                    {variant.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Style
-              <select name="styleId" defaultValue={firstValue(rawSearchParams.styleId)}>
-                <option value="">Any</option>
-                {stylesList.map((style) => (
-                  <option key={style.id} value={style.id}>
-                    {style.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Size (ml)
-              <select name="sizeMl" defaultValue={firstValue(rawSearchParams.sizeMl)}>
-                <option value="">Any</option>
-                {sizes.map((size) => (
-                  <option key={size} value={size}>
-                    {size} ml
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Serving
-              <select name="serving" defaultValue={firstValue(rawSearchParams.serving)}>
-                <option value="">Any</option>
-                {SERVING_TYPES.map((serving) => (
-                  <option key={serving} value={serving}>
-                    {getServingLabel(serving)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Location Type
-              <select name="locationType" defaultValue={firstValue(rawSearchParams.locationType)}>
-                <option value="">Any</option>
-                {LOCATION_TYPES.map((locationType) => (
-                  <option key={locationType} value={locationType}>
-                    {locationTypeLabel(locationType)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Location
-              <select name="locationId" defaultValue={firstValue(rawSearchParams.locationId)}>
-                <option value="">Any</option>
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className={styles.actions}>
-              <button type="submit">Apply Filters</button>
-              <Link href="/" className={styles.resetLink}>
-                Clear
-              </Link>
+          {activeChips.length > 0 && (
+            <div className={styles.chips} aria-label="Active filters">
+              {activeChips.map((chip) => (
+                <Link key={chip.label} href={chip.removeUrl} className={styles.chip}>
+                  {chip.label} <span aria-hidden="true">×</span>
+                </Link>
+              ))}
+              {activeChips.length > 1 && (
+                <Link href="/" className={styles.chipClear}>
+                  Clear all ×
+                </Link>
+              )}
             </div>
-          </form>
-        </section>
-
-        <section className={styles.panel} aria-labelledby="results-heading">
-          <h2 id="results-heading">Offers ({offers.length})</h2>
+          )}
 
           {offers.length === 0 ? (
             <p className={styles.emptyState}>
               No offers match your current filter set. Try broadening your search.
             </p>
           ) : (
-            <ul className={styles.offerList}>
-              {offers.map((offer, index) => (
-                <li key={offer.id} className={styles.offerItem}>
-                  <article>
-                    <div className={styles.offerHead}>
-                      <h3>
-                        {offer.brand} {offer.variant}
-                      </h3>
-                      <p className={styles.price}>{formatEur(offer.priceEur)}</p>
-                    </div>
+            <>
+              <ul className={styles.offerList}>
+                {offers.map((offer, index) => (
+                  <li key={offer.id} className={styles.offerItem}>
+                    <article>
+                      <div className={styles.offerHead}>
+                        <h3>
+                          {offer.brand} {offer.variant}
+                        </h3>
+                        <p className={styles.price}>{formatEur(offer.priceEur)}</p>
+                      </div>
 
-                    {index === 0 && (
-                      <p className={styles.cheapest}>Lowest price in current result</p>
-                    )}
+                      {index === 0 && (
+                        <p className={styles.cheapest}>
+                          {sortDesc
+                            ? "Highest price in current result"
+                            : "Lowest price in current result"}
+                        </p>
+                      )}
 
-                    <dl className={styles.meta}>
-                      <div>
-                        <dt>Style</dt>
-                        <dd>{offer.style}</dd>
-                      </div>
-                      <div>
-                        <dt>Size</dt>
-                        <dd>{offer.sizeMl} ml</dd>
-                      </div>
-                      <div>
-                        <dt>Serving</dt>
-                        <dd>{getServingLabel(offer.serving)}</dd>
-                      </div>
-                      <div>
-                        <dt>Location</dt>
-                        <dd>
-                          <Link href={`/locations/${offer.location.id}`}>
-                            {offer.location.name}
-                          </Link>
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Type</dt>
-                        <dd>{locationTypeLabel(offer.location.locationType)}</dd>
-                      </div>
-                      <div>
-                        <dt>Reviews</dt>
-                        <dd>
-                          {(() => {
-                            const summary = reviewSummaryByLocation.get(offer.location.id);
+                      <dl className={styles.meta}>
+                        <div>
+                          <dt>Style</dt>
+                          <dd>{offer.style}</dd>
+                        </div>
+                        <div>
+                          <dt>Size</dt>
+                          <dd>{offer.sizeMl} ml</dd>
+                        </div>
+                        <div>
+                          <dt>Serving</dt>
+                          <dd>{getServingLabel(offer.serving)}</dd>
+                        </div>
+                        <div>
+                          <dt>Location</dt>
+                          <dd>
+                            <Link href={`/locations/${offer.location.id}`}>
+                              {offer.location.name}
+                            </Link>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Type</dt>
+                          <dd>{locationTypeLabel(offer.location.locationType)}</dd>
+                        </div>
+                        <div>
+                          <dt>Reviews</dt>
+                          <dd>
+                            {(() => {
+                              const summary = reviewSummaryByLocation.get(offer.location.id);
 
-                            if (
-                              !summary ||
-                              summary.reviewCount === 0 ||
-                              summary.averageRating === null
-                            ) {
-                              return "No reviews";
-                            }
+                              if (
+                                !summary ||
+                                summary.reviewCount === 0 ||
+                                summary.averageRating === null
+                              ) {
+                                return "No reviews";
+                              }
 
-                            return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
-                          })()}
-                        </dd>
-                      </div>
-                    </dl>
+                              return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
+                            })()}
+                          </dd>
+                        </div>
+                      </dl>
 
-                    {authUser?.role === "admin" && (
-                      <AdminOfferActions
-                        offerId={offer.id}
-                        currentPriceCents={Math.round(offer.priceEur * 100)}
-                        className={styles.adminActions}
-                        buttonClassName={undefined}
-                        errorClassName={styles.adminError}
-                      />
-                    )}
-                  </article>
-                </li>
-              ))}
-            </ul>
+                      {authUser?.role === "admin" && (
+                        <AdminOfferActions
+                          offerId={offer.id}
+                          currentPriceCents={Math.round(offer.priceEur * 100)}
+                          className={styles.adminActions}
+                          buttonClassName={undefined}
+                          errorClassName={styles.adminError}
+                        />
+                      )}
+                    </article>
+                  </li>
+                ))}
+              </ul>
+
+              {totalPages > 1 && (
+                <nav className={styles.pagination} aria-label="Offer pages">
+                  {page > 1 ? (
+                    <Link
+                      href={buildPageUrl(rawSearchParams, page - 1)}
+                      className={styles.pageLink}
+                    >
+                      &larr; Prev
+                    </Link>
+                  ) : (
+                    <span className={styles.pageLinkDisabled}>&larr; Prev</span>
+                  )}
+                  <span className={styles.pageInfo}>
+                    Page {page} of {totalPages}
+                  </span>
+                  {page < totalPages ? (
+                    <Link
+                      href={buildPageUrl(rawSearchParams, page + 1)}
+                      className={styles.pageLink}
+                    >
+                      Next &rarr;
+                    </Link>
+                  ) : (
+                    <span className={styles.pageLinkDisabled}>Next &rarr;</span>
+                  )}
+                </nav>
+              )}
+            </>
           )}
         </section>
       </main>
