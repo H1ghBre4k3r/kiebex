@@ -40,7 +40,19 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64/v8
           context: .
+          target: runner
           push: ${{ github.ref_name == 'main' }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:${{ github.sha }}
+
+      - name: Build and Push Migrate Image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64/v8
+          context: .
+          target: migrator
+          push: ${{ github.ref_name == 'main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:${{ github.sha }}

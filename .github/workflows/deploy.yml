@@ -23,8 +23,8 @@ jobs:
           git switch -C deploy
       - name: Update Version In Checked-Out Code
         run: |
-          sed -i "s@\(.*image:\).*@\1 ghcr.io/${{ env.OWNER_LC }}/kiebex:${{ github.sha }}@" ${GITHUB_WORKSPACE}/manifests/deployment.yml
-          sed -i "s@\(.*image:\).*@\1 ghcr.io/${{ env.OWNER_LC }}/kiebex:${{ github.sha }}@" ${GITHUB_WORKSPACE}/manifests/migrate.yml
+          sed -i "s|image: ghcr.io/.*/kiebex-migrate:.*|image: ghcr.io/${{ env.OWNER_LC }}/kiebex-migrate:${{ github.sha }}|" ${GITHUB_WORKSPACE}/manifests/deployment.yml
+          sed -i "s|image: ghcr.io/.*/kiebex:.*|image: ghcr.io/${{ env.OWNER_LC }}/kiebex:${{ github.sha }}|" ${GITHUB_WORKSPACE}/manifests/deployment.yml
       - name: Commit The New Image Reference
         uses: stefanzweifel/git-auto-commit-action@v5
         if: ${{ github.ref_name == 'main' }}

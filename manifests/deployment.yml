@@ -17,6 +17,26 @@ spec:
       labels:
         app: kiebex
     spec:
+      initContainers:
+        - name: migrate
+          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:latest
+          imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -c
+            - |
+              node node_modules/prisma/build/index.js migrate deploy &&
+              node prisma/seed-admin.mjs
+          envFrom:
+            - secretRef:
+                name: kiebex-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
       containers:
         - name: kiebex
           image: ghcr.io/h1ghbre4k3r/kiebex:latest

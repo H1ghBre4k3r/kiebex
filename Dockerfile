@@ -19,6 +19,16 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# ---- migrator ---------------------------------------------------------------
+# Dedicated image for the Kubernetes migration Job.
+# Copies the full node_modules from the builder so the Prisma CLI has all of
+# its runtime dependencies available without any manual cherry-picking.
+FROM node:22-alpine AS migrator
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma       ./prisma
+
 # ---- runner -----------------------------------------------------------------
 # Minimal production image using the standalone output.
 FROM node:22-alpine AS runner
@@ -39,18 +49,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # (the standalone server serves them when a CDN is not in front)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static  ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public        ./public
-
-# Also carry the Prisma schema: `prisma migrate deploy` (run as an init
-# Job before the Deployment starts) needs it at the path the adapter expects.
-COPY --from=builder --chown=nextjs:nodejs /app/prisma        ./prisma
-
-# The Prisma CLI is not imported by the app so Next.js standalone tracing
-# does not include it automatically. Copy it and the full @prisma scope
-# explicitly so the migration Job can run `prisma migrate deploy` inside
-# this image. @prisma/engines and its siblings (@prisma/engines-version,
-# @prisma/get-platform, etc.) are all required by the CLI at runtime.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma  ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 
