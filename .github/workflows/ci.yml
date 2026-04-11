@@ -89,3 +89,10 @@ jobs:
       - lint-typecheck-unit
     uses: ./.github/workflows/image.yml
     secrets: inherit
+  
+  deploy:
+    permissions:
+      contents: write
+    needs: image
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
