@@ -119,13 +119,7 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
       ? currentBrands.filter((b) => b !== brandId)
       : [...currentBrands, brandId];
 
-    const brandVariantIds = new Set(variants.filter((v) => v.brandId === brandId).map((v) => v.id));
-    const currentVariants = searchParams.getAll("variantId");
-    const nextVariants = isDeselecting
-      ? currentVariants.filter((v) => !brandVariantIds.has(v))
-      : currentVariants;
-
-    const url = buildUrl({ brandId: nextBrands, variantId: nextVariants });
+    const url = buildUrl({ brandId: nextBrands });
     startTransition(() => {
       router.push(url, { scroll: false });
     });

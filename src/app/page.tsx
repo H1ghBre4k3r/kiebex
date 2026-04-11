@@ -66,20 +66,12 @@ function buildActiveChips(
   const chips: ActiveChip[] = [];
   const map = toRawMap(raw);
 
-  // Brand chips — removing a brand also removes its variants
+  // Brand chips
   for (const brandId of map.brandId ?? []) {
     const brand = brands.find((b) => b.id === brandId);
-    const brandVariantIds = new Set(variants.filter((v) => v.brandId === brandId).map((v) => v.id));
-    let nextMap = removeOneValue(map, "brandId", brandId);
-    const nextVariants = (nextMap.variantId ?? []).filter((v) => !brandVariantIds.has(v));
-    if (nextVariants.length > 0) {
-      nextMap = { ...nextMap, variantId: nextVariants };
-    } else {
-      delete nextMap.variantId;
-    }
     chips.push({
       label: `Brand: ${brand?.name ?? brandId}`,
-      removeUrl: rawMapToUrl(nextMap),
+      removeUrl: rawMapToUrl(removeOneValue(map, "brandId", brandId)),
     });
   }
 
