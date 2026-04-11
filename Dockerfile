@@ -45,9 +45,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/public        ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma        ./prisma
 
 # The Prisma CLI is not imported by the app so Next.js standalone tracing
-# does not include it automatically. Copy it explicitly so the migration Job
-# can run `prisma migrate deploy` inside this image.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# does not include it automatically. Copy it and the full @prisma scope
+# explicitly so the migration Job can run `prisma migrate deploy` inside
+# this image. @prisma/engines and its siblings (@prisma/engines-version,
+# @prisma/get-platform, etc.) are all required by the CLI at runtime.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma  ./node_modules/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 
