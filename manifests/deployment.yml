@@ -1,27 +1,48 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    io.kompose.service: kiebex-deployment
-  name: kiebex-deployment
+  name: kiebex
   namespace: kiebex
+  labels:
+    app: kiebex
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: kiebex-deployment
-  strategy: {}
+      app: kiebex
   template:
     metadata:
       labels:
-        io.kompose.service: kiebex-deployment
+        app: kiebex
     spec:
       containers:
-        - image: ghcr.io/h1ghbre4k3r/kiebex:latest
+        - name: kiebex
+          image: ghcr.io/h1ghbre4k3r/kiebex:latest
           imagePullPolicy: Always
-          name: kiebex-deployment
           ports:
-            - containerPort: 80
-          resources: {}
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: kiebex-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 5
       restartPolicy: Always
-status: {}

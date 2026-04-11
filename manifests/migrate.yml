@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kiebex-migrate
+  namespace: kiebex
+  labels:
+    app: kiebex
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: kiebex-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: ghcr.io/h1ghbre4k3r/kiebex:latest
+          imagePullPolicy: Always
+          command: ["node", "node_modules/.bin/prisma", "migrate", "deploy"]
+          envFrom:
+            - secretRef:
+                name: kiebex-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
