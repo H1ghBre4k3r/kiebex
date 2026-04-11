@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { LogoutButton } from "@/components/logout-button";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
 import { getCurrentAuthUser } from "@/lib/auth";
 import {
@@ -212,44 +211,6 @@ export default async function Home({
           Compare beer prices across pubs, bars, restaurants, and supermarkets in Kiel. Filter by
           brand, variant, style, serving, and size to find the best offer quickly.
         </p>
-        <div className={styles.authRow}>
-          {authUser ? (
-            <>
-              <p className={styles.authStatus}>Signed in as {authUser.displayName}</p>
-              <div className={styles.authLinks}>
-                <Link href="/contribute" className={styles.authLink}>
-                  Contribute
-                </Link>
-                <Link href="/profile" className={styles.authLink}>
-                  Profile
-                </Link>
-                {authUser.role === "moderator" && (
-                  <Link href="/moderation" className={styles.authLink}>
-                    Moderation
-                  </Link>
-                )}
-                {authUser.role === "admin" && (
-                  <Link href="/admin" className={styles.authLink}>
-                    Admin
-                  </Link>
-                )}
-                <LogoutButton className={styles.authButton} />
-              </div>
-            </>
-          ) : (
-            <>
-              <p className={styles.authStatus}>Contributors can add offers and location reviews.</p>
-              <div className={styles.authLinks}>
-                <Link href="/login" className={styles.authLink}>
-                  Sign In
-                </Link>
-                <Link href="/register" className={styles.authLink}>
-                  Create Account
-                </Link>
-              </div>
-            </>
-          )}
-        </div>
       </header>
 
       <main className={styles.main}>

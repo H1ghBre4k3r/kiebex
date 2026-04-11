@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import styles from "./filter-panel.module.css";
 
 const SERVING_TYPES = [
@@ -67,6 +67,19 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
     selectedLocationTypes.length > 0 ||
     selectedLocations.length > 0 ||
     currentSort !== "price_asc";
+
+  const activeFilterCount = [
+    selectedBrands.length > 0,
+    selectedVariants.length > 0,
+    selectedStyles.length > 0,
+    selectedSizes.length > 0,
+    selectedServings.length > 0,
+    selectedLocationTypes.length > 0,
+    selectedLocations.length > 0,
+    currentSort !== "price_asc",
+  ].filter(Boolean).length;
+
+  const [isOpen, setIsOpen] = useState(false);
 
   function buildUrl(updates: Record<string, string[]>): string {
     const params = new URLSearchParams();
@@ -145,183 +158,197 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
   return (
     <section
       className={`${styles.panel}${isPending ? ` ${styles.pending}` : ""}`}
-      aria-labelledby="filter-heading"
+      aria-label="Filter offers"
     >
-      <div className={styles.panelHeader}>
-        <h2 id="filter-heading">Filter Offers</h2>
-        {hasAnyFilter && (
-          <Link href="/" className={styles.clearAll}>
-            Clear All
-          </Link>
-        )}
-      </div>
+      {/* Mobile toggle — hidden on desktop via CSS */}
+      <button
+        className={styles.toggle}
+        aria-expanded={isOpen}
+        aria-controls="filter-body"
+        onClick={() => setIsOpen((o) => !o)}
+      >
+        <span>Filter Offers{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ""}</span>
+        <span aria-hidden="true">{isOpen ? "▲" : "▼"}</span>
+      </button>
 
-      <div className={styles.groups}>
-        {/* Sort */}
-        <div className={styles.group}>
-          <p className={styles.groupLabel}>Sort By</p>
-          <ul className={styles.radioList} role="list">
-            {[
-              { value: "price_asc", label: "Price: Low to High" },
-              { value: "price_desc", label: "Price: High to Low" },
-            ].map(({ value, label }) => (
-              <li key={value} className={styles.radioItem}>
-                <input
-                  type="radio"
-                  id={`sort-${value}`}
-                  name="sort"
-                  className={styles.radioInput}
-                  checked={currentSort === value}
-                  onChange={() => setSort(value)}
-                />
-                <label htmlFor={`sort-${value}`}>{label}</label>
-              </li>
-            ))}
-          </ul>
+      {/* Body: collapsed on mobile until toggled, always visible on desktop */}
+      <div id="filter-body" className={isOpen ? styles.bodyOpen : styles.body}>
+        <div className={styles.panelHeader}>
+          <h2 id="filter-heading">Filter Offers</h2>
+          {hasAnyFilter && (
+            <Link href="/" className={styles.clearAll}>
+              Clear All
+            </Link>
+          )}
         </div>
 
-        {/* Brand */}
-        {brands.length > 0 && (
+        <div className={styles.groups}>
+          {/* Sort */}
           <div className={styles.group}>
-            <p className={styles.groupLabel}>Brand</p>
-            <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
-              {brands.map((brand) => (
-                <li key={brand.id} className={styles.checkItem}>
+            <p className={styles.groupLabel}>Sort By</p>
+            <ul className={styles.radioList} role="list">
+              {[
+                { value: "price_asc", label: "Price: Low to High" },
+                { value: "price_desc", label: "Price: High to Low" },
+              ].map(({ value, label }) => (
+                <li key={value} className={styles.radioItem}>
                   <input
-                    type="checkbox"
-                    id={`brand-${brand.id}`}
-                    className={styles.checkInput}
-                    checked={selectedBrands.includes(brand.id)}
-                    onChange={() => handleBrandToggle(brand.id)}
+                    type="radio"
+                    id={`sort-${value}`}
+                    name="sort"
+                    className={styles.radioInput}
+                    checked={currentSort === value}
+                    onChange={() => setSort(value)}
                   />
-                  <label htmlFor={`brand-${brand.id}`}>{brand.name}</label>
+                  <label htmlFor={`sort-${value}`}>{label}</label>
                 </li>
               ))}
             </ul>
           </div>
-        )}
 
-        {/* Variant */}
-        {variantGroups.length > 0 && (
-          <div className={styles.group}>
-            <p className={styles.groupLabel}>Variant</p>
-            <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
-              {variantGroups.map((group) => (
-                <li key={group.name} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    id={`variant-${group.name}`}
-                    className={styles.checkInput}
-                    checked={group.ids.some((id) => selectedVariants.includes(id))}
-                    onChange={() => toggleVariantGroup(group.ids)}
-                  />
-                  <label htmlFor={`variant-${group.name}`}>{group.name}</label>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {/* Brand */}
+          {brands.length > 0 && (
+            <div className={styles.group}>
+              <p className={styles.groupLabel}>Brand</p>
+              <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
+                {brands.map((brand) => (
+                  <li key={brand.id} className={styles.checkItem}>
+                    <input
+                      type="checkbox"
+                      id={`brand-${brand.id}`}
+                      className={styles.checkInput}
+                      checked={selectedBrands.includes(brand.id)}
+                      onChange={() => handleBrandToggle(brand.id)}
+                    />
+                    <label htmlFor={`brand-${brand.id}`}>{brand.name}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {/* Style */}
-        {stylesList.length > 0 && (
+          {/* Variant */}
+          {variantGroups.length > 0 && (
+            <div className={styles.group}>
+              <p className={styles.groupLabel}>Variant</p>
+              <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
+                {variantGroups.map((group) => (
+                  <li key={group.name} className={styles.checkItem}>
+                    <input
+                      type="checkbox"
+                      id={`variant-${group.name}`}
+                      className={styles.checkInput}
+                      checked={group.ids.some((id) => selectedVariants.includes(id))}
+                      onChange={() => toggleVariantGroup(group.ids)}
+                    />
+                    <label htmlFor={`variant-${group.name}`}>{group.name}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Style */}
+          {stylesList.length > 0 && (
+            <div className={styles.group}>
+              <p className={styles.groupLabel}>Style</p>
+              <ul className={styles.checkList} role="list">
+                {stylesList.map((style) => (
+                  <li key={style.id} className={styles.checkItem}>
+                    <input
+                      type="checkbox"
+                      id={`style-${style.id}`}
+                      className={styles.checkInput}
+                      checked={selectedStyles.includes(style.id)}
+                      onChange={() => toggle("styleId", style.id)}
+                    />
+                    <label htmlFor={`style-${style.id}`}>{style.name}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Serving */}
           <div className={styles.group}>
-            <p className={styles.groupLabel}>Style</p>
+            <p className={styles.groupLabel}>Serving</p>
             <ul className={styles.checkList} role="list">
-              {stylesList.map((style) => (
-                <li key={style.id} className={styles.checkItem}>
+              {SERVING_TYPES.map(({ value, label }) => (
+                <li key={value} className={styles.checkItem}>
                   <input
                     type="checkbox"
-                    id={`style-${style.id}`}
+                    id={`serving-${value}`}
                     className={styles.checkInput}
-                    checked={selectedStyles.includes(style.id)}
-                    onChange={() => toggle("styleId", style.id)}
+                    checked={selectedServings.includes(value)}
+                    onChange={() => toggle("serving", value)}
                   />
-                  <label htmlFor={`style-${style.id}`}>{style.name}</label>
+                  <label htmlFor={`serving-${value}`}>{label}</label>
                 </li>
               ))}
             </ul>
           </div>
-        )}
 
-        {/* Serving */}
-        <div className={styles.group}>
-          <p className={styles.groupLabel}>Serving</p>
-          <ul className={styles.checkList} role="list">
-            {SERVING_TYPES.map(({ value, label }) => (
-              <li key={value} className={styles.checkItem}>
-                <input
-                  type="checkbox"
-                  id={`serving-${value}`}
-                  className={styles.checkInput}
-                  checked={selectedServings.includes(value)}
-                  onChange={() => toggle("serving", value)}
-                />
-                <label htmlFor={`serving-${value}`}>{label}</label>
-              </li>
-            ))}
-          </ul>
-        </div>
+          {/* Size */}
+          {sizes.length > 0 && (
+            <div className={styles.group}>
+              <p className={styles.groupLabel}>Size (ml)</p>
+              <ul className={styles.checkList} role="list">
+                {sizes.map((size) => (
+                  <li key={size} className={styles.checkItem}>
+                    <input
+                      type="checkbox"
+                      id={`size-${size}`}
+                      className={styles.checkInput}
+                      checked={selectedSizes.includes(String(size))}
+                      onChange={() => toggle("sizeMl", String(size))}
+                    />
+                    <label htmlFor={`size-${size}`}>{size} ml</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {/* Size */}
-        {sizes.length > 0 && (
+          {/* Location Type */}
           <div className={styles.group}>
-            <p className={styles.groupLabel}>Size (ml)</p>
+            <p className={styles.groupLabel}>Location Type</p>
             <ul className={styles.checkList} role="list">
-              {sizes.map((size) => (
-                <li key={size} className={styles.checkItem}>
+              {LOCATION_TYPES.map(({ value, label }) => (
+                <li key={value} className={styles.checkItem}>
                   <input
                     type="checkbox"
-                    id={`size-${size}`}
+                    id={`loctype-${value}`}
                     className={styles.checkInput}
-                    checked={selectedSizes.includes(String(size))}
-                    onChange={() => toggle("sizeMl", String(size))}
+                    checked={selectedLocationTypes.includes(value)}
+                    onChange={() => toggle("locationType", value)}
                   />
-                  <label htmlFor={`size-${size}`}>{size} ml</label>
+                  <label htmlFor={`loctype-${value}`}>{label}</label>
                 </li>
               ))}
             </ul>
           </div>
-        )}
 
-        {/* Location Type */}
-        <div className={styles.group}>
-          <p className={styles.groupLabel}>Location Type</p>
-          <ul className={styles.checkList} role="list">
-            {LOCATION_TYPES.map(({ value, label }) => (
-              <li key={value} className={styles.checkItem}>
-                <input
-                  type="checkbox"
-                  id={`loctype-${value}`}
-                  className={styles.checkInput}
-                  checked={selectedLocationTypes.includes(value)}
-                  onChange={() => toggle("locationType", value)}
-                />
-                <label htmlFor={`loctype-${value}`}>{label}</label>
-              </li>
-            ))}
-          </ul>
+          {/* Location */}
+          {locations.length > 0 && (
+            <div className={styles.group}>
+              <p className={styles.groupLabel}>Location</p>
+              <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
+                {locations.map((location) => (
+                  <li key={location.id} className={styles.checkItem}>
+                    <input
+                      type="checkbox"
+                      id={`location-${location.id}`}
+                      className={styles.checkInput}
+                      checked={selectedLocations.includes(location.id)}
+                      onChange={() => toggle("locationId", location.id)}
+                    />
+                    <label htmlFor={`location-${location.id}`}>{location.name}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-
-        {/* Location */}
-        {locations.length > 0 && (
-          <div className={styles.group}>
-            <p className={styles.groupLabel}>Location</p>
-            <ul className={`${styles.checkList} ${styles.scrollable}`} role="list">
-              {locations.map((location) => (
-                <li key={location.id} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    id={`location-${location.id}`}
-                    className={styles.checkInput}
-                    checked={selectedLocations.includes(location.id)}
-                    onChange={() => toggle("locationId", location.id)}
-                  />
-                  <label htmlFor={`location-${location.id}`}>{location.name}</label>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </section>
   );
