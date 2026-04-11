@@ -44,3 +44,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# plain Secret templates (seal with kubeseal before committing)
+manifests/postgres-secret.yml
+manifests/kiebex-secret.yml
