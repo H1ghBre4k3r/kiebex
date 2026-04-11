@@ -22,7 +22,12 @@ spec:
         - name: migrate
           image: ghcr.io/h1ghbre4k3r/kiebex:latest
           imagePullPolicy: Always
-          command: ["node", "node_modules/.bin/prisma", "migrate", "deploy"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              node node_modules/prisma/build/index.js migrate deploy &&
+              node prisma/seed-admin.mjs
           envFrom:
             - secretRef:
                 name: kiebex-secret
