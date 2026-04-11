@@ -71,10 +71,13 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
   function buildUrl(updates: Record<string, string[]>): string {
     const params = new URLSearchParams();
 
-    // Carry over all existing params, then apply updates
+    // Carry over all existing params, then apply updates.
+    // Always drop "page" unless it is explicitly included in updates, so any
+    // filter change resets pagination back to page 1.
     const keys = new Set([...Array.from(searchParams.keys()), ...Object.keys(updates)]);
 
     for (const key of keys) {
+      if (key === "page" && !(key in updates)) continue;
       const updated = updates[key];
       if (updated !== undefined) {
         for (const v of updated) {
@@ -128,7 +131,7 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
   function setSort(value: string) {
     const params = new URLSearchParams();
     for (const [k, v] of searchParams.entries()) {
-      if (k !== "sort") params.append(k, v);
+      if (k !== "sort" && k !== "page") params.append(k, v);
     }
     if (value !== "price_asc") {
       params.set("sort", value);

@@ -1,8 +1,9 @@
 import { Prisma } from "@/generated/prisma/client";
 import { UnauthorizedError, requireAuthUser } from "@/lib/auth";
 import {
+  BEER_OFFERS_PAGE_SIZE,
+  getBeerOffersPage,
   createOfferOrPriceUpdateProposal,
-  getBeerOffers,
   getLocationContributionPermission,
   getVariantContributionPermission,
 } from "@/lib/query";
@@ -14,7 +15,8 @@ function isKnownRequestError(error: unknown): error is Prisma.PrismaClientKnownR
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const parsed = parseBeerQueryParams(new URL(request.url).searchParams);
+  const url = new URL(request.url);
+  const parsed = parseBeerQueryParams(url.searchParams);
 
   if (!parsed.success) {
     return jsonError(
@@ -28,10 +30,15 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const offers = await getBeerOffers(parsed.data);
+  const rawPage = url.searchParams.get("page");
+  const page = Math.max(1, parseInt(rawPage ?? "1", 10) || 1);
+
+  const { offers, total } = await getBeerOffersPage(parsed.data, page);
+  const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);
+
   return jsonOk({
     filters: parsed.data,
-    count: offers.length,
+    pagination: { page, pageSize: BEER_OFFERS_PAGE_SIZE, total, totalPages },
     offers,
   });
 }

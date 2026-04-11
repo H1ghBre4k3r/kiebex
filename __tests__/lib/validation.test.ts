@@ -21,11 +21,11 @@ describe("validation query parsing", () => {
       throw new Error("Expected beer query to parse.");
     }
 
-    expect(parsed.data.brandId).toBe("brand-1");
-    expect(parsed.data.sizeMl).toBe(500);
-    expect(parsed.data.serving).toBe("tap");
-    expect(parsed.data.locationType).toBe("pub");
-    expect(parsed.data.locationId).toBe("loc-1");
+    expect(parsed.data.brandId).toEqual(["brand-1", "brand-2"]);
+    expect(parsed.data.sizeMl).toEqual([500]);
+    expect(parsed.data.serving).toEqual(["tap"]);
+    expect(parsed.data.locationType).toEqual(["pub"]);
+    expect(parsed.data.locationId).toEqual(["loc-1"]);
   });
 
   it("rejects invalid beer query values", () => {
@@ -41,7 +41,7 @@ describe("validation query parsing", () => {
     }
 
     const issuePaths = parsed.error.issues.map((issue) => issue.path.join("."));
-    expect(issuePaths).toEqual(expect.arrayContaining(["sizeMl", "serving"]));
+    expect(issuePaths).toEqual(expect.arrayContaining(["sizeMl.0", "serving.0"]));
   });
 
   it("compacts blank URL params into undefined optional fields", () => {
@@ -54,7 +54,7 @@ describe("validation query parsing", () => {
     }
 
     expect(parsed.data.brandId).toBeUndefined();
-    expect(parsed.data.locationId).toBe("loc-9");
+    expect(parsed.data.locationId).toEqual(["loc-9"]);
   });
 
   it("requires locationId for review query params", () => {

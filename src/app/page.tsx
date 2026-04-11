@@ -7,6 +7,8 @@ import {
   formatEur,
   getBeerBrands,
   getBeerOffers,
+  getBeerOffersPage,
+  BEER_OFFERS_PAGE_SIZE,
   getBeerStyles,
   getLocationReviewSummaries,
   getBeerVariants,
@@ -149,6 +151,21 @@ function buildActiveChips(
   return chips;
 }
 
+function buildPageUrl(raw: Record<string, SearchValue>, targetPage: number): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(raw)) {
+    if (key === "page") continue;
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, v);
+    } else if (value) {
+      params.append(key, value);
+    }
+  }
+  if (targetPage > 1) params.set("page", String(targetPage));
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
+}
+
 export default async function Home({
   searchParams,
 }: {
@@ -158,15 +175,25 @@ export default async function Home({
   const parsedQuery = parseBeerQueryRecord(rawSearchParams);
   const query = parsedQuery.success ? parsedQuery.data : {};
 
-  const [offers, allOffers, locations, authUser, brands, stylesList, variants] = await Promise.all([
-    getBeerOffers(query),
-    getBeerOffers(),
-    getLocations(),
-    getCurrentAuthUser(),
-    getBeerBrands(),
-    getBeerStyles(),
-    getBeerVariants(),
-  ]);
+  const rawPage = rawSearchParams.page;
+  const page = Math.max(
+    1,
+    parseInt(String(Array.isArray(rawPage) ? rawPage[0] : (rawPage ?? "1")), 10) || 1,
+  );
+
+  const [pageResult, allOffers, locations, authUser, brands, stylesList, variants] =
+    await Promise.all([
+      getBeerOffersPage(query, page),
+      getBeerOffers(),
+      getLocations(),
+      getCurrentAuthUser(),
+      getBeerBrands(),
+      getBeerStyles(),
+      getBeerVariants(),
+    ]);
+
+  const { offers, total } = pageResult;
+  const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);
 
   const reviewSummaryByLocation = await getLocationReviewSummaries([
     ...new Set(offers.map((offer) => offer.location.id)),
@@ -243,7 +270,7 @@ export default async function Home({
         </Suspense>
 
         <section className={styles.panel} aria-labelledby="results-heading">
-          <h2 id="results-heading">Offers ({offers.length})</h2>
+          <h2 id="results-heading">Offers ({total})</h2>
 
           {!parsedQuery.success && (
             <div className={styles.errorBox} role="alert" aria-live="polite">
@@ -276,83 +303,113 @@ export default async function Home({
               No offers match your current filter set. Try broadening your search.
             </p>
           ) : (
-            <ul className={styles.offerList}>
-              {offers.map((offer, index) => (
-                <li key={offer.id} className={styles.offerItem}>
-                  <article>
-                    <div className={styles.offerHead}>
-                      <h3>
-                        {offer.brand} {offer.variant}
-                      </h3>
-                      <p className={styles.price}>{formatEur(offer.priceEur)}</p>
-                    </div>
+            <>
+              <ul className={styles.offerList}>
+                {offers.map((offer, index) => (
+                  <li key={offer.id} className={styles.offerItem}>
+                    <article>
+                      <div className={styles.offerHead}>
+                        <h3>
+                          {offer.brand} {offer.variant}
+                        </h3>
+                        <p className={styles.price}>{formatEur(offer.priceEur)}</p>
+                      </div>
 
-                    {index === 0 && (
-                      <p className={styles.cheapest}>
-                        {sortDesc
-                          ? "Highest price in current result"
-                          : "Lowest price in current result"}
-                      </p>
-                    )}
+                      {index === 0 && (
+                        <p className={styles.cheapest}>
+                          {sortDesc
+                            ? "Highest price in current result"
+                            : "Lowest price in current result"}
+                        </p>
+                      )}
 
-                    <dl className={styles.meta}>
-                      <div>
-                        <dt>Style</dt>
-                        <dd>{offer.style}</dd>
-                      </div>
-                      <div>
-                        <dt>Size</dt>
-                        <dd>{offer.sizeMl} ml</dd>
-                      </div>
-                      <div>
-                        <dt>Serving</dt>
-                        <dd>{getServingLabel(offer.serving)}</dd>
-                      </div>
-                      <div>
-                        <dt>Location</dt>
-                        <dd>
-                          <Link href={`/locations/${offer.location.id}`}>
-                            {offer.location.name}
-                          </Link>
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Type</dt>
-                        <dd>{locationTypeLabel(offer.location.locationType)}</dd>
-                      </div>
-                      <div>
-                        <dt>Reviews</dt>
-                        <dd>
-                          {(() => {
-                            const summary = reviewSummaryByLocation.get(offer.location.id);
+                      <dl className={styles.meta}>
+                        <div>
+                          <dt>Style</dt>
+                          <dd>{offer.style}</dd>
+                        </div>
+                        <div>
+                          <dt>Size</dt>
+                          <dd>{offer.sizeMl} ml</dd>
+                        </div>
+                        <div>
+                          <dt>Serving</dt>
+                          <dd>{getServingLabel(offer.serving)}</dd>
+                        </div>
+                        <div>
+                          <dt>Location</dt>
+                          <dd>
+                            <Link href={`/locations/${offer.location.id}`}>
+                              {offer.location.name}
+                            </Link>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Type</dt>
+                          <dd>{locationTypeLabel(offer.location.locationType)}</dd>
+                        </div>
+                        <div>
+                          <dt>Reviews</dt>
+                          <dd>
+                            {(() => {
+                              const summary = reviewSummaryByLocation.get(offer.location.id);
 
-                            if (
-                              !summary ||
-                              summary.reviewCount === 0 ||
-                              summary.averageRating === null
-                            ) {
-                              return "No reviews";
-                            }
+                              if (
+                                !summary ||
+                                summary.reviewCount === 0 ||
+                                summary.averageRating === null
+                              ) {
+                                return "No reviews";
+                              }
 
-                            return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
-                          })()}
-                        </dd>
-                      </div>
-                    </dl>
+                              return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
+                            })()}
+                          </dd>
+                        </div>
+                      </dl>
 
-                    {authUser?.role === "admin" && (
-                      <AdminOfferActions
-                        offerId={offer.id}
-                        currentPriceCents={Math.round(offer.priceEur * 100)}
-                        className={styles.adminActions}
-                        buttonClassName={undefined}
-                        errorClassName={styles.adminError}
-                      />
-                    )}
-                  </article>
-                </li>
-              ))}
-            </ul>
+                      {authUser?.role === "admin" && (
+                        <AdminOfferActions
+                          offerId={offer.id}
+                          currentPriceCents={Math.round(offer.priceEur * 100)}
+                          className={styles.adminActions}
+                          buttonClassName={undefined}
+                          errorClassName={styles.adminError}
+                        />
+                      )}
+                    </article>
+                  </li>
+                ))}
+              </ul>
+
+              {totalPages > 1 && (
+                <nav className={styles.pagination} aria-label="Offer pages">
+                  {page > 1 ? (
+                    <Link
+                      href={buildPageUrl(rawSearchParams, page - 1)}
+                      className={styles.pageLink}
+                    >
+                      &larr; Prev
+                    </Link>
+                  ) : (
+                    <span className={styles.pageLinkDisabled}>&larr; Prev</span>
+                  )}
+                  <span className={styles.pageInfo}>
+                    Page {page} of {totalPages}
+                  </span>
+                  {page < totalPages ? (
+                    <Link
+                      href={buildPageUrl(rawSearchParams, page + 1)}
+                      className={styles.pageLink}
+                    >
+                      Next &rarr;
+                    </Link>
+                  ) : (
+                    <span className={styles.pageLinkDisabled}>Next &rarr;</span>
+                  )}
+                </nav>
+              )}
+            </>
           )}
         </section>
       </main>
