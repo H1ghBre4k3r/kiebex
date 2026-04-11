@@ -236,6 +236,78 @@ export type ModerationContentType =
   | "price_update"
   | "review";
 
+// Per-content-type audit detail shapes
+export type BrandAuditDetails = {
+  name?: string;
+  previousName?: string;
+};
+
+export type StyleAuditDetails = {
+  name?: string;
+  previousName?: string;
+};
+
+export type LocationAuditDetails = {
+  name?: string;
+  locationType?: string;
+  district?: string;
+  address?: string;
+  previousName?: string;
+  previousLocationType?: string;
+  previousDistrict?: string;
+  previousAddress?: string;
+  fields?: string[];
+};
+
+export type VariantAuditDetails = {
+  name?: string;
+  brand?: string;
+  style?: string;
+  previousName?: string;
+  previousStyle?: string;
+  fields?: string[];
+};
+
+export type OfferAuditDetails = {
+  variant?: string;
+  brand?: string;
+  location?: string;
+  style?: string;
+  sizeMl?: number;
+  serving?: string;
+  priceEur?: number;
+  priceCents?: number;
+  previousPriceEur?: number;
+};
+
+export type PriceUpdateAuditDetails = {
+  variant?: string;
+  brand?: string;
+  location?: string;
+  proposedPriceEur?: number;
+  currentPriceEur?: number;
+};
+
+export type ReviewAuditDetails = {
+  rating?: number;
+  title?: string | null;
+  author?: string;
+  locationName?: string;
+  fields?: string[];
+};
+
+export type AuditDetailsMap = {
+  brand: BrandAuditDetails;
+  style: StyleAuditDetails;
+  location: LocationAuditDetails;
+  variant: VariantAuditDetails;
+  offer: OfferAuditDetails;
+  price_update: PriceUpdateAuditDetails;
+  review: ReviewAuditDetails;
+};
+
+export type AuditDetails = AuditDetailsMap[ModerationContentType];
+
 export type ModerationAuditLogEntry = {
   id: string;
   moderatorId: string | null;

@@ -12,6 +12,7 @@ import type {
   PendingLocationSubmission,
   PendingPriceUpdateProposal,
 } from "@/lib/types";
+import { parseDetails, formatAuditContext, formatEditedFields } from "./audit-utils";
 import styles from "./moderation.module.css";
 
 type ModerationClientProps = {
@@ -80,139 +81,6 @@ function reviewStatusLabel(status: ModerationReview["status"]): string {
   if (status === "rejected") return "Rejected";
   if (status === "new") return "New";
   return "Pending";
-}
-
-type AuditDetails = {
-  name?: string;
-  variant?: string;
-  brand?: string;
-  location?: string;
-  priceEur?: number;
-  priceCents?: number;
-  proposedPriceEur?: number;
-  rating?: number;
-  title?: string | null;
-  author?: string;
-  fields?: string[];
-  locationType?: string;
-  district?: string;
-  address?: string;
-  style?: string;
-  sizeMl?: number;
-  serving?: string;
-  previousName?: string;
-  previousLocationType?: string;
-  previousDistrict?: string;
-  previousAddress?: string;
-  previousStyle?: string;
-  previousPriceEur?: number;
-  currentPriceEur?: number;
-  locationName?: string;
-};
-
-function parseDetails(json: string | null): AuditDetails | null {
-  if (!json) return null;
-  try {
-    return JSON.parse(json) as AuditDetails;
-  } catch {
-    return null;
-  }
-}
-
-function formatAuditContext(
-  contentType: ModerationAuditLogEntry["contentType"],
-  details: AuditDetails | null,
-): string | null {
-  if (!details) return null;
-
-  if (contentType === "brand" || contentType === "style") {
-    if (details.previousName !== undefined && details.previousName !== details.name) {
-      return `${details.previousName} → ${details.name}`;
-    }
-    return details.name ?? null;
-  }
-
-  if (contentType === "location") {
-    const meta: string[] = [];
-    if (details.locationType) meta.push(details.locationType);
-    if (details.district) meta.push(details.district);
-    const suffix = meta.length > 0 ? ` (${meta.join(", ")})` : "";
-    if (details.previousName !== undefined && details.previousName !== details.name) {
-      return `${details.previousName} → ${details.name}${suffix}`;
-    }
-    return details.name ? `${details.name}${suffix}` : null;
-  }
-
-  if (contentType === "variant") {
-    if (details.previousName !== undefined) {
-      const namePart =
-        details.previousName !== details.name
-          ? `${details.previousName} → ${details.name}`
-          : (details.name ?? details.previousName ?? null);
-      const styleChanged =
-        details.previousStyle !== undefined && details.previousStyle !== details.style;
-      const stylePart = styleChanged ? `style: ${details.previousStyle} → ${details.style}` : null;
-      const parts = [namePart, stylePart].filter(Boolean);
-      return parts.length > 0 ? parts.join(", ") : null;
-    }
-    const label =
-      details.brand && details.name ? `${details.brand} ${details.name}` : (details.name ?? null);
-    const suffix = details.style ? ` (${details.style})` : "";
-    return label ? `${label}${suffix}` : null;
-  }
-
-  if (contentType === "offer") {
-    const label =
-      details.variant && details.brand
-        ? `${details.brand} ${details.variant}`
-        : (details.variant ?? details.brand ?? null);
-    const meta: string[] = [];
-    if (details.style) meta.push(details.style);
-    if (details.sizeMl != null) meta.push(`${details.sizeMl}ml`);
-    if (details.serving) meta.push(details.serving);
-    const metaSuffix = meta.length > 0 ? ` (${meta.join(", ")})` : "";
-    const atLocation = details.location ? ` @ ${details.location}` : "";
-    let price = "";
-    if (details.previousPriceEur != null && details.priceCents != null) {
-      price = ` — €${details.previousPriceEur.toFixed(2)} → €${(details.priceCents / 100).toFixed(2)}`;
-    } else if (details.priceEur != null) {
-      price = ` — €${details.priceEur.toFixed(2)}`;
-    } else if (details.priceCents != null) {
-      price = ` — €${(details.priceCents / 100).toFixed(2)}`;
-    }
-    return label ? `${label}${metaSuffix}${atLocation}${price}` : null;
-  }
-
-  if (contentType === "price_update") {
-    const label =
-      details.variant && details.brand
-        ? `${details.brand} ${details.variant}`
-        : (details.variant ?? details.brand ?? null);
-    const atLocation = details.location ? ` @ ${details.location}` : "";
-    let price = "";
-    if (details.currentPriceEur != null && details.proposedPriceEur != null) {
-      price = ` — €${details.currentPriceEur.toFixed(2)} → €${details.proposedPriceEur.toFixed(2)}`;
-    } else if (details.proposedPriceEur != null) {
-      price = ` — €${details.proposedPriceEur.toFixed(2)}`;
-    }
-    return label ? `${label}${atLocation}${price}` : null;
-  }
-
-  if (contentType === "review") {
-    const parts: string[] = [];
-    if (details.rating != null) parts.push(`${details.rating}★`);
-    if (details.title) parts.push(`"${details.title}"`);
-    if (details.author) parts.push(`by ${details.author}`);
-    if (details.locationName) parts.push(`@ ${details.locationName}`);
-    return parts.length > 0 ? parts.join(" ") : null;
-  }
-
-  return null;
-}
-
-function formatEditedFields(details: AuditDetails | null): string | null {
-  if (!details?.fields || details.fields.length === 0) return null;
-  return `edited: ${details.fields.join(", ")}`;
 }
 
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -1298,7 +1166,7 @@ export function ModerationClient({
         ) : (
           <ul className={styles.list}>
             {auditLog.map((entry) => {
-              const details = parseDetails(entry.details);
+              const details = parseDetails(entry.contentType, entry.details);
               const context = formatAuditContext(entry.contentType, details);
               const editedFields = entry.action === "edit" ? formatEditedFields(details) : null;
               const moderatorLabel = entry.currentModeratorName ?? entry.moderatorName;

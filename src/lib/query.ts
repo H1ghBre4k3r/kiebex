@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type {
+  AuditDetailsMap,
   BeerBrand,
   BeerOfferWithLocation,
   BeerQuery,
@@ -1393,13 +1394,13 @@ export async function verifyUserByAdmin(params: {
 // Moderation audit log
 // ---------------------------------------------------------------------------
 
-export async function logModerationAction(params: {
+export async function logModerationAction<T extends ModerationContentType>(params: {
   moderatorId: string;
   moderatorName: string;
   action: ModerationAction;
-  contentType: ModerationContentType;
+  contentType: T;
   contentId: string;
-  details?: Record<string, unknown>;
+  details?: AuditDetailsMap[T];
 }): Promise<void> {
   await db.moderationAuditLog.create({
     data: {
