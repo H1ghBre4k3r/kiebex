@@ -24,8 +24,8 @@ k8s
 *.md
 !README.md
 
-prisma/migrations
-# schema.prisma is kept — needed by prisma generate in the build stage
+# schema.prisma is kept — needed by prisma generate in the build stage.
+# migrations are kept — needed by the migrator image to run prisma migrate deploy.
 
 .vscode
 .idea
