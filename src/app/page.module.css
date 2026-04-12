@@ -64,50 +64,12 @@
   padding: 0.8rem;
 }
 
-.offerHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.offerHead h3 {
-  font-size: 1.25rem;
-  line-height: 1;
-  margin-bottom: 0.25rem;
-}
-
-.price {
-  font-weight: 700;
-  font-size: 1.12rem;
-}
-
 .cheapest {
   margin: 0.45rem 0;
   font-weight: 700;
   color: var(--accent);
   font-size: 0.9rem;
   text-transform: uppercase;
-}
-
-.meta {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
-}
-
-.meta dt {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.meta dd {
-  font-weight: 700;
-}
-
-.meta a {
-  text-decoration-thickness: 2px;
 }
 
 .emptyState {
@@ -129,28 +91,7 @@
 }
 
 .adminActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
   margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: var(--border-regular);
-}
-
-.adminActions button {
-  border: var(--border-regular);
-  background: #fff;
-  padding: 0.2rem 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.adminError {
-  color: #7d1200;
-  font-weight: 700;
-  font-size: 0.85rem;
 }
 
 .chips {

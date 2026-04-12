@@ -1,0 +1,43 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: var(--border-regular);
+}
+
+.button {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.error {
+  color: #7d1200;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.editForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: grid;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+
+.input {
+  border: var(--border-regular);
+  padding: 0.25rem 0.4rem;
+  width: 7rem;
+}

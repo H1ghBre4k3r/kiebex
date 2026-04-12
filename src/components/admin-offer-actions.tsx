@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jsonRequest, requestApi } from "@/lib/client-api";
+import styles from "./admin-offer-actions.module.css";
 
 type Props = {
   offerId: string;
@@ -102,9 +103,9 @@ export function AdminOfferActions({
           onSubmit={(e) => {
             void handleSave(e);
           }}
-          style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "flex-end" }}
+          className={styles.editForm}
         >
-          <label style={{ display: "grid", gap: "0.2rem", fontWeight: 700 }}>
+          <label className={styles.field}>
             Price (€)
             <input
               type="number"
@@ -114,16 +115,16 @@ export function AdminOfferActions({
               value={priceInput}
               onChange={(e) => setPriceInput(e.target.value)}
               required
-              style={{ border: "var(--border-regular)", padding: "0.25rem 0.4rem", width: "7rem" }}
+              className={styles.input}
             />
           </label>
-          <button type="submit" disabled={savePending} className={buttonClassName}>
+          <button type="submit" disabled={savePending} className={buttonClassName ?? styles.button}>
             {savePending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
             disabled={savePending}
-            className={buttonClassName}
+            className={buttonClassName ?? styles.button}
             onClick={() => {
               setEditing(false);
               setErrorMessage(null);
@@ -133,7 +134,7 @@ export function AdminOfferActions({
           </button>
         </form>
         {errorMessage && (
-          <p className={errorClassName} role="alert" aria-live="polite">
+          <p className={errorClassName ?? styles.error} role="alert" aria-live="polite">
             {errorMessage}
           </p>
         )}
@@ -144,7 +145,7 @@ export function AdminOfferActions({
   return (
     <div className={className}>
       {errorMessage && (
-        <p className={errorClassName} role="alert" aria-live="polite">
+        <p className={errorClassName ?? styles.error} role="alert" aria-live="polite">
           {errorMessage}
         </p>
       )}
@@ -156,7 +157,7 @@ export function AdminOfferActions({
               void handleDelete();
             }}
             disabled={deletePending}
-            className={buttonClassName}
+            className={buttonClassName ?? styles.button}
             aria-label="Confirm delete offer"
           >
             {deletePending ? "Deleting…" : "Confirm Delete"}
@@ -164,7 +165,7 @@ export function AdminOfferActions({
           <button
             type="button"
             disabled={deletePending}
-            className={buttonClassName}
+            className={buttonClassName ?? styles.button}
             onClick={() => setConfirmDelete(false)}
           >
             Cancel
@@ -174,7 +175,7 @@ export function AdminOfferActions({
         <>
           <button
             type="button"
-            className={buttonClassName}
+            className={buttonClassName ?? styles.button}
             onClick={() => setEditing(true)}
             aria-label="Edit offer price"
           >
@@ -182,7 +183,7 @@ export function AdminOfferActions({
           </button>
           <button
             type="button"
-            className={buttonClassName}
+            className={buttonClassName ?? styles.button}
             onClick={() => setConfirmDelete(true)}
             aria-label="Delete offer"
           >
