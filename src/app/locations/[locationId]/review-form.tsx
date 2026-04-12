@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import styles from "./page.module.css";
 
 type ReviewFormProps = {
@@ -29,35 +29,30 @@ export function ReviewForm({ locationId }: ReviewFormProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/reviews", {
-        ...jsonRequest("POST", {
-          body: {
-            locationId,
-            rating: Number(rating),
-            title: title.trim() || undefined,
-            body: body.trim() || undefined,
-          },
-        }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/reviews",
+      jsonRequest("POST", {
+        body: {
+          locationId,
+          rating: Number(rating),
+          title: title.trim() || undefined,
+          body: body.trim() || undefined,
+        },
+      }),
+      "Unable to submit review.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to submit review.");
-        setErrorMessage(message);
-        setPending(false);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setRating("5");
       setTitle("");
       setBody("");
       setSuccessMessage("Review submitted.");
-      setPending(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit review.");
-      setPending(false);
     }
+
+    setPending(false);
   }
 
   return (

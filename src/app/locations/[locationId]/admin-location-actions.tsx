@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import { LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import type { Location, LocationType } from "@/lib/types";
 import styles from "./page.module.css";
@@ -35,24 +35,20 @@ export function AdminLocationActions({ location }: Props) {
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        ...jsonRequest("PUT", { body: { name, locationType, district, address } }),
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/locations/${location.id}`,
+      jsonRequest("PUT", { body: { name, locationType, district, address } }),
+      "Unable to save. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to save. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setEditing(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -63,23 +59,20 @@ export function AdminLocationActions({ location }: Props) {
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        method: "DELETE",
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/locations/${location.id}`,
+      { method: "DELETE" },
+      "Unable to delete. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to delete. Please try again.");
-        setErrorMessage(message);
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.push("/");
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
       setDeletePending(false);
+      return;
     }
+
+    router.push("/");
   }
 
   if (editing) {

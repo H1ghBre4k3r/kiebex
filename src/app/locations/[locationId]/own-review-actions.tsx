@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import { formatDate } from "@/lib/display";
 import type { ReviewWithAuthor } from "@/lib/types";
 import styles from "./page.module.css";
@@ -47,30 +47,26 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(editEndpoint, {
-        ...jsonRequest(editMethod, {
-          body: {
-            rating: Number(rating),
-            title: title || null,
-            body: body || null,
-          },
-        }),
-      });
+    const result = await requestApi<null>(
+      editEndpoint,
+      jsonRequest(editMethod, {
+        body: {
+          rating: Number(rating),
+          title: title || null,
+          body: body || null,
+        },
+      }),
+      "Unable to save. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to save. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setEditing(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -81,23 +77,20 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(deleteEndpoint, {
-        method: "DELETE",
-      });
+    const result = await requestApi<null>(
+      deleteEndpoint,
+      { method: "DELETE" },
+      "Unable to delete. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to delete. Please try again.");
-        setErrorMessage(message);
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
       setDeletePending(false);
+      return;
     }
+
+    router.refresh();
   }
 
   async function handleModerate(status: "approved" | "rejected") {
@@ -108,23 +101,19 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setModeratePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/reviews/${review.id}`, {
-        ...jsonRequest("PATCH", { body: { status } }),
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/reviews/${review.id}`,
+      jsonRequest("PATCH", { body: { status } }),
+      "Unable to moderate. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to moderate. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to moderate. Please try again.");
-    } finally {
-      setModeratePending(false);
     }
+
+    setModeratePending(false);
   }
 
   if (editing) {

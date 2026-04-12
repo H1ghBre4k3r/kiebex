@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
-import { getApiError, parseApiJson, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import { SERVING_TYPE_OPTIONS, submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
@@ -69,44 +69,38 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/beers", {
-        ...jsonRequest("POST", {
-          body: {
-            variantId,
-            sizeMl: Number(sizeMl),
-            serving,
-            priceCents: Number(priceCents),
-            locationId,
-          },
-        }),
-      });
+    const result = await requestApi<OfferApiSuccess>(
+      "/api/v1/beers",
+      jsonRequest("POST", {
+        body: {
+          variantId,
+          sizeMl: Number(sizeMl),
+          serving,
+          priceCents: Number(priceCents),
+          locationId,
+        },
+      }),
+      "Unable to submit offer.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to submit offer.");
-        setErrorMessage(message);
-        setPending(false);
-        return;
-      }
-
-      const body = await parseApiJson<{ status?: "ok"; data?: OfferApiSuccess }>(response);
-
-      setSizeMl("500");
-      setServing("tap");
-      setPriceCents("500");
-
-      if (body?.data?.outcome === "price_update_proposed") {
-        setSuccessMessage("Price update proposal submitted for moderation.");
-      } else {
-        setSuccessMessage("Offer submission created for moderation.");
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
       setPending(false);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit offer.");
-      setPending(false);
+      return;
     }
+
+    setSizeMl("500");
+    setServing("tap");
+    setPriceCents("500");
+
+    if (result.data?.outcome === "price_update_proposed") {
+      setSuccessMessage("Price update proposal submitted for moderation.");
+    } else {
+      setSuccessMessage("Offer submission created for moderation.");
+    }
+
+    setPending(false);
+    router.refresh();
   }
 
   return (

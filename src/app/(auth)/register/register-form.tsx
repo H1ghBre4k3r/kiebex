@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
 
 export function RegisterForm() {
@@ -24,33 +24,26 @@ export function RegisterForm() {
     setPending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/auth/register", {
-        ...jsonRequest("POST", {
-          body: {
-            displayName,
-            email,
-            password,
-          },
-        }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/auth/register",
+      jsonRequest("POST", {
+        body: {
+          displayName,
+          email,
+          password,
+        },
+      }),
+      "Unable to create account. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(
-          response,
-          "Unable to create account. Please try again.",
-        );
-        setErrorMessage(message);
-        setPending(false);
-        return;
-      }
-
-      setSubmittedEmail(email);
-      setSubmitted(true);
-    } catch {
-      setErrorMessage("Unable to create account. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
       setPending(false);
+      return;
     }
+
+    setSubmittedEmail(email);
+    setSubmitted(true);
   }
 
   if (submitted) {

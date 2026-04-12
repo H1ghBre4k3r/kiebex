@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import styles from "./contribute.module.css";
 
 export function BrandForm() {
@@ -23,30 +23,25 @@ export function BrandForm() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/beer-brands", {
-        ...jsonRequest("POST", {
-          body: {
-            name,
-          },
-        }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/beer-brands",
+      jsonRequest("POST", {
+        body: {
+          name,
+        },
+      }),
+      "Unable to submit beer brand.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to submit beer brand.");
-        setErrorMessage(message);
-        setPending(false);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setName("");
       setSuccessMessage("Beer brand submitted for moderation.");
-      setPending(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit beer brand.");
-      setPending(false);
     }
+
+    setPending(false);
   }
 
   return (

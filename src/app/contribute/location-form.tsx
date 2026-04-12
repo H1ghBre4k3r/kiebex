@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import { LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import styles from "./contribute.module.css";
 
@@ -28,36 +28,31 @@ export function LocationForm() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/locations", {
-        ...jsonRequest("POST", {
-          body: {
-            name,
-            locationType,
-            district,
-            address,
-          },
-        }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/locations",
+      jsonRequest("POST", {
+        body: {
+          name,
+          locationType,
+          district,
+          address,
+        },
+      }),
+      "Unable to submit location.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to submit location.");
-        setErrorMessage(message);
-        setPending(false);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setName("");
       setLocationType("pub");
       setDistrict("");
       setAddress("");
       setSuccessMessage("Location submitted for moderation.");
-      setPending(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit location.");
-      setPending(false);
     }
+
+    setPending(false);
   }
 
   return (

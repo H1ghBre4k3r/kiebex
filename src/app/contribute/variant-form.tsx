@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 import { submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
@@ -42,32 +42,27 @@ export function VariantForm({ brands, styleOptions }: VariantFormProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/beer-variants", {
-        ...jsonRequest("POST", {
-          body: {
-            name,
-            brandId,
-            styleId,
-          },
-        }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/beer-variants",
+      jsonRequest("POST", {
+        body: {
+          name,
+          brandId,
+          styleId,
+        },
+      }),
+      "Unable to submit beer variant.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to submit beer variant.");
-        setErrorMessage(message);
-        setPending(false);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setName("");
       setSuccessMessage("Beer variant submitted for moderation.");
-      setPending(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit beer variant.");
-      setPending(false);
     }
+
+    setPending(false);
   }
 
   return (

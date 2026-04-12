@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest, requestApi } from "@/lib/client-api";
 
 type Props = {
   offerId: string;
@@ -51,24 +51,20 @@ export function AdminOfferActions({
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/offers/${offerId}`, {
-        ...jsonRequest("PUT", { body: { priceCents } }),
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/offers/${offerId}`,
+      jsonRequest("PUT", { body: { priceCents } }),
+      "Unable to save. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to save. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setEditing(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -79,26 +75,23 @@ export function AdminOfferActions({
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/offers/${offerId}`, {
-        method: "DELETE",
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/offers/${offerId}`,
+      { method: "DELETE" },
+      "Unable to delete. Please try again.",
+    );
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to delete. Please try again.");
-        setErrorMessage(message);
-        setConfirmDelete(false);
-        return;
-      }
-
-      if (onDeleted) {
-        onDeleted();
-      } else {
-        router.refresh();
-      }
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
       setDeletePending(false);
+      return;
+    }
+
+    if (onDeleted) {
+      onDeleted();
+    } else {
+      router.refresh();
     }
   }
 
