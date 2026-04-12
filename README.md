@@ -1,124 +1,123 @@
-# Kiel Beer Index
+# Kiel Beer Index (Kiebex)
 
-Kiel Beer Index is a fullstack web app for comparing beer prices across locations in Kiel, Germany.
+Kiel Beer Index is a comprehensive full-stack application for tracking and comparing beer prices across various locations (pubs, bars, restaurants, and supermarkets) in Kiel, Germany. It features a crowdsourced contribution model with a multi-tiered moderation system to ensure data quality.
 
 ## Core Features
 
-- Browse approved beer offers across pubs, bars, restaurants, and supermarkets.
-- Filter by `brandId`, `variantId`, `styleId`, `sizeMl`, `serving`, `locationType`, and `locationId`.
-- Contribute new locations, beer brands, beer variants, and offers.
-- Propose price updates for already-approved offers.
-- Moderate pending submissions (locations, brands, variants, offers, price updates).
+- **Beer Directory**: Browse and filter approved beer offers by brand, variant, style, size, serving type, and location.
+- **Location Insights**: View detailed information for venues, including their beer menu and historical price trends.
+- **Crowdsourced Contributions**: Registered users can submit new locations, beer brands, variants, and price offers.
+- **Price History Tracking**: Automatic tracking of price changes over time with a proposal system for updates.
+- **Advanced Moderation**: A dedicated moderation queue for staff to review, approve, or reject community contributions.
+- **Moderation Audit Log**: Detailed logs of all moderation actions for accountability.
+- **User Authentication**: Secure session-based authentication with email verification and role-based access control (User, Moderator, Admin).
+- **Venue Reviews**: User-submitted ratings and reviews for locations, subject to moderation.
 
 ## Tech Stack
 
-- Next.js App Router
-- TypeScript (strict)
-- Zod validation
-- PostgreSQL + Prisma
-- CSS Modules + global CSS variables
-- ESLint + Prettier
-
-## Quick Start
-
-```bash
-npm install
-cp .env.example .env
-# set DATABASE_URL in .env
-npm run db:migrate
-npm run db:seed
-npm run dev
-```
-
-## Useful Commands
-
-```bash
-npm run dev
-npm run lint
-npm run typecheck
-npm run build
-npm run format
-npm run test
-npm run test:integration
-npm run test:e2e
-```
-
-## Testing
-
-- `npm run test`: unit and API route tests (Jest)
-- `npm run test:integration`: DB-backed query integration tests (requires `DATABASE_URL` and migrated DB)
-- `npm run test:e2e`: browser smoke tests (Playwright, runs against production build)
-
-CI runs lint, typecheck, Jest tests, DB integration tests, and Playwright smoke tests on every push and pull request.
-
-## App Routes
-
-- `/` - offer directory + filters
-- `/login` - sign in
-- `/register` - create account
-- `/contribute` - contribution forms for locations, brands, variants, offers
-- `/moderation` - moderation queue (moderator/admin)
-- `/admin/users` - user role management (admin)
-- `/locations/[locationId]` - location details + offer price history
-
-## API Routes
-
-- `GET /api/v1/health`
-
-- `GET /api/v1/beers`
-- `POST /api/v1/beers`
-
-- `GET /api/v1/beer-styles`
-- `GET /api/v1/beer-brands`
-- `POST /api/v1/beer-brands`
-- `GET /api/v1/beer-variants`
-- `POST /api/v1/beer-variants`
-
-- `POST /api/v1/locations`
-- `GET /api/v1/locations/[locationId]`
-- `POST /api/v1/reviews`
-- `GET /api/v1/reviews`
-
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/session`
-- `GET /api/v1/auth/me`
-
-- `GET /api/v1/moderation/submissions`
-- `PATCH /api/v1/moderation/locations/[locationId]`
-- `PATCH /api/v1/moderation/brands/[brandId]`
-- `PATCH /api/v1/moderation/variants/[variantId]`
-- `PATCH /api/v1/moderation/offers/[offerId]`
-- `PATCH /api/v1/moderation/price-updates/[proposalId]`
-
-- `GET /api/v1/admin/users`
-- `PATCH /api/v1/admin/users/[userId]/role`
-
-Full API contract and examples: `docs/api-contract.md`
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Standalone mode)
+- **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict mode)
+- **Database**: [PostgreSQL](https://www.postgresql.org/) with [Prisma ORM](https://www.prisma.io/)
+- **Validation**: [Zod](https://zod.dev/) for schema validation and type safety
+- **Authentication**: Custom session management with scrypt-based password hashing
+- **Email**: [Nodemailer](https://nodemailer.com/) for verification and notification emails
+- **Styling**: Vanilla CSS Modules with global CSS variables
+- **Testing**: [Jest](https://jestjs.io/) (Unit/API), [Playwright](https://playwright.dev/) (E2E), and custom DB integration tests
 
 ## Data Model
 
-Core Prisma models:
+The application uses a structured domain model to maintain data integrity:
+- **Location**: Venues in Kiel (Pubs, Bars, Supermarkets, etc.).
+- **BeerBrand**: Beer producers (e.g., Flensburger, Lille).
+- **BeerStyle**: Types of beer (e.g., Pils, Helles, IPA).
+- **BeerVariant**: Specific products (e.g., Flensburger Pilsener 0.33l).
+- **BeerOffer**: A specific price for a variant at a specific location.
+- **PriceUpdateProposal**: User-submitted price updates for existing offers.
+- **ModerationAuditLog**: Records of approvals/rejections by moderators.
 
-- `User`, `Session`
-- `Location`
-- `BeerStyle`, `BeerBrand`, `BeerVariant`
-- `BeerOffer`
-- `PriceUpdateProposal`, `OfferPriceHistory`
-- `Review`
+## Project Structure
 
-The seed script includes sample approved reviews so review signals are visible on the home offer cards and location pages.
+```text
+├── src/
+│   ├── app/                # Next.js App Router (Pages & API)
+│   │   ├── (auth)/         # Login, Registration, Verification
+│   │   ├── admin/          # Admin management interfaces
+│   │   ├── api/v1/         # RESTful API endpoints
+│   │   ├── contribute/     # User submission forms
+│   │   ├── moderation/     # Moderation queue and audit logs
+│   │   └── locations/      # Venue details and price history
+│   ├── components/         # Reusable React components
+│   ├── lib/                # Core logic (auth, db, email, query, validation)
+│   └── generated/          # Prisma generated client
+├── prisma/                 # Database schema and migrations
+├── manifests/              # Kubernetes deployment configurations
+├── e2e/                    # Playwright end-to-end tests
+└── __tests__/              # Jest unit and API tests
+```
 
-Schema and migrations live in `prisma/`. Query logic lives in `src/lib/query.ts`.
+## Getting Started
 
-## Contribution and Moderation Rules
+### Prerequisites
+- Node.js (v20 or later)
+- PostgreSQL database
+- SMTP server (for email verification)
 
-- New user submissions are created as `pending`.
-- Offer submission creates:
-  - a pending `BeerOffer` if no matching approved offer exists, or
-  - a pending `PriceUpdateProposal` if an approved matching offer exists with a different price.
-- Public pages and public APIs only return approved location/offer data.
-- Contributors can submit against approved entities and against their own pending entities where allowed.
-- Moderators and admins can approve/reject all pending queues from `/moderation`.
-- Authenticated users can submit reviews (1-5 rating, optional title/body) for approved locations.
+### Setup
+1. Clone the repository and install dependencies:
+   ```bash
+   npm install
+   ```
+2. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   # Update DATABASE_URL and SMTP settings in .env
+   ```
+3. Initialize the database:
+   ```bash
+   npm run db:migrate
+   npm run db:seed
+   ```
+
+### Development
+Run the development server:
+```bash
+npm run dev
+```
+
+## Available Scripts
+
+- `npm run dev`: Start development server
+- `npm run build`: Build for production (Standalone output)
+- `npm run lint`: Run ESLint
+- `npm run typecheck`: Run TypeScript compiler check
+- `npm run format`: Format code with Prettier
+- `npm run test`: Run unit and API tests (Jest)
+- `npm run test:integration`: Run DB-backed integration tests
+- `npm run test:e2e`: Run Playwright smoke tests
+- `npm run db:migrate`: Apply Prisma migrations (dev)
+- `npm run db:seed`: Seed the database with initial data
+
+## Testing Strategy
+
+- **Unit & API Tests**: Use Jest and SWC to test utility functions and API route handlers in isolation.
+- **Integration Tests**: Verify database queries and complex business logic against a real PostgreSQL instance.
+- **E2E Tests**: Use Playwright to perform smoke tests on critical user journeys (login, search, contribute) against the production build.
+
+## Deployment
+
+### Containerization
+The project is optimized for containerized environments using Next.js **standalone** output. A multi-stage `Dockerfile` is provided for building small, secure images.
+
+### Kubernetes
+Deployment manifests are located in `manifests/`, supporting:
+- **ArgoCD** sync-wave orchestration.
+- **Init Containers** for automatic database migrations.
+- **Sealed Secrets** for secure credential management.
+- **Ingress** and **Service** configurations for high availability.
+
+## Moderation Workflow
+
+1. **Submission**: Users submit new data (Status: `pending`).
+2. **Review**: Moderators view pending items in `/moderation`.
+3. **Audit**: Every action (Approve/Reject) is logged in the `ModerationAuditLog`.
+4. **Publication**: Only `approved` items are visible in the public directory and search results.

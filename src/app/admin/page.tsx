@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import styles from "./users/users.module.css";
+import styles from "./admin.module.css";
 
 export default async function AdminPage() {
   const authUser = await getCurrentAuthUser();

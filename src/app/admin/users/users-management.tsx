@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { UserRole } from "@/lib/types";
 import styles from "./users.module.css";
 
@@ -31,6 +31,109 @@ async function parseErrorMessage(response: Response, fallback: string): Promise<
   return body?.error?.message ?? fallback;
 }
 
+function UserItem({
+  user,
+  currentAdminId,
+  selectedRole,
+  onRoleChange,
+  onSaveRole,
+  onVerifyEmail,
+  onResendVerification,
+  pending,
+  verifying,
+  resending,
+}: {
+  user: UserForAdmin;
+  currentAdminId: string;
+  selectedRole: UserRole;
+  onRoleChange: (role: UserRole) => void;
+  onSaveRole: () => void;
+  onVerifyEmail: () => void;
+  onResendVerification: () => void;
+  pending: boolean;
+  verifying: boolean;
+  resending: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const roleChanged = selectedRole !== user.role;
+
+  return (
+    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
+      <button
+        type="button"
+        className={styles.rowHeader}
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <span className={styles.rowTitle}>
+          {user.displayName} <span className={styles.rowEmail}>({user.email})</span>
+        </span>
+        <span className={styles.rowStatus}>{user.role}</span>
+        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
+      </button>
+
+      {expanded && (
+        <div className={styles.rowBody}>
+          <div className={styles.meta}>
+            <p>
+              <strong>{user.displayName}</strong> ({user.email})
+            </p>
+            <p>Current role: {user.role}</p>
+            <p>
+              Email:{" "}
+              {user.emailVerified ? (
+                <span className={styles.verified}>verified</span>
+              ) : (
+                <span className={styles.unverified}>unverified</span>
+              )}
+            </p>
+            <p>Joined: {new Date(user.createdAt).toLocaleDateString("en-GB")}</p>
+          </div>
+
+          <div className={styles.controls}>
+            <label htmlFor={`role-${user.id}`}>Role</label>
+            <select
+              id={`role-${user.id}`}
+              value={selectedRole}
+              onChange={(event) => onRoleChange(event.target.value as UserRole)}
+              disabled={pending}
+            >
+              <option value="user">user</option>
+              <option value="moderator">moderator</option>
+              <option value="admin">admin</option>
+            </select>
+
+            <button type="button" disabled={pending || !roleChanged} onClick={onSaveRole}>
+              {pending ? "Saving..." : "Save Role"}
+            </button>
+
+            {!user.emailVerified && (
+              <button
+                type="button"
+                className={styles.verifyButton}
+                disabled={verifying}
+                onClick={onVerifyEmail}
+              >
+                {verifying ? "Verifying..." : "Verify Email"}
+              </button>
+            )}
+
+            {!user.emailVerified && (
+              <button type="button" disabled={resending} onClick={onResendVerification}>
+                {resending ? "Sending..." : "Resend Verification Email"}
+              </button>
+            )}
+          </div>
+
+          {user.id === currentAdminId && (
+            <p className={styles.notice}>This is your account. Last-admin protection applies.</p>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
 export function UsersManagement({ currentAdminId, users }: UsersManagementProps) {
   const router = useRouter();
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>(
@@ -42,6 +145,18 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
   const [feedback, setFeedback] = useState<{ kind: "error" | "success"; message: string } | null>(
     null,
   );
+  const [search, setSearch] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.email.toLowerCase().includes(q) ||
+        u.displayName.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q),
+    );
+  }, [users, search]);
 
   async function updateRole(userId: string) {
     const role = selectedRoles[userId];
@@ -137,88 +252,43 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
         </p>
       )}
 
-      <ul className={styles.list}>
-        {users.map((user) => {
-          const pending = pendingUserId === user.id;
-          const verifying = verifyingUserId === user.id;
-          const resending = resendingUserId === user.id;
-          const roleChanged = selectedRoles[user.id] !== user.role;
+      <div className={styles.container}>
+        <div className={styles.searchBar}>
+          <label htmlFor="search-users">Search users</label>
+          <input
+            id="search-users"
+            type="search"
+            placeholder="Search by name, email, or role..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={styles.searchInput}
+          />
+        </div>
 
-          return (
-            <li key={user.id} className={styles.item}>
-              <div className={styles.meta}>
-                <p>
-                  <strong>{user.displayName}</strong> ({user.email})
-                </p>
-                <p>Current role: {user.role}</p>
-                <p>
-                  Email:{" "}
-                  {user.emailVerified ? (
-                    <span className={styles.verified}>verified</span>
-                  ) : (
-                    <span className={styles.unverified}>unverified</span>
-                  )}
-                </p>
-                <p>Joined: {new Date(user.createdAt).toLocaleDateString("en-GB")}</p>
-              </div>
-
-              <div className={styles.controls}>
-                <label htmlFor={`role-${user.id}`}>Role</label>
-                <select
-                  id={`role-${user.id}`}
-                  value={selectedRoles[user.id] ?? user.role}
-                  onChange={(event) =>
-                    setSelectedRoles((current) => ({
-                      ...current,
-                      [user.id]: event.target.value as UserRole,
-                    }))
-                  }
-                  disabled={pending}
-                >
-                  <option value="user">user</option>
-                  <option value="moderator">moderator</option>
-                  <option value="admin">admin</option>
-                </select>
-
-                <button
-                  type="button"
-                  disabled={pending || !roleChanged}
-                  onClick={() => updateRole(user.id)}
-                >
-                  {pending ? "Saving..." : "Save Role"}
-                </button>
-
-                {!user.emailVerified && (
-                  <button
-                    type="button"
-                    className={styles.verifyButton}
-                    disabled={verifying}
-                    onClick={() => verifyUser(user.id)}
-                  >
-                    {verifying ? "Verifying..." : "Verify Email"}
-                  </button>
-                )}
-
-                {!user.emailVerified && (
-                  <button
-                    type="button"
-                    disabled={resending}
-                    onClick={() => resendVerification(user.id)}
-                  >
-                    {resending ? "Sending..." : "Resend Verification Email"}
-                  </button>
-                )}
-              </div>
-
-              {user.id === currentAdminId && (
-                <p className={styles.notice}>
-                  This is your account. Last-admin protection applies.
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+        {filteredUsers.length === 0 ? (
+          <p className={styles.empty}>No users found matching your search.</p>
+        ) : (
+          <ul className={styles.list}>
+            {filteredUsers.map((user) => (
+              <UserItem
+                key={user.id}
+                user={user}
+                currentAdminId={currentAdminId}
+                selectedRole={selectedRoles[user.id] ?? user.role}
+                onRoleChange={(role) =>
+                  setSelectedRoles((current) => ({ ...current, [user.id]: role }))
+                }
+                onSaveRole={() => updateRole(user.id)}
+                onVerifyEmail={() => verifyUser(user.id)}
+                onResendVerification={() => resendVerification(user.id)}
+                pending={pendingUserId === user.id}
+                verifying={verifyingUserId === user.id}
+                resending={resendingUserId === user.id}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

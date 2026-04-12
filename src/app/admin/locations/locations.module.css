@@ -43,24 +43,117 @@
   color: #0a4a09;
 }
 
+.container {
+  display: grid;
+  gap: 1rem;
+}
+
+.searchBar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.searchBar label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.searchInput {
+  flex: 1;
+  border: var(--border-heavy);
+  padding: 0.75rem;
+  font-size: 1rem;
+  background: var(--surface);
+}
+.searchInput:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.empty {
+  padding: 1rem;
+  border: var(--border-heavy);
+  background: var(--surface);
+  text-align: center;
+}
+
 .list {
   list-style: none;
-  display: grid;
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  border-top: var(--border-heavy);
+  border-left: var(--border-heavy);
+  border-right: var(--border-heavy);
 }
 
 .item {
-  border: var(--border-regular);
+  border-bottom: var(--border-heavy);
   background: #fff;
-  padding: 0.75rem;
+}
+
+.item.expanded {
+  background: #f9f9f9;
+}
+
+.rowHeader {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 1rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.rowHeader:hover {
+  background: var(--ink);
+  color: #fff;
+}
+
+.rowTitle {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowStatus {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  background: #eee;
+  color: #333;
+  padding: 0.1rem 0.4rem;
+  border: var(--border-regular);
+}
+.rowHeader:hover .rowStatus {
+  background: #333;
+  color: #fff;
+  border-color: #fff;
+}
+
+.rowIcon {
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.rowBody {
+  padding: 1rem;
+  border-top: var(--border-regular);
+  display: grid;
+  gap: 1rem;
 }
 
 .meta {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.4rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
   font-size: 0.9rem;
 }
 
@@ -106,8 +199,7 @@
   display: grid;
   gap: 0.5rem;
   border-top: var(--border-regular);
-  padding-top: 0.5rem;
-  margin-top: 0.2rem;
+  padding-top: 1rem;
 }
 
 .editForm label {
@@ -121,8 +213,8 @@
 .editForm select {
   border: var(--border-regular);
   background: #fff;
-  padding: 0.4rem;
-  font-size: 0.9rem;
+  padding: 0.5rem;
+  font-size: 1rem;
 }
 
 .editActions {
