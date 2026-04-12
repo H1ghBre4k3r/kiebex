@@ -1,4 +1,66 @@
-@value * from "../shared-management.module.css";
+.page {
+  composes: page from "../shared-management.module.css";
+}
+
+.panel {
+  composes: panel from "../shared-management.module.css";
+}
+
+.notice {
+  composes: notice from "../shared-management.module.css";
+}
+
+.container {
+  composes: container from "../shared-management.module.css";
+}
+
+.searchBar {
+  composes: searchBar from "../shared-management.module.css";
+}
+
+.searchInput {
+  composes: searchInput from "../shared-management.module.css";
+}
+
+.empty {
+  composes: empty from "../shared-management.module.css";
+}
+
+.list {
+  composes: list from "../shared-management.module.css";
+}
+
+.meta {
+  composes: meta from "../shared-management.module.css";
+}
+
+.controls {
+  composes: controls from "../shared-management.module.css";
+}
+
+.editForm {
+  composes: editForm from "../shared-management.module.css";
+}
+
+.editActions {
+  composes: editActions from "../shared-management.module.css";
+}
+
+.createForm {
+  composes: createForm from "../shared-management.module.css";
+}
+
+.createActions {
+  composes: createActions from "../shared-management.module.css";
+}
+
+.error {
+  composes: error from "../shared-management.module.css";
+}
+
+.success {
+  composes: success from "../shared-management.module.css";
+}
 
 .variantCount {
   font-size: 0.8rem;

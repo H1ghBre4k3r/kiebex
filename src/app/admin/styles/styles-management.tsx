@@ -2,7 +2,9 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest } from "@/lib/client-api";
+import { runAdminMutation } from "@/app/admin/management-client";
+import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import styles from "./styles.module.css";
 
 type StyleRow = {
@@ -36,24 +38,19 @@ function StyleItem({ style }: { style: StyleRow }) {
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/admin/styles/${style.id}`, {
-        ...jsonRequest("PUT", { body: { name } }),
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/admin/styles/${style.id}`,
+      init: jsonRequest("PUT", { body: { name } }),
+      fallbackMessage: "Unable to save. Please try again.",
+      onSuccess: () => setEditing(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to save. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
-      setEditing(false);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -64,143 +61,122 @@ function StyleItem({ style }: { style: StyleRow }) {
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/admin/styles/${style.id}`, {
-        method: "DELETE",
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/admin/styles/${style.id}`,
+      init: { method: "DELETE" },
+      fallbackMessage: "Unable to delete. Please try again.",
+      onSuccess: () => setConfirmDelete(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to delete. Please try again.");
-        setErrorMessage(message);
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
-      setDeletePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
     }
+
+    setDeletePending(false);
   }
 
   return (
-    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
-      <button
-        type="button"
-        className={styles.rowHeader}
-        onClick={() => {
-          setExpanded((prev) => !prev);
-          if (expanded) {
-            setEditing(false);
-            setConfirmDelete(false);
-            setErrorMessage(null);
-          }
-        }}
-        aria-expanded={expanded}
-      >
-        <span className={styles.rowTitle}>{style.name}</span>
-        <span className={styles.rowStatus}>{style.variantCount} variant(s)</span>
-        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
-      </button>
+    <ManagementItem
+      title={style.name}
+      status={`${style.variantCount} variant(s)`}
+      expanded={expanded}
+      onToggle={() => {
+        setExpanded((prev) => !prev);
+        if (expanded) {
+          setEditing(false);
+          setConfirmDelete(false);
+          setErrorMessage(null);
+        }
+      }}
+    >
+      <dl className={styles.meta}>
+        <div>
+          <dt>Name</dt>
+          <dd>{style.name}</dd>
+        </div>
+        <div>
+          <dt>Variants using this style</dt>
+          <dd>
+            <span className={styles.variantCount}>{style.variantCount}</span>
+          </dd>
+        </div>
+      </dl>
 
-      {expanded && (
-        <div className={styles.rowBody}>
-          <dl className={styles.meta}>
-            <div>
-              <dt>Name</dt>
-              <dd>{style.name}</dd>
-            </div>
-            <div>
-              <dt>Variants using this style</dt>
-              <dd>
-                <span className={styles.variantCount}>{style.variantCount}</span>
-              </dd>
-            </div>
-          </dl>
+      {errorMessage ? <ManagementError message={errorMessage} /> : null}
 
-          {errorMessage && (
-            <p className={styles.error} role="alert" aria-live="polite">
-              {errorMessage}
-            </p>
-          )}
-
-          <div className={styles.controls}>
-            {confirmDelete ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleDelete();
-                  }}
-                  disabled={deletePending}
-                >
-                  {deletePending ? "Deleting…" : "Confirm Delete"}
-                </button>
-                <button
-                  type="button"
-                  disabled={deletePending}
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing((prev) => !prev);
-                    setErrorMessage(null);
-                  }}
-                >
-                  {editing ? "Cancel Edit" : "Edit"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={style.variantCount > 0}
-                  title={
-                    style.variantCount > 0
-                      ? `Cannot delete: ${style.variantCount} variant(s) use this style`
-                      : undefined
-                  }
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-
-          {editing && (
-            <form
-              className={styles.editForm}
-              onSubmit={(e) => {
-                void handleSave(e);
+      <div className={styles.controls}>
+        {confirmDelete ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void handleDelete();
+              }}
+              disabled={deletePending}
+            >
+              {deletePending ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing((prev) => !prev);
+                setErrorMessage(null);
               }}
             >
-              <label htmlFor={`style-name-${style.id}`}>
-                Name
-                <input
-                  id={`style-name-${style.id}`}
-                  type="text"
-                  minLength={2}
-                  maxLength={120}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </label>
+              {editing ? "Cancel Edit" : "Edit"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              disabled={style.variantCount > 0}
+              title={
+                style.variantCount > 0
+                  ? `Cannot delete: ${style.variantCount} variant(s) use this style`
+                  : undefined
+              }
+            >
+              Delete
+            </button>
+          </>
+        )}
+      </div>
 
-              <div className={styles.editActions}>
-                <button type="submit" disabled={savePending}>
-                  {savePending ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+      {editing && (
+        <form
+          className={styles.editForm}
+          onSubmit={(e) => {
+            void handleSave(e);
+          }}
+        >
+          <label htmlFor={`style-name-${style.id}`}>
+            Name
+            <input
+              id={`style-name-${style.id}`}
+              type="text"
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
+
+          <div className={styles.editActions}>
+            <button type="submit" disabled={savePending}>
+              {savePending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </form>
       )}
-    </li>
+    </ManagementItem>
   );
 }
 
@@ -223,28 +199,23 @@ function CreateStyleForm() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/admin/styles", {
-        ...jsonRequest("POST", { body: { name } }),
-      });
+    const createdName = name;
+    const result = await runAdminMutation({
+      input: "/api/v1/admin/styles",
+      init: jsonRequest("POST", { body: { name } }),
+      fallbackMessage: "Unable to create style. Please try again.",
+      onSuccess: () => {
+        setName("");
+        setSuccessMessage(`Style "${createdName}" created.`);
+      },
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(
-          response,
-          "Unable to create style. Please try again.",
-        );
-        setErrorMessage(message);
-        return;
-      }
-
-      setName("");
-      setSuccessMessage(`Style "${name}" created.`);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to create style. Please try again.");
-    } finally {
-      setPending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
     }
+
+    setPending(false);
   }
 
   return (

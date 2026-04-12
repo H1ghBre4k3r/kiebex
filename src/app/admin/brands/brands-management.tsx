@@ -2,7 +2,9 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest } from "@/lib/client-api";
+import { runAdminMutation } from "@/app/admin/management-client";
+import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import type { BeerBrand } from "@/lib/types";
 import styles from "./brands.module.css";
 
@@ -33,24 +35,19 @@ function BrandItem({ brand }: { brand: BrandRow }) {
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/admin/brands/${brand.id}`, {
-        ...jsonRequest("PUT", { body: { name } }),
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/admin/brands/${brand.id}`,
+      init: jsonRequest("PUT", { body: { name } }),
+      fallbackMessage: "Unable to save. Please try again.",
+      onSuccess: () => setEditing(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to save. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
-      setEditing(false);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -61,132 +58,111 @@ function BrandItem({ brand }: { brand: BrandRow }) {
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/admin/brands/${brand.id}`, {
-        method: "DELETE",
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/admin/brands/${brand.id}`,
+      init: { method: "DELETE" },
+      fallbackMessage: "Unable to delete. Please try again.",
+      onSuccess: () => setConfirmDelete(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to delete. Please try again.");
-        setErrorMessage(message);
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
-      setDeletePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
     }
+
+    setDeletePending(false);
   }
 
   return (
-    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
-      <button
-        type="button"
-        className={styles.rowHeader}
-        onClick={() => {
-          setExpanded((prev) => !prev);
-          if (expanded) {
-            setEditing(false);
-            setConfirmDelete(false);
-            setErrorMessage(null);
-          }
-        }}
-        aria-expanded={expanded}
-      >
-        <span className={styles.rowTitle}>{brand.name}</span>
-        <span className={styles.rowStatus}>{brand.status}</span>
-        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
-      </button>
+    <ManagementItem
+      title={brand.name}
+      status={brand.status}
+      expanded={expanded}
+      onToggle={() => {
+        setExpanded((prev) => !prev);
+        if (expanded) {
+          setEditing(false);
+          setConfirmDelete(false);
+          setErrorMessage(null);
+        }
+      }}
+    >
+      <dl className={styles.meta}>
+        <div>
+          <dt>Name</dt>
+          <dd>{brand.name}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{brand.status}</dd>
+        </div>
+      </dl>
 
-      {expanded && (
-        <div className={styles.rowBody}>
-          <dl className={styles.meta}>
-            <div>
-              <dt>Name</dt>
-              <dd>{brand.name}</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>{brand.status}</dd>
-            </div>
-          </dl>
+      {errorMessage ? <ManagementError message={errorMessage} /> : null}
 
-          {errorMessage && (
-            <p className={styles.error} role="alert" aria-live="polite">
-              {errorMessage}
-            </p>
-          )}
-
-          <div className={styles.controls}>
-            {confirmDelete ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleDelete();
-                  }}
-                  disabled={deletePending}
-                >
-                  {deletePending ? "Deleting…" : "Confirm Delete"}
-                </button>
-                <button
-                  type="button"
-                  disabled={deletePending}
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing((prev) => !prev);
-                    setErrorMessage(null);
-                  }}
-                >
-                  {editing ? "Cancel Edit" : "Edit"}
-                </button>
-                <button type="button" onClick={() => setConfirmDelete(true)}>
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-
-          {editing && (
-            <form
-              className={styles.editForm}
-              onSubmit={(e) => {
-                void handleSave(e);
+      <div className={styles.controls}>
+        {confirmDelete ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void handleDelete();
+              }}
+              disabled={deletePending}
+            >
+              {deletePending ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing((prev) => !prev);
+                setErrorMessage(null);
               }}
             >
-              <label htmlFor={`brand-name-${brand.id}`}>
-                Name
-                <input
-                  id={`brand-name-${brand.id}`}
-                  type="text"
-                  minLength={2}
-                  maxLength={120}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </label>
+              {editing ? "Cancel Edit" : "Edit"}
+            </button>
+            <button type="button" onClick={() => setConfirmDelete(true)}>
+              Delete
+            </button>
+          </>
+        )}
+      </div>
 
-              <div className={styles.editActions}>
-                <button type="submit" disabled={savePending}>
-                  {savePending ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+      {editing && (
+        <form
+          className={styles.editForm}
+          onSubmit={(e) => {
+            void handleSave(e);
+          }}
+        >
+          <label htmlFor={`brand-name-${brand.id}`}>
+            Name
+            <input
+              id={`brand-name-${brand.id}`}
+              type="text"
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
+
+          <div className={styles.editActions}>
+            <button type="submit" disabled={savePending}>
+              {savePending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </form>
       )}
-    </li>
+    </ManagementItem>
   );
 }
 

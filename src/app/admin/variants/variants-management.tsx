@@ -2,7 +2,9 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getApiError, jsonRequest } from "@/lib/client-api";
+import { jsonRequest } from "@/lib/client-api";
+import { runAdminMutation } from "@/app/admin/management-client";
+import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import type { BeerVariant, BeerStyle } from "@/lib/types";
 import styles from "./variants.module.css";
 
@@ -44,24 +46,19 @@ function VariantItem({
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/admin/variants/${variant.id}`, {
-        ...jsonRequest("PUT", { body: { name, styleId } }),
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/admin/variants/${variant.id}`,
+      init: jsonRequest("PUT", { body: { name, styleId } }),
+      fallbackMessage: "Unable to save. Please try again.",
+      onSuccess: () => setEditing(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to save. Please try again.");
-        setErrorMessage(message);
-        return;
-      }
-
-      setEditing(false);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -72,158 +69,135 @@ function VariantItem({
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/admin/variants/${variant.id}`, {
-        method: "DELETE",
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/admin/variants/${variant.id}`,
+      init: { method: "DELETE" },
+      fallbackMessage: "Unable to delete. Please try again.",
+      onSuccess: () => setConfirmDelete(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const { message } = await getApiError(response, "Unable to delete. Please try again.");
-        setErrorMessage(message);
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
-      setDeletePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
     }
+
+    setDeletePending(false);
   }
 
   return (
-    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
-      <button
-        type="button"
-        className={styles.rowHeader}
-        onClick={() => {
-          setExpanded((prev) => !prev);
-          if (expanded) {
-            setEditing(false);
-            setConfirmDelete(false);
-            setErrorMessage(null);
-          }
-        }}
-        aria-expanded={expanded}
-      >
-        <span className={styles.rowTitle}>
-          {variant.brandName} {variant.name}
-        </span>
-        <span className={styles.rowStatus}>{variant.status}</span>
-        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
-      </button>
+    <ManagementItem
+      title={`${variant.brandName} ${variant.name}`}
+      status={variant.status}
+      expanded={expanded}
+      onToggle={() => {
+        setExpanded((prev) => !prev);
+        if (expanded) {
+          setEditing(false);
+          setConfirmDelete(false);
+          setErrorMessage(null);
+        }
+      }}
+    >
+      <dl className={styles.meta}>
+        <div>
+          <dt>Name</dt>
+          <dd>{variant.name}</dd>
+        </div>
+        <div>
+          <dt>Brand</dt>
+          <dd>{variant.brandName}</dd>
+        </div>
+        <div>
+          <dt>Style</dt>
+          <dd>{variant.styleName}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{variant.status}</dd>
+        </div>
+      </dl>
 
-      {expanded && (
-        <div className={styles.rowBody}>
-          <dl className={styles.meta}>
-            <div>
-              <dt>Name</dt>
-              <dd>{variant.name}</dd>
-            </div>
-            <div>
-              <dt>Brand</dt>
-              <dd>{variant.brandName}</dd>
-            </div>
-            <div>
-              <dt>Style</dt>
-              <dd>{variant.styleName}</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>{variant.status}</dd>
-            </div>
-          </dl>
+      {errorMessage ? <ManagementError message={errorMessage} /> : null}
 
-          {errorMessage && (
-            <p className={styles.error} role="alert" aria-live="polite">
-              {errorMessage}
-            </p>
-          )}
-
-          <div className={styles.controls}>
-            {confirmDelete ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleDelete();
-                  }}
-                  disabled={deletePending}
-                >
-                  {deletePending ? "Deleting…" : "Confirm Delete"}
-                </button>
-                <button
-                  type="button"
-                  disabled={deletePending}
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing((prev) => !prev);
-                    setErrorMessage(null);
-                  }}
-                >
-                  {editing ? "Cancel Edit" : "Edit"}
-                </button>
-                <button type="button" onClick={() => setConfirmDelete(true)}>
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-
-          {editing && (
-            <form
-              className={styles.editForm}
-              onSubmit={(e) => {
-                void handleSave(e);
+      <div className={styles.controls}>
+        {confirmDelete ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void handleDelete();
+              }}
+              disabled={deletePending}
+            >
+              {deletePending ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing((prev) => !prev);
+                setErrorMessage(null);
               }}
             >
-              <label htmlFor={`variant-name-${variant.id}`}>
-                Name
-                <input
-                  id={`variant-name-${variant.id}`}
-                  type="text"
-                  minLength={2}
-                  maxLength={120}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </label>
+              {editing ? "Cancel Edit" : "Edit"}
+            </button>
+            <button type="button" onClick={() => setConfirmDelete(true)}>
+              Delete
+            </button>
+          </>
+        )}
+      </div>
 
-              <label htmlFor={`variant-style-${variant.id}`}>
-                Style
-                <select
-                  id={`variant-style-${variant.id}`}
-                  value={styleId}
-                  onChange={(e) => setStyleId(e.target.value)}
-                  required
-                >
-                  {beerStyles.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+      {editing && (
+        <form
+          className={styles.editForm}
+          onSubmit={(e) => {
+            void handleSave(e);
+          }}
+        >
+          <label htmlFor={`variant-name-${variant.id}`}>
+            Name
+            <input
+              id={`variant-name-${variant.id}`}
+              type="text"
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
 
-              <div className={styles.editActions}>
-                <button type="submit" disabled={savePending}>
-                  {savePending ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+          <label htmlFor={`variant-style-${variant.id}`}>
+            Style
+            <select
+              id={`variant-style-${variant.id}`}
+              value={styleId}
+              onChange={(e) => setStyleId(e.target.value)}
+              required
+            >
+              {beerStyles.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className={styles.editActions}>
+            <button type="submit" disabled={savePending}>
+              {savePending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </form>
       )}
-    </li>
+    </ManagementItem>
   );
 }
 
