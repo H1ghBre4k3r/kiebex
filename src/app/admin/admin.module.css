@@ -28,11 +28,20 @@
 }
 
 .item {
-  border: var(--border-regular);
-  background: #fff;
-  padding: 1rem;
+  border: var(--border-heavy);
+  background: var(--surface);
+  padding: 1.5rem;
   display: grid;
   gap: 0.5rem;
+  box-shadow: var(--shadow-block);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.item:active {
+  transform: translate(4px, 4px);
+  box-shadow: 4px 4px 0 #111;
 }
 
 .item h3 {
