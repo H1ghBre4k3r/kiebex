@@ -22,11 +22,11 @@ export type ApiRequestResult<T> =
       message: string;
     };
 
-export async function parseApiJson<T>(response: Response): Promise<T | null> {
+async function parseApiJson<T>(response: Response): Promise<T | null> {
   return (await response.json().catch(() => null)) as T | null;
 }
 
-export async function getApiError(
+async function getApiError(
   response: Response,
   fallbackMessage: string,
 ): Promise<{ code?: string; message: string }> {
@@ -38,10 +38,10 @@ export async function getApiError(
   };
 }
 
-export function jsonRequest<TBody>(
+export function jsonInit(
   method: string,
   options?: Omit<RequestInit, "body" | "headers" | "method"> & {
-    body?: TBody;
+    body?: unknown;
     headers?: HeadersInit;
   },
 ): RequestInit {
@@ -82,7 +82,10 @@ export async function requestApi<T>(
       ok: true,
       data: body?.data ?? null,
     };
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[client-api] Network error:", error);
+    }
     return {
       ok: false,
       message: fallbackMessage,

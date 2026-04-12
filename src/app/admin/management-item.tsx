@@ -19,7 +19,7 @@ export function ManagementItem({
   children,
 }: ManagementItemProps) {
   return (
-    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
+    <li className={[styles.item, expanded && styles.expanded].filter(Boolean).join(" ")}>
       <button
         type="button"
         className={styles.rowHeader}
@@ -31,7 +31,8 @@ export function ManagementItem({
         <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
       </button>
 
-      {expanded ? <div className={styles.rowBody}>{children}</div> : null}
+      {/* Note: this conditional unmounts children on collapse, which destroys any unsaved form state. */}
+      {expanded && <div className={styles.rowBody}>{children}</div>}
     </li>
   );
 }

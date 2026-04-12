@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import { submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
@@ -44,7 +44,7 @@ export function VariantForm({ brands, styleOptions }: VariantFormProps) {
 
     const result = await requestApi<null>(
       "/api/v1/beer-variants",
-      jsonRequest("POST", {
+      jsonInit("POST", {
         body: {
           name,
           brandId,

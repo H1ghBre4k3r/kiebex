@@ -1,5 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
-import { isPrismaErrorCode } from "@/lib/prisma";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createBeerVariant, getBeerVariants, getBrandContributionPermission } from "@/lib/query";
 import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
 import { createBeerVariantBodySchema } from "@/lib/validation";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
 import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
-import { getServingLabel, locationTypeLabel } from "@/lib/display";
+import { servingLabel, locationTypeLabel } from "@/lib/display";
 import {
   getBeerBrands,
   getBeerOffers,
@@ -115,7 +115,7 @@ function buildActiveChips(
   // Serving chips
   for (const serving of map.serving ?? []) {
     chips.push({
-      label: `Serving: ${getServingLabel(serving as "tap" | "bottle" | "can")}`,
+      label: `Serving: ${servingLabel(serving as "tap" | "bottle" | "can")}`,
       removeUrl: rawMapToUrl(removeOneValue(map, "serving", serving)),
     });
   }
@@ -270,7 +270,7 @@ export default async function Home({
                     <article>
                       <OfferSummary
                         offer={offer}
-                        reviewSummary={reviewSummaryByLocation.get(offer.location.id)}
+                        reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
                       />
 
                       {index === 0 && (

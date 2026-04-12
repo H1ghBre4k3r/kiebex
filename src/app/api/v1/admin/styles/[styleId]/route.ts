@@ -1,5 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
-import { isPrismaErrorCode } from "@/lib/prisma";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { deleteAdminStyle, editAdminStyle, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
 import type { BeerStyle } from "@/lib/types";

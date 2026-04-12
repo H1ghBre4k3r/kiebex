@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
 
 export function LoginForm() {
@@ -30,7 +30,7 @@ export function LoginForm() {
 
     const result = await requestApi<null>(
       "/api/v1/auth/login",
-      jsonRequest("POST", { body: { email, password } }),
+      jsonInit("POST", { body: { email, password } }),
       "Unable to sign in. Please try again.",
     );
 
@@ -60,7 +60,7 @@ export function LoginForm() {
 
     const result = await requestApi<null>(
       "/api/v1/auth/resend-verification",
-      jsonRequest("POST", { body: { email } }),
+      jsonInit("POST", { body: { email } }),
       "Could not resend email. Please try again.",
     );
 

@@ -1,5 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
-import { isPrismaErrorCode } from "@/lib/prisma";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createAdminStyle, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
 import { createAdminStyleBodySchema } from "@/lib/validation";

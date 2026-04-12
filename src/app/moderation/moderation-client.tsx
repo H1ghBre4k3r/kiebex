@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import {
   LOCATION_TYPE_OPTIONS,
   formatDate,
   formatEur,
-  getServingLabel,
+  servingLabel,
   locationTypeLabel,
   reviewStatusLabel,
 } from "@/lib/display";
@@ -48,6 +48,8 @@ type MutationConfig = {
   onSuccess?: () => void;
   resetDeleteConfirmation?: boolean;
 };
+
+type ReviewEditFormFields = { rating: string; title: string; body: string };
 
 const MODERATION_ENDPOINTS = {
   locations: "/api/v1/moderation/locations",
@@ -94,6 +96,281 @@ function CollapsibleSection({
   );
 }
 
+type DeleteButtonProps = {
+  itemKey: string;
+  label: string;
+  endpoint: string;
+  id: string;
+  confirmDelete: string | null;
+  pendingAction: string | null;
+  onRequestDelete: (params: { label: string; endpoint: string; id: string }) => void;
+  onSetConfirmDelete: (key: string | null) => void;
+};
+
+function DeleteButton({
+  itemKey,
+  label,
+  endpoint,
+  id,
+  confirmDelete,
+  pendingAction,
+  onRequestDelete,
+  onSetConfirmDelete,
+}: DeleteButtonProps) {
+  const isConfirming = confirmDelete === itemKey;
+  const isWorking = pendingAction === getDeleteActionKey(endpoint, id);
+
+  if (isConfirming) {
+    return (
+      <>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.deleteConfirm}`}
+          disabled={isWorking}
+          onClick={() => void onRequestDelete({ label, endpoint, id })}
+        >
+          Confirm Delete
+        </button>
+        <button type="button" className={styles.button} onClick={() => onSetConfirmDelete(null)}>
+          Cancel
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`${styles.button} ${styles.delete}`}
+      disabled={!!pendingAction}
+      onClick={() => onSetConfirmDelete(itemKey)}
+    >
+      Delete
+    </button>
+  );
+}
+
+type ModerateButtonsProps = {
+  endpoint: string;
+  id: string;
+  queue: string;
+  disabled: boolean;
+  pendingAction: string | null;
+  onModerate: (params: {
+    queue: string;
+    endpoint: string;
+    id: string;
+    status: "approved" | "rejected";
+  }) => void;
+};
+
+function ModerateButtons({
+  endpoint,
+  id,
+  queue,
+  disabled,
+  pendingAction,
+  onModerate,
+}: ModerateButtonsProps) {
+  const approveKey = getModerationActionKey(endpoint, id, "approved");
+  const rejectKey = getModerationActionKey(endpoint, id, "rejected");
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.button} ${styles.approve}`}
+        disabled={disabled}
+        onClick={() => void onModerate({ queue, endpoint, id, status: "approved" })}
+      >
+        {pendingAction === approveKey ? "Approving…" : "Approve"}
+      </button>
+      <button
+        type="button"
+        className={`${styles.button} ${styles.reject}`}
+        disabled={disabled}
+        onClick={() => void onModerate({ queue, endpoint, id, status: "rejected" })}
+      >
+        {pendingAction === rejectKey ? "Rejecting…" : "Reject"}
+      </button>
+    </>
+  );
+}
+
+type ReviewEditFormProps = {
+  reviewId: string;
+  review: ModerationReview;
+  fields: ReviewEditFormFields;
+  pendingAction: string | null;
+  onFieldChange: React.Dispatch<React.SetStateAction<ReviewEditFormFields>>;
+  onSave: (reviewId: string) => void;
+  onCancel: () => void;
+};
+
+function ReviewEditForm({
+  reviewId,
+  review,
+  fields,
+  pendingAction,
+  onFieldChange,
+  onSave,
+  onCancel,
+}: ReviewEditFormProps) {
+  return (
+    <div className={styles.editForm}>
+      <label className={styles.editLabel}>
+        Rating (1–5, leave blank to keep)
+        <input
+          className={styles.editInput}
+          type="number"
+          min="1"
+          max="5"
+          step="1"
+          placeholder={String(review.rating)}
+          value={fields.rating}
+          onChange={(e) => onFieldChange((f) => ({ ...f, rating: e.target.value }))}
+        />
+      </label>
+      <label className={styles.editLabel}>
+        Title (blank to clear)
+        <input
+          className={styles.editInput}
+          type="text"
+          placeholder={review.title ?? ""}
+          value={fields.title}
+          onChange={(e) => onFieldChange((f) => ({ ...f, title: e.target.value }))}
+        />
+      </label>
+      <label className={styles.editLabel}>
+        Body (blank to clear)
+        <textarea
+          className={styles.editInput}
+          rows={3}
+          placeholder={review.body ?? ""}
+          value={fields.body}
+          onChange={(e) => onFieldChange((f) => ({ ...f, body: e.target.value }))}
+        />
+      </label>
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.approve}`}
+          disabled={!!pendingAction}
+          onClick={() => void onSave(reviewId)}
+        >
+          Save
+        </button>
+        <button type="button" className={styles.button} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type ReviewItemProps = {
+  review: ModerationReview;
+  showModerationButtons: boolean;
+  editingReviewId: string | null;
+  confirmDelete: string | null;
+  pendingAction: string | null;
+  reviewEditFields: ReviewEditFormFields;
+  onSetEditingReviewId: (id: string | null) => void;
+  onSetReviewEditFields: React.Dispatch<React.SetStateAction<ReviewEditFormFields>>;
+  onSetConfirmDelete: (key: string | null) => void;
+  onModerate: (params: {
+    queue: string;
+    endpoint: string;
+    id: string;
+    status: "approved" | "rejected";
+  }) => void;
+  onDelete: (params: { label: string; endpoint: string; id: string }) => void;
+  onEditReview: (reviewId: string) => void;
+};
+
+function ReviewItem({
+  review,
+  showModerationButtons,
+  editingReviewId,
+  confirmDelete,
+  pendingAction,
+  reviewEditFields,
+  onSetEditingReviewId,
+  onSetReviewEditFields,
+  onSetConfirmDelete,
+  onModerate,
+  onDelete,
+  onEditReview,
+}: ReviewItemProps) {
+  const isEditing = editingReviewId === review.id;
+
+  return (
+    <li className={styles.item}>
+      <h3>
+        {"★".repeat(review.rating)}
+        {"☆".repeat(5 - review.rating)} {review.title ? `— ${review.title}` : ""}
+      </h3>
+      <div className={styles.meta}>
+        <p>
+          <strong>Status:</strong>{" "}
+          <span className={styles[`status_${review.status}`]}>
+            {reviewStatusLabel(review.status)}
+          </span>
+        </p>
+        <p>Location: {review.locationName}</p>
+        {review.body && <p>{review.body}</p>}
+        <p>
+          By {review.author.displayName} on {formatDate(review.createdAt)}
+        </p>
+      </div>
+      {isEditing && (
+        <ReviewEditForm
+          reviewId={review.id}
+          review={review}
+          fields={reviewEditFields}
+          pendingAction={pendingAction}
+          onFieldChange={onSetReviewEditFields}
+          onSave={onEditReview}
+          onCancel={() => onSetEditingReviewId(null)}
+        />
+      )}
+      <div className={styles.actions}>
+        {showModerationButtons && (
+          <ModerateButtons
+            endpoint={MODERATION_ENDPOINTS.reviews}
+            id={review.id}
+            queue="review"
+            disabled={!!pendingAction}
+            pendingAction={pendingAction}
+            onModerate={onModerate}
+          />
+        )}
+        <button
+          type="button"
+          className={`${styles.button} ${styles.edit}`}
+          disabled={!!pendingAction}
+          onClick={() => {
+            onSetEditingReviewId(isEditing ? null : review.id);
+            onSetReviewEditFields({ rating: "", title: "", body: "" });
+          }}
+        >
+          {isEditing ? "Cancel Edit" : "Edit"}
+        </button>
+        <DeleteButton
+          itemKey={`review:${review.id}`}
+          label="review"
+          endpoint={MODERATION_ENDPOINTS.reviews}
+          id={review.id}
+          confirmDelete={confirmDelete}
+          pendingAction={pendingAction}
+          onRequestDelete={onDelete}
+          onSetConfirmDelete={onSetConfirmDelete}
+        />
+      </div>
+    </li>
+  );
+}
+
 export function ModerationClient({
   pendingLocations,
   pendingBrands,
@@ -124,11 +401,11 @@ export function ModerationClient({
 
   // Edit state for reviews
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
-  const [reviewEditFields, setReviewEditFields] = useState<{
-    rating: string;
-    title: string;
-    body: string;
-  }>({ rating: "", title: "", body: "" });
+  const [reviewEditFields, setReviewEditFields] = useState<ReviewEditFormFields>({
+    rating: "",
+    title: "",
+    body: "",
+  });
 
   function clearFeedback() {
     setFeedback(null);
@@ -165,7 +442,7 @@ export function ModerationClient({
     await runMutation({
       actionKey: getModerationActionKey(params.endpoint, params.id, params.status),
       input: `${params.endpoint}/${params.id}`,
-      init: jsonRequest("PATCH", { body: { status: params.status } }),
+      init: jsonInit("PATCH", { body: { status: params.status } }),
       fallbackMessage: `Unable to moderate ${params.queue} submission.`,
       successMessage: `${params.queue} ${params.status}.`,
     });
@@ -200,7 +477,7 @@ export function ModerationClient({
     await runMutation({
       actionKey,
       input: `${MODERATION_ENDPOINTS.locations}/${locationId}`,
-      init: jsonRequest("PUT", { body: payload }),
+      init: jsonInit("PUT", { body: payload }),
       fallbackMessage: "Unable to update location.",
       successMessage: "Location updated.",
       onSuccess: () => setEditingLocationId(null),
@@ -220,7 +497,7 @@ export function ModerationClient({
     await runMutation({
       actionKey,
       input: `${MODERATION_ENDPOINTS.offers}/${offerId}`,
-      init: jsonRequest("PUT", { body: { priceCents } }),
+      init: jsonInit("PUT", { body: { priceCents } }),
       fallbackMessage: "Unable to update offer price.",
       successMessage: "Offer price updated.",
       onSuccess: () => setEditingOfferId(null),
@@ -244,201 +521,11 @@ export function ModerationClient({
     await runMutation({
       actionKey,
       input: `${MODERATION_ENDPOINTS.reviews}/${reviewId}`,
-      init: jsonRequest("PUT", { body: payload }),
+      init: jsonInit("PUT", { body: payload }),
       fallbackMessage: "Unable to update review.",
       successMessage: "Review updated.",
       onSuccess: () => setEditingReviewId(null),
     });
-  }
-
-  function DeleteButton({
-    itemKey,
-    label,
-    endpoint,
-    id,
-  }: {
-    itemKey: string;
-    label: string;
-    endpoint: string;
-    id: string;
-  }) {
-    const isConfirming = confirmDelete === itemKey;
-    const isWorking = pendingAction === `delete:${endpoint}:${id}`;
-
-    if (isConfirming) {
-      return (
-        <>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.deleteConfirm}`}
-            disabled={isWorking}
-            onClick={() => void deleteItem({ label, endpoint, id })}
-          >
-            Confirm Delete
-          </button>
-          <button type="button" className={styles.button} onClick={() => setConfirmDelete(null)}>
-            Cancel
-          </button>
-        </>
-      );
-    }
-
-    return (
-      <button
-        type="button"
-        className={`${styles.button} ${styles.delete}`}
-        disabled={!!pendingAction}
-        onClick={() => setConfirmDelete(itemKey)}
-      >
-        Delete
-      </button>
-    );
-  }
-
-  function ModerateButtons({
-    endpoint,
-    id,
-    queue,
-    disabled,
-  }: {
-    endpoint: string;
-    id: string;
-    queue: string;
-    disabled: boolean;
-  }) {
-    const approveKey = getModerationActionKey(endpoint, id, "approved");
-    const rejectKey = getModerationActionKey(endpoint, id, "rejected");
-
-    return (
-      <>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.approve}`}
-          disabled={disabled}
-          onClick={() => void moderate({ queue, endpoint, id, status: "approved" })}
-        >
-          {pendingAction === approveKey ? "Approving…" : "Approve"}
-        </button>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.reject}`}
-          disabled={disabled}
-          onClick={() => void moderate({ queue, endpoint, id, status: "rejected" })}
-        >
-          {pendingAction === rejectKey ? "Rejecting…" : "Reject"}
-        </button>
-      </>
-    );
-  }
-
-  function ReviewEditForm({ reviewId }: { reviewId: string }) {
-    return (
-      <div className={styles.editForm}>
-        <label className={styles.editLabel}>
-          Rating (1–5, leave blank to keep)
-          <input
-            className={styles.editInput}
-            type="number"
-            min="1"
-            max="5"
-            step="1"
-            value={reviewEditFields.rating}
-            onChange={(e) => setReviewEditFields((f) => ({ ...f, rating: e.target.value }))}
-          />
-        </label>
-        <label className={styles.editLabel}>
-          Title (blank to clear)
-          <input
-            className={styles.editInput}
-            type="text"
-            value={reviewEditFields.title}
-            onChange={(e) => setReviewEditFields((f) => ({ ...f, title: e.target.value }))}
-          />
-        </label>
-        <label className={styles.editLabel}>
-          Body (blank to clear)
-          <textarea
-            className={styles.editInput}
-            rows={3}
-            value={reviewEditFields.body}
-            onChange={(e) => setReviewEditFields((f) => ({ ...f, body: e.target.value }))}
-          />
-        </label>
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.approve}`}
-            disabled={!!pendingAction}
-            onClick={() => void editReview(reviewId)}
-          >
-            Save
-          </button>
-          <button type="button" className={styles.button} onClick={() => setEditingReviewId(null)}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  function ReviewItem({
-    review,
-    showModerationButtons,
-  }: {
-    review: ModerationReview;
-    showModerationButtons: boolean;
-  }) {
-    const isEditing = editingReviewId === review.id;
-
-    return (
-      <li key={review.id} className={styles.item}>
-        <h3>
-          {"★".repeat(review.rating)}
-          {"☆".repeat(5 - review.rating)} {review.title ? `— ${review.title}` : ""}
-        </h3>
-        <div className={styles.meta}>
-          <p>
-            <strong>Status:</strong>{" "}
-            <span className={styles[`status_${review.status}`]}>
-              {reviewStatusLabel(review.status)}
-            </span>
-          </p>
-          <p>Location: {review.locationName}</p>
-          {review.body && <p>{review.body}</p>}
-          <p>
-            By {review.author.displayName} on {formatDate(review.createdAt)}
-          </p>
-        </div>
-        {isEditing && <ReviewEditForm reviewId={review.id} />}
-        <div className={styles.actions}>
-          {showModerationButtons && (
-            <ModerateButtons
-              endpoint={MODERATION_ENDPOINTS.reviews}
-              id={review.id}
-              queue="review"
-              disabled={!!pendingAction}
-            />
-          )}
-          <button
-            type="button"
-            className={`${styles.button} ${styles.edit}`}
-            disabled={!!pendingAction}
-            onClick={() => {
-              setEditingReviewId(isEditing ? null : review.id);
-              setReviewEditFields({ rating: "", title: "", body: "" });
-            }}
-          >
-            {isEditing ? "Cancel Edit" : "Edit"}
-          </button>
-          <DeleteButton
-            itemKey={`review:${review.id}`}
-            label="review"
-            endpoint={MODERATION_ENDPOINTS.reviews}
-            id={review.id}
-          />
-        </div>
-      </li>
-    );
   }
 
   return (
@@ -558,6 +645,8 @@ export function ModerationClient({
                         id={location.id}
                         queue="location"
                         disabled={!!pendingAction}
+                        pendingAction={pendingAction}
+                        onModerate={moderate}
                       />
                       <button
                         type="button"
@@ -580,6 +669,10 @@ export function ModerationClient({
                         label="location"
                         endpoint={MODERATION_ENDPOINTS.locations}
                         id={location.id}
+                        confirmDelete={confirmDelete}
+                        pendingAction={pendingAction}
+                        onRequestDelete={deleteItem}
+                        onSetConfirmDelete={setConfirmDelete}
                       />
                     </div>
                   </li>
@@ -614,12 +707,18 @@ export function ModerationClient({
                         id={brand.id}
                         queue="brand"
                         disabled={!!pendingAction}
+                        pendingAction={pendingAction}
+                        onModerate={moderate}
                       />
                       <DeleteButton
                         itemKey={`brand:${brand.id}`}
                         label="brand"
                         endpoint={MODERATION_ENDPOINTS.brands}
                         id={brand.id}
+                        confirmDelete={confirmDelete}
+                        pendingAction={pendingAction}
+                        onRequestDelete={deleteItem}
+                        onSetConfirmDelete={setConfirmDelete}
                       />
                     </div>
                   </li>
@@ -656,12 +755,18 @@ export function ModerationClient({
                         id={variant.id}
                         queue="variant"
                         disabled={!!pendingAction}
+                        pendingAction={pendingAction}
+                        onModerate={moderate}
                       />
                       <DeleteButton
                         itemKey={`variant:${variant.id}`}
                         label="variant"
                         endpoint={MODERATION_ENDPOINTS.variants}
                         id={variant.id}
+                        confirmDelete={confirmDelete}
+                        pendingAction={pendingAction}
+                        onRequestDelete={deleteItem}
+                        onSetConfirmDelete={setConfirmDelete}
                       />
                     </div>
                   </li>
@@ -690,7 +795,7 @@ export function ModerationClient({
                     </h3>
                     <div className={styles.meta}>
                       <p>
-                        {offer.sizeMl} ml — {getServingLabel(offer.serving)}
+                        {offer.sizeMl} ml — {servingLabel(offer.serving)}
                       </p>
                       <p>
                         Location: {offer.location.name} (
@@ -741,6 +846,8 @@ export function ModerationClient({
                         id={offer.id}
                         queue="offer"
                         disabled={!!pendingAction}
+                        pendingAction={pendingAction}
+                        onModerate={moderate}
                       />
                       <button
                         type="button"
@@ -758,6 +865,10 @@ export function ModerationClient({
                         label="offer"
                         endpoint={MODERATION_ENDPOINTS.offers}
                         id={offer.id}
+                        confirmDelete={confirmDelete}
+                        pendingAction={pendingAction}
+                        onRequestDelete={deleteItem}
+                        onSetConfirmDelete={setConfirmDelete}
                       />
                     </div>
                   </li>
@@ -788,7 +899,7 @@ export function ModerationClient({
                         {formatEur(proposal.proposedPriceEur)}
                       </p>
                       <p>
-                        {proposal.offer.sizeMl} ml — {getServingLabel(proposal.offer.serving)}
+                        {proposal.offer.sizeMl} ml — {servingLabel(proposal.offer.serving)}
                       </p>
                       <p>
                         Location: {proposal.offer.location.name} (
@@ -805,12 +916,18 @@ export function ModerationClient({
                         id={proposal.id}
                         queue="price update"
                         disabled={!!pendingAction}
+                        pendingAction={pendingAction}
+                        onModerate={moderate}
                       />
                       <DeleteButton
                         itemKey={`price-update:${proposal.id}`}
                         label="price update"
                         endpoint={MODERATION_ENDPOINTS.priceUpdates}
                         id={proposal.id}
+                        confirmDelete={confirmDelete}
+                        pendingAction={pendingAction}
+                        onRequestDelete={deleteItem}
+                        onSetConfirmDelete={setConfirmDelete}
                       />
                     </div>
                   </li>
@@ -827,7 +944,21 @@ export function ModerationClient({
           ) : (
             <ul className={styles.list}>
               {newReviews.map((review) => (
-                <ReviewItem key={review.id} review={review} showModerationButtons />
+                <ReviewItem
+                  key={review.id}
+                  review={review}
+                  showModerationButtons
+                  editingReviewId={editingReviewId}
+                  confirmDelete={confirmDelete}
+                  pendingAction={pendingAction}
+                  reviewEditFields={reviewEditFields}
+                  onSetEditingReviewId={setEditingReviewId}
+                  onSetReviewEditFields={setReviewEditFields}
+                  onSetConfirmDelete={setConfirmDelete}
+                  onModerate={moderate}
+                  onDelete={deleteItem}
+                  onEditReview={editReview}
+                />
               ))}
             </ul>
           )}
@@ -843,7 +974,21 @@ export function ModerationClient({
           ) : (
             <ul className={styles.list}>
               {approvedReviews.map((review) => (
-                <ReviewItem key={review.id} review={review} showModerationButtons={false} />
+                <ReviewItem
+                  key={review.id}
+                  review={review}
+                  showModerationButtons={false}
+                  editingReviewId={editingReviewId}
+                  confirmDelete={confirmDelete}
+                  pendingAction={pendingAction}
+                  reviewEditFields={reviewEditFields}
+                  onSetEditingReviewId={setEditingReviewId}
+                  onSetReviewEditFields={setReviewEditFields}
+                  onSetConfirmDelete={setConfirmDelete}
+                  onModerate={moderate}
+                  onDelete={deleteItem}
+                  onEditReview={editReview}
+                />
               ))}
             </ul>
           )}

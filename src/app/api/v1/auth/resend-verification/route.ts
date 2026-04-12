@@ -1,7 +1,7 @@
 import { createEmailVerificationToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email";
-import { jsonOk } from "@/lib/http";
+import { jsonError, jsonOk } from "@/lib/http";
 import { parseJsonBody } from "@/lib/route-handlers";
 import { buildVerificationUrl } from "@/lib/verification";
 import { resendVerificationBodySchema } from "@/lib/validation";
@@ -23,7 +23,19 @@ export async function POST(request: Request): Promise<Response> {
 
   if (user && !user.emailVerified) {
     const token = await createEmailVerificationToken(user.id);
-    const verificationUrl = buildVerificationUrl(request, token);
+
+    let verificationUrl: string;
+
+    try {
+      verificationUrl = buildVerificationUrl(request, token);
+    } catch {
+      return jsonError(
+        500,
+        "CONFIGURATION_ERROR",
+        "Server configuration error. Please contact support.",
+      );
+    }
+
     await sendVerificationEmail(user.email, verificationUrl);
   }
 

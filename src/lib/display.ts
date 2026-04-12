@@ -1,12 +1,11 @@
 import type { LocationType, ReviewStatus, ServingType, SubmissionStatus } from "@/lib/types";
+import { LOCATION_TYPES, SERVING_TYPES } from "@/lib/types";
 
 const EUR_FORMATTER = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR",
   minimumFractionDigits: 2,
 });
-
-export const LOCATION_TYPES = ["pub", "bar", "restaurant", "supermarket"] as const;
 
 export const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
   pub: "Pub",
@@ -15,14 +14,10 @@ export const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
   supermarket: "Supermarket",
 };
 
-export const LOCATION_TYPE_OPTIONS = [
-  { value: "pub", label: LOCATION_TYPE_LABELS.pub },
-  { value: "bar", label: LOCATION_TYPE_LABELS.bar },
-  { value: "restaurant", label: LOCATION_TYPE_LABELS.restaurant },
-  { value: "supermarket", label: LOCATION_TYPE_LABELS.supermarket },
-] as const satisfies ReadonlyArray<{ value: LocationType; label: string }>;
-
-export const SERVING_TYPES = ["tap", "bottle", "can"] as const;
+export const LOCATION_TYPE_OPTIONS = LOCATION_TYPES.map((value) => ({
+  value,
+  label: LOCATION_TYPE_LABELS[value],
+})) satisfies ReadonlyArray<{ value: LocationType; label: string }>;
 
 export const SERVING_TYPE_LABELS: Record<ServingType, string> = {
   tap: "On Tap",
@@ -30,11 +25,10 @@ export const SERVING_TYPE_LABELS: Record<ServingType, string> = {
   can: "Can",
 };
 
-export const SERVING_TYPE_OPTIONS = [
-  { value: "tap", label: SERVING_TYPE_LABELS.tap },
-  { value: "bottle", label: SERVING_TYPE_LABELS.bottle },
-  { value: "can", label: SERVING_TYPE_LABELS.can },
-] as const satisfies ReadonlyArray<{ value: ServingType; label: string }>;
+export const SERVING_TYPE_OPTIONS = SERVING_TYPES.map((value) => ({
+  value,
+  label: SERVING_TYPE_LABELS[value],
+})) satisfies ReadonlyArray<{ value: ServingType; label: string }>;
 
 export const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending: "Pending",
@@ -54,14 +48,18 @@ export function formatEur(value: number): string {
 }
 
 export function formatDate(value: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  return new Date(value).toLocaleDateString("en-GB", options);
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("de-DE", options);
 }
 
 export function formatDateTime(value: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  return new Date(value).toLocaleString("en-GB", options);
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("de-DE", options);
 }
 
-export function getServingLabel(serving: ServingType): string {
+export function servingLabel(serving: ServingType): string {
   return SERVING_TYPE_LABELS[serving];
 }
 

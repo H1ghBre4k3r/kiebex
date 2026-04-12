@@ -103,7 +103,7 @@
   border-left: var(--border-heavy);
   border-right: var(--border-heavy);
   box-shadow: var(--shadow-block);
-  background: #fff;
+  background: var(--white);
   margin-bottom: 0.5rem;
 }
 
@@ -137,7 +137,7 @@
 
 .rowHeader:hover {
   background: var(--ink);
-  color: #fff;
+  color: var(--white);
 }
 
 .rowTitle {
@@ -192,7 +192,7 @@
   border-top: var(--border-heavy);
   display: grid;
   gap: 1.5rem;
-  background: #fff;
+  background: var(--white);
 }
 
 .meta {
@@ -229,7 +229,7 @@
 
 .controls button {
   background: var(--ink);
-  color: #fff;
+  color: var(--white);
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
@@ -259,7 +259,7 @@
 .editForm select,
 .createForm input {
   border: var(--border-regular);
-  background: #fff;
+  background: var(--white);
   padding: 0.5rem;
   font-size: 1rem;
 }
@@ -275,7 +275,7 @@
 .createActions button {
   border: var(--border-regular);
   background: var(--ink);
-  color: #fff;
+  color: var(--white);
   font-weight: 700;
   text-transform: uppercase;
   padding: 0.35rem 0.65rem;

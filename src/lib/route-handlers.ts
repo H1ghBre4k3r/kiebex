@@ -22,6 +22,8 @@ type ParsedJsonBody<T> =
 
 function toErrorDetails(error: z.ZodError): { path?: string; message: string }[] {
   return error.issues.map((issue) => ({
+    // path is omitted (not "") when the issue is at the root of the schema (e.g. .refine()).
+    // Clients should check for path === undefined rather than path === "".
     path: issue.path.length > 0 ? issue.path.join(".") : undefined,
     message: issue.message,
   }));
@@ -43,12 +45,6 @@ export function jsonQueryValidationError(error: z.ZodError): Response {
 export async function parseJsonBody<TSchema extends z.ZodTypeAny>(
   request: Request,
   schema: TSchema,
-  options?: {
-    invalidJsonCode?: string;
-    invalidJsonMessage?: string;
-    invalidBodyCode?: string;
-    invalidBodyMessage?: string;
-  },
 ): Promise<ParsedJsonBody<z.infer<TSchema>>> {
   let body: unknown;
 
@@ -57,11 +53,7 @@ export async function parseJsonBody<TSchema extends z.ZodTypeAny>(
   } catch {
     return {
       ok: false,
-      response: jsonError(
-        400,
-        options?.invalidJsonCode ?? "INVALID_JSON",
-        options?.invalidJsonMessage ?? "Request body must be valid JSON.",
-      ),
+      response: jsonError(400, "INVALID_JSON", "Request body must be valid JSON."),
     };
   }
 
@@ -70,11 +62,7 @@ export async function parseJsonBody<TSchema extends z.ZodTypeAny>(
   if (!parsed.success) {
     return {
       ok: false,
-      response: jsonValidationError(
-        parsed.error,
-        options?.invalidBodyCode,
-        options?.invalidBodyMessage,
-      ),
+      response: jsonValidationError(parsed.error),
     };
   }
 
@@ -89,9 +77,10 @@ function createProtectedRoute(
   forbiddenMessage?: string,
 ): (handler: ProtectedHandler) => Promise<Response> {
   return async (handler) => {
+    let user: AuthUser;
+
     try {
-      const user = await loader();
-      return handler(user);
+      user = await loader();
     } catch (error) {
       if (error instanceof UnauthorizedError) {
         return jsonError(401, "UNAUTHORIZED", "Authentication required.");
@@ -103,6 +92,8 @@ function createProtectedRoute(
 
       throw error;
     }
+
+    return await handler(user);
   };
 }
 

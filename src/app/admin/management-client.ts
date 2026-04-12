@@ -15,7 +15,7 @@ export async function runAdminMutation({
   onSuccess,
   refresh,
 }: RunAdminMutationOptions): Promise<{ ok: true } | { ok: false; message: string }> {
-  const result = await requestApi<null>(input, init, fallbackMessage);
+  const result = await requestApi(input, init, fallbackMessage);
 
   if (!result.ok) {
     return { ok: false, message: result.message };

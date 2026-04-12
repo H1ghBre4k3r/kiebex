@@ -4,6 +4,9 @@ export function isKnownPrismaError(error: unknown): error is Prisma.PrismaClient
   return error instanceof Prisma.PrismaClientKnownRequestError;
 }
 
-export function isPrismaErrorCode(error: unknown, code: string): boolean {
+export function isPrismaErrorCode(
+  error: unknown,
+  code: string,
+): error is Prisma.PrismaClientKnownRequestError {
   return isKnownPrismaError(error) && error.code === code;
 }

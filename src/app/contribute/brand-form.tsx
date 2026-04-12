@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "./contribute.module.css";
 
 export function BrandForm() {
@@ -25,7 +25,7 @@ export function BrandForm() {
 
     const result = await requestApi<null>(
       "/api/v1/beer-brands",
-      jsonRequest("POST", {
+      jsonInit("POST", {
         body: {
           name,
         },

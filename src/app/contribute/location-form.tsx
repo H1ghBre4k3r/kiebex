@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import { LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import styles from "./contribute.module.css";
 
@@ -30,7 +30,7 @@ export function LocationForm() {
 
     const result = await requestApi<null>(
       "/api/v1/locations",
-      jsonRequest("POST", {
+      jsonInit("POST", {
         body: {
           name,
           locationType,

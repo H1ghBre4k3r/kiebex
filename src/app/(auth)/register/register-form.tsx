@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
 
 export function RegisterForm() {
@@ -26,7 +26,7 @@ export function RegisterForm() {
 
     const result = await requestApi<null>(
       "/api/v1/auth/register",
-      jsonRequest("POST", {
+      jsonInit("POST", {
         body: {
           displayName,
           email,

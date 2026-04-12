@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import { SERVING_TYPE_OPTIONS, submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
@@ -71,7 +71,7 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
 
     const result = await requestApi<OfferApiSuccess>(
       "/api/v1/beers",
-      jsonRequest("POST", {
+      jsonInit("POST", {
         body: {
           variantId,
           sizeMl: Number(sizeMl),

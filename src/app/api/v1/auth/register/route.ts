@@ -19,7 +19,18 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const token = await createEmailVerificationToken(result.user.id);
-  const verificationUrl = buildVerificationUrl(request, token);
+
+  let verificationUrl: string;
+
+  try {
+    verificationUrl = buildVerificationUrl(request, token);
+  } catch {
+    return jsonError(
+      500,
+      "CONFIGURATION_ERROR",
+      "Server configuration error. Please contact support.",
+    );
+  }
 
   await sendVerificationEmail(result.user.email, verificationUrl);
 

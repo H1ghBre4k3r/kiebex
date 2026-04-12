@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest } from "@/lib/client-api";
+import { jsonInit } from "@/lib/client-api";
 import { runAdminMutation } from "@/app/admin/management-client";
 import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import { LOCATION_TYPE_LABELS, LOCATION_TYPE_OPTIONS } from "@/lib/display";
@@ -44,7 +44,7 @@ function LocationItem({ location }: { location: LocationRow }) {
 
     const result = await runAdminMutation({
       input: `/api/v1/moderation/locations/${location.id}`,
-      init: jsonRequest("PUT", { body: { name, locationType, district, address } }),
+      init: jsonInit("PUT", { body: { name, locationType, district, address } }),
       fallbackMessage: "Unable to save. Please try again.",
       onSuccess: () => setEditing(false),
       refresh: () => router.refresh(),
@@ -114,7 +114,7 @@ function LocationItem({ location }: { location: LocationRow }) {
         </div>
       </dl>
 
-      {errorMessage ? <ManagementError message={errorMessage} /> : null}
+      {errorMessage && <ManagementError message={errorMessage} />}
 
       <div className={styles.controls}>
         {confirmDelete ? (

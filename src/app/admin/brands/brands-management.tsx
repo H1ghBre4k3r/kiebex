@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest } from "@/lib/client-api";
+import { jsonInit } from "@/lib/client-api";
 import { runAdminMutation } from "@/app/admin/management-client";
 import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import type { BeerBrand } from "@/lib/types";
@@ -37,7 +37,7 @@ function BrandItem({ brand }: { brand: BrandRow }) {
 
     const result = await runAdminMutation({
       input: `/api/v1/admin/brands/${brand.id}`,
-      init: jsonRequest("PUT", { body: { name } }),
+      init: jsonInit("PUT", { body: { name } }),
       fallbackMessage: "Unable to save. Please try again.",
       onSuccess: () => setEditing(false),
       refresh: () => router.refresh(),
@@ -99,7 +99,7 @@ function BrandItem({ brand }: { brand: BrandRow }) {
         </div>
       </dl>
 
-      {errorMessage ? <ManagementError message={errorMessage} /> : null}
+      {errorMessage && <ManagementError message={errorMessage} />}
 
       <div className={styles.controls}>
         {confirmDelete ? (

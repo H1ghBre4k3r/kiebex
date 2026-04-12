@@ -1,5 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
-import { isPrismaErrorCode } from "@/lib/prisma";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createReview, getLocationReviewPermission, getLocationReviews } from "@/lib/query";
 import { jsonQueryValidationError, parseJsonBody, withApiAuth } from "@/lib/route-handlers";
 import { createReviewBodySchema, parseReviewQueryParams } from "@/lib/validation";

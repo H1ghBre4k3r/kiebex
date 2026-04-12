@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest } from "@/lib/client-api";
+import { jsonInit } from "@/lib/client-api";
 import { runAdminMutation } from "@/app/admin/management-client";
 import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import styles from "./styles.module.css";
@@ -40,7 +40,7 @@ function StyleItem({ style }: { style: StyleRow }) {
 
     const result = await runAdminMutation({
       input: `/api/v1/admin/styles/${style.id}`,
-      init: jsonRequest("PUT", { body: { name } }),
+      init: jsonInit("PUT", { body: { name } }),
       fallbackMessage: "Unable to save. Please try again.",
       onSuccess: () => setEditing(false),
       refresh: () => router.refresh(),
@@ -104,7 +104,7 @@ function StyleItem({ style }: { style: StyleRow }) {
         </div>
       </dl>
 
-      {errorMessage ? <ManagementError message={errorMessage} /> : null}
+      {errorMessage && <ManagementError message={errorMessage} />}
 
       <div className={styles.controls}>
         {confirmDelete ? (
@@ -202,7 +202,7 @@ function CreateStyleForm() {
     const createdName = name;
     const result = await runAdminMutation({
       input: "/api/v1/admin/styles",
-      init: jsonRequest("POST", { body: { name } }),
+      init: jsonInit("POST", { body: { name } }),
       fallbackMessage: "Unable to create style. Please try again.",
       onSuccess: () => {
         setName("");

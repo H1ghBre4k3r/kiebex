@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
 
 type ProfileResponse = { user?: { displayName?: string } };
@@ -44,7 +44,7 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
 
     const result = await requestApi<ProfileResponse>(
       "/api/v1/auth/profile",
-      jsonRequest("PATCH", { body: { displayName } }),
+      jsonInit("PATCH", { body: { displayName } }),
       "Unable to update display name. Please try again.",
     );
 
@@ -81,7 +81,7 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
 
     const result = await requestApi<null>(
       "/api/v1/auth/profile",
-      jsonRequest("PATCH", { body: { currentPassword, newPassword } }),
+      jsonInit("PATCH", { body: { currentPassword, newPassword } }),
       "Unable to update password. Please try again.",
     );
 
@@ -111,7 +111,7 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
     const requestedEmail = newEmail;
     const result = await requestApi<null>(
       "/api/v1/auth/change-email",
-      jsonRequest("POST", { body: { newEmail, currentPassword: emailPassword } }),
+      jsonInit("POST", { body: { newEmail, currentPassword: emailPassword } }),
       "Unable to request email change. Please try again.",
     );
 

@@ -6,7 +6,7 @@ import {
   getVariantContributionPermission,
 } from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
-import { isPrismaErrorCode } from "@/lib/prisma";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { jsonQueryValidationError, parseJsonBody, withApiAuth } from "@/lib/route-handlers";
 import { createBeerOfferBodySchema, parseBeerQueryParams } from "@/lib/validation";
 

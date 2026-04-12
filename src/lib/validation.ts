@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LOCATION_TYPES, SERVING_TYPES } from "@/lib/display";
+import { LOCATION_TYPES, SERVING_TYPES } from "@/lib/types";
 
 const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import { LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import type { Location, LocationType } from "@/lib/types";
 import styles from "./page.module.css";
@@ -37,7 +37,7 @@ export function AdminLocationActions({ location }: Props) {
 
     const result = await requestApi<null>(
       `/api/v1/moderation/locations/${location.id}`,
-      jsonRequest("PUT", { body: { name, locationType, district, address } }),
+      jsonInit("PUT", { body: { name, locationType, district, address } }),
       "Unable to save. Please try again.",
     );
 

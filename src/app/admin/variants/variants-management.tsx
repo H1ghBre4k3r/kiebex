@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest } from "@/lib/client-api";
+import { jsonInit } from "@/lib/client-api";
 import { runAdminMutation } from "@/app/admin/management-client";
 import { ManagementError, ManagementItem } from "@/app/admin/management-item";
 import type { BeerVariant, BeerStyle } from "@/lib/types";
@@ -48,7 +48,7 @@ function VariantItem({
 
     const result = await runAdminMutation({
       input: `/api/v1/admin/variants/${variant.id}`,
-      init: jsonRequest("PUT", { body: { name, styleId } }),
+      init: jsonInit("PUT", { body: { name, styleId } }),
       fallbackMessage: "Unable to save. Please try again.",
       onSuccess: () => setEditing(false),
       refresh: () => router.refresh(),
@@ -118,7 +118,7 @@ function VariantItem({
         </div>
       </dl>
 
-      {errorMessage ? <ManagementError message={errorMessage} /> : null}
+      {errorMessage && <ManagementError message={errorMessage} />}
 
       <div className={styles.controls}>
         {confirmDelete ? (

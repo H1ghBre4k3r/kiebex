@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDate, formatEur, getServingLabel, locationTypeLabel } from "@/lib/display";
+import { formatDate, formatEur, servingLabel, locationTypeLabel } from "@/lib/display";
 import type { BeerOfferWithLocation, LocationReviewSummary, OfferPriceHistory } from "@/lib/types";
 import styles from "./offer-display.module.css";
 
@@ -14,9 +14,11 @@ function formatReviewSummary(summary?: LocationReviewSummary): string {
 export function OfferSummary({
   offer,
   reviewSummary,
+  showLocationLink = true,
 }: {
   offer: BeerOfferWithLocation;
-  reviewSummary?: LocationReviewSummary;
+  reviewSummary?: LocationReviewSummary | null;
+  showLocationLink?: boolean;
 }) {
   return (
     <>
@@ -38,23 +40,27 @@ export function OfferSummary({
         </div>
         <div>
           <dt>Serving</dt>
-          <dd>{getServingLabel(offer.serving)}</dd>
+          <dd>{servingLabel(offer.serving)}</dd>
         </div>
-        <div>
-          <dt>Location</dt>
-          <dd>
-            <Link href={`/locations/${offer.location.id}`}>{offer.location.name}</Link>
-          </dd>
-        </div>
-        <div>
-          <dt>Type</dt>
-          <dd>{locationTypeLabel(offer.location.locationType)}</dd>
-        </div>
-        {reviewSummary !== undefined && (
-          <div>
-            <dt>Reviews</dt>
-            <dd>{formatReviewSummary(reviewSummary)}</dd>
-          </div>
+        {showLocationLink && (
+          <>
+            <div>
+              <dt>Location</dt>
+              <dd>
+                <Link href={`/locations/${offer.location.id}`}>{offer.location.name}</Link>
+              </dd>
+            </div>
+            <div>
+              <dt>Type</dt>
+              <dd>{locationTypeLabel(offer.location.locationType)}</dd>
+            </div>
+            {reviewSummary !== undefined && (
+              <div>
+                <dt>Reviews</dt>
+                <dd>{formatReviewSummary(reviewSummary ?? undefined)}</dd>
+              </div>
+            )}
+          </>
         )}
       </dl>
     </>
@@ -70,7 +76,7 @@ export function LocationOfferSummary({
 }) {
   return (
     <div className={styles.offerCard}>
-      <OfferSummary offer={offer} />
+      <OfferSummary offer={offer} showLocationLink={false} />
 
       <div>
         <p>Price history ({history.length})</p>

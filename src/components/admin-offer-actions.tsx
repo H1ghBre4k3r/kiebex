@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "./admin-offer-actions.module.css";
 
 type Props = {
@@ -10,22 +10,11 @@ type Props = {
   currentPriceCents: number;
   /** Optional: called after a successful delete (e.g. to redirect) */
   onDeleted?: () => void;
-  /** CSS class applied to the outer wrapper div */
+  /** CSS class applied to the outer wrapper div; defaults to the component's built-in flex layout */
   className?: string;
-  /** CSS class applied to buttons */
-  buttonClassName?: string;
-  /** CSS class for error text */
-  errorClassName?: string;
 };
 
-export function AdminOfferActions({
-  offerId,
-  currentPriceCents,
-  onDeleted,
-  className,
-  buttonClassName,
-  errorClassName,
-}: Props) {
+export function AdminOfferActions({ offerId, currentPriceCents, onDeleted, className }: Props) {
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
@@ -54,7 +43,7 @@ export function AdminOfferActions({
 
     const result = await requestApi<null>(
       `/api/v1/moderation/offers/${offerId}`,
-      jsonRequest("PUT", { body: { priceCents } }),
+      jsonInit("PUT", { body: { priceCents } }),
       "Unable to save. Please try again.",
     );
 
@@ -98,7 +87,7 @@ export function AdminOfferActions({
 
   if (editing) {
     return (
-      <div className={className}>
+      <div className={className ?? styles.actions}>
         <form
           onSubmit={(e) => {
             void handleSave(e);
@@ -118,13 +107,13 @@ export function AdminOfferActions({
               className={styles.input}
             />
           </label>
-          <button type="submit" disabled={savePending} className={buttonClassName ?? styles.button}>
+          <button type="submit" disabled={savePending} className={styles.button}>
             {savePending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
             disabled={savePending}
-            className={buttonClassName ?? styles.button}
+            className={styles.button}
             onClick={() => {
               setEditing(false);
               setErrorMessage(null);
@@ -134,7 +123,7 @@ export function AdminOfferActions({
           </button>
         </form>
         {errorMessage && (
-          <p className={errorClassName ?? styles.error} role="alert" aria-live="polite">
+          <p className={styles.error} role="alert" aria-live="polite">
             {errorMessage}
           </p>
         )}
@@ -143,9 +132,9 @@ export function AdminOfferActions({
   }
 
   return (
-    <div className={className}>
+    <div className={className ?? styles.actions}>
       {errorMessage && (
-        <p className={errorClassName ?? styles.error} role="alert" aria-live="polite">
+        <p className={styles.error} role="alert" aria-live="polite">
           {errorMessage}
         </p>
       )}
@@ -157,7 +146,7 @@ export function AdminOfferActions({
               void handleDelete();
             }}
             disabled={deletePending}
-            className={buttonClassName ?? styles.button}
+            className={styles.button}
             aria-label="Confirm delete offer"
           >
             {deletePending ? "Deleting…" : "Confirm Delete"}
@@ -165,7 +154,7 @@ export function AdminOfferActions({
           <button
             type="button"
             disabled={deletePending}
-            className={buttonClassName ?? styles.button}
+            className={styles.button}
             onClick={() => setConfirmDelete(false)}
           >
             Cancel
@@ -175,7 +164,7 @@ export function AdminOfferActions({
         <>
           <button
             type="button"
-            className={buttonClassName ?? styles.button}
+            className={styles.button}
             onClick={() => setEditing(true)}
             aria-label="Edit offer price"
           >
@@ -183,7 +172,7 @@ export function AdminOfferActions({
           </button>
           <button
             type="button"
-            className={buttonClassName ?? styles.button}
+            className={styles.button}
             onClick={() => setConfirmDelete(true)}
             aria-label="Delete offer"
           >

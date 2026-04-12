@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { jsonRequest } from "@/lib/client-api";
+import { jsonInit } from "@/lib/client-api";
 import { runAdminMutation } from "@/app/admin/management-client";
 import { ManagementItem } from "@/app/admin/management-item";
 import { formatDate } from "@/lib/display";
@@ -182,7 +182,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
       userId,
       setPending: setPendingUserId,
       input: `/api/v1/admin/users/${userId}/role`,
-      init: jsonRequest("PATCH", { body: { role } }),
+      init: jsonInit("PATCH", { body: { role } }),
       fallbackMessage: "Unable to update user role.",
       successMessage: "User role updated.",
       refresh: true,

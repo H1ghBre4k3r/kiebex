@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "./page.module.css";
 
 type ReviewFormProps = {
@@ -31,7 +31,7 @@ export function ReviewForm({ locationId }: ReviewFormProps) {
 
     const result = await requestApi<null>(
       "/api/v1/reviews",
-      jsonRequest("POST", {
+      jsonInit("POST", {
         body: {
           locationId,
           rating: Number(rating),

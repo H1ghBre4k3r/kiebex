@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-export { formatEur, getServingLabel, locationTypeLabel } from "@/lib/display";
 import type {
   AuditDetailsMap,
   BeerBrand,

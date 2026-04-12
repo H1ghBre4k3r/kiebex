@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { jsonRequest, requestApi } from "@/lib/client-api";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import { formatDate } from "@/lib/display";
 import type { ReviewWithAuthor } from "@/lib/types";
 import styles from "./page.module.css";
@@ -49,7 +49,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
 
     const result = await requestApi<null>(
       editEndpoint,
-      jsonRequest(editMethod, {
+      jsonInit(editMethod, {
         body: {
           rating: Number(rating),
           title: title || null,
@@ -103,7 +103,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
 
     const result = await requestApi<null>(
       `/api/v1/moderation/reviews/${review.id}`,
-      jsonRequest("PATCH", { body: { status } }),
+      jsonInit("PATCH", { body: { status } }),
       "Unable to moderate. Please try again.",
     );
 

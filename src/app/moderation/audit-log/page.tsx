@@ -50,37 +50,33 @@ export default async function AuditLogPage({
           {total}
         </h2>
 
-        {entries.length === 0 ? (
-          <p className={styles.notice}>No moderation actions recorded yet.</p>
-        ) : (
-          <AuditLogList
-            entries={entries}
-            emptyMessage="No moderation actions recorded yet."
-            footer={
-              <nav className={styles.pagination} aria-label="Audit log pagination">
-                {safePage > 1 ? (
-                  <Link href={`/moderation/audit-log?page=${safePage - 1}`}>← Previous</Link>
-                ) : (
-                  <span aria-disabled="true" className={styles.paginationDisabled}>
-                    ← Previous
-                  </span>
-                )}
-
-                <span>
-                  Page {safePage} / {totalPages}
+        <AuditLogList
+          entries={entries}
+          emptyMessage="No moderation actions recorded yet."
+          footer={
+            <nav className={styles.pagination} aria-label="Audit log pagination">
+              {safePage > 1 ? (
+                <Link href={`/moderation/audit-log?page=${safePage - 1}`}>← Previous</Link>
+              ) : (
+                <span aria-disabled="true" className={styles.paginationDisabled}>
+                  ← Previous
                 </span>
+              )}
 
-                {safePage < totalPages ? (
-                  <Link href={`/moderation/audit-log?page=${safePage + 1}`}>Next →</Link>
-                ) : (
-                  <span aria-disabled="true" className={styles.paginationDisabled}>
-                    Next →
-                  </span>
-                )}
-              </nav>
-            }
-          />
-        )}
+              <span>
+                Page {safePage} / {totalPages}
+              </span>
+
+              {safePage < totalPages ? (
+                <Link href={`/moderation/audit-log?page=${safePage + 1}`}>Next →</Link>
+              ) : (
+                <span aria-disabled="true" className={styles.paginationDisabled}>
+                  Next →
+                </span>
+              )}
+            </nav>
+          }
+        />
       </section>
     </main>
   );

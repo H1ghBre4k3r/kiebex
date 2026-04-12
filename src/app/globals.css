@@ -1,5 +1,4 @@
 :root {
-  --page-bg: #f3ebd9;
   --surface: #fff8ea;
   --surface-strong: #ffd46b;
   --ink: #111;
@@ -8,6 +7,7 @@
   --border-heavy: 4px solid #111;
   --border-regular: 2px solid #111;
   --shadow-block: 8px 8px 0 #111;
+  --white: #fff;
 }
 
 html,
