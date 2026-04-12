@@ -2,11 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
+import { getApiError, jsonRequest } from "@/lib/client-api";
 
 type Props = {
   offerId: string;
@@ -57,14 +53,12 @@ export function AdminOfferActions({
 
     try {
       const response = await fetch(`/api/v1/moderation/offers/${offerId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceCents }),
+        ...jsonRequest("PUT", { body: { priceCents } }),
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
+        const { message } = await getApiError(response, "Unable to save. Please try again.");
+        setErrorMessage(message);
         return;
       }
 
@@ -91,8 +85,8 @@ export function AdminOfferActions({
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
+        const { message } = await getApiError(response, "Unable to delete. Please try again.");
+        setErrorMessage(message);
         setConfirmDelete(false);
         return;
       }

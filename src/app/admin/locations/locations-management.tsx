@@ -2,22 +2,10 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { getApiError, jsonRequest } from "@/lib/client-api";
+import { LOCATION_TYPE_LABELS, LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import type { Location, LocationType } from "@/lib/types";
 import styles from "./locations.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
-
-const LOCATION_TYPES: LocationType[] = ["pub", "bar", "restaurant", "supermarket"];
-
-const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
-  pub: "Pub",
-  bar: "Bar",
-  restaurant: "Restaurant",
-  supermarket: "Supermarket",
-};
 
 type LocationRow = Pick<
   Location,
@@ -54,14 +42,12 @@ function LocationItem({ location }: { location: LocationRow }) {
 
     try {
       const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, locationType, district, address }),
+        ...jsonRequest("PUT", { body: { name, locationType, district, address } }),
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
+        const { message } = await getApiError(response, "Unable to save. Please try again.");
+        setErrorMessage(message);
         return;
       }
 
@@ -88,8 +74,8 @@ function LocationItem({ location }: { location: LocationRow }) {
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
+        const { message } = await getApiError(response, "Unable to delete. Please try again.");
+        setErrorMessage(message);
         setConfirmDelete(false);
         return;
       }
@@ -213,9 +199,9 @@ function LocationItem({ location }: { location: LocationRow }) {
                   value={locationType}
                   onChange={(e) => setLocationType(e.target.value as LocationType)}
                 >
-                  {LOCATION_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {LOCATION_TYPE_LABELS[t]}
+                  {LOCATION_TYPE_OPTIONS.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
                     </option>
                   ))}
                 </select>

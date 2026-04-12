@@ -2,12 +2,8 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { getApiError, jsonRequest } from "@/lib/client-api";
 import styles from "./styles.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
 
 type StyleRow = {
   id: string;
@@ -42,14 +38,12 @@ function StyleItem({ style }: { style: StyleRow }) {
 
     try {
       const response = await fetch(`/api/v1/admin/styles/${style.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        ...jsonRequest("PUT", { body: { name } }),
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
+        const { message } = await getApiError(response, "Unable to save. Please try again.");
+        setErrorMessage(message);
         return;
       }
 
@@ -76,8 +70,8 @@ function StyleItem({ style }: { style: StyleRow }) {
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
+        const { message } = await getApiError(response, "Unable to delete. Please try again.");
+        setErrorMessage(message);
         setConfirmDelete(false);
         return;
       }
@@ -231,14 +225,15 @@ function CreateStyleForm() {
 
     try {
       const response = await fetch("/api/v1/admin/styles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        ...jsonRequest("POST", { body: { name } }),
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to create style. Please try again.");
+        const { message } = await getApiError(
+          response,
+          "Unable to create style. Please try again.",
+        );
+        setErrorMessage(message);
         return;
       }
 

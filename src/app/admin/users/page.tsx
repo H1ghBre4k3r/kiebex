@@ -1,20 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireAdminPageUser } from "@/lib/page-auth";
 import { getUsersForAdmin } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { UsersManagement } from "./users-management";
 import styles from "./users.module.css";
 
 export default async function AdminUsersPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireAdminPageUser();
 
   const users = await getUsersForAdmin();
 

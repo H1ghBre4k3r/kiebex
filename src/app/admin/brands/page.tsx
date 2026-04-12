@@ -1,20 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireAdminPageUser } from "@/lib/page-auth";
 import { getBeerBrands } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { BrandsManagement } from "./brands-management";
 import styles from "./brands.module.css";
 
 export default async function AdminBrandsPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireAdminPageUser();
 
   const brands = await getBeerBrands();
 

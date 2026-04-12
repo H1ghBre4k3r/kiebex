@@ -2,17 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { getApiError, jsonRequest } from "@/lib/client-api";
 import styles from "./page.module.css";
 
 type ReviewFormProps = {
   locationId: string;
-};
-
-type ApiResponse = {
-  status?: "ok" | "error";
-  error?: {
-    message?: string;
-  };
 };
 
 export function ReviewForm({ locationId }: ReviewFormProps) {
@@ -37,22 +31,19 @@ export function ReviewForm({ locationId }: ReviewFormProps) {
 
     try {
       const response = await fetch("/api/v1/reviews", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          locationId,
-          rating: Number(rating),
-          title: title.trim() || undefined,
-          body: body.trim() || undefined,
+        ...jsonRequest("POST", {
+          body: {
+            locationId,
+            rating: Number(rating),
+            title: title.trim() || undefined,
+            body: body.trim() || undefined,
+          },
         }),
       });
 
-      const parsedBody = (await response.json().catch(() => null)) as ApiResponse | null;
-
       if (!response.ok) {
-        setErrorMessage(parsedBody?.error?.message ?? "Unable to submit review.");
+        const { message } = await getApiError(response, "Unable to submit review.");
+        setErrorMessage(message);
         setPending(false);
         return;
       }

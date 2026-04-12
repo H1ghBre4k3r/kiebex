@@ -2,6 +2,7 @@ import { createSession, verifyEmailToken } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { parseJsonBody } from "@/lib/route-handlers";
 
 const verifyEmailBodySchema = z.object({
   token: z.string().min(1).max(128),
@@ -30,18 +31,13 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: unknown;
+  const parsed = await parseJsonBody(request, verifyEmailBodySchema, {
+    invalidBodyCode: "INVALID_TOKEN",
+    invalidBodyMessage: "A valid token is required.",
+  });
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
-
-  const parsed = verifyEmailBodySchema.safeParse(body);
-
-  if (!parsed.success) {
-    return jsonError(400, "INVALID_TOKEN", "A valid token is required.");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const result = await verifyEmailToken(parsed.data.token);

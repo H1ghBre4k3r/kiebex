@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { requestApi } from "@/lib/client-api";
 
 type LogoutButtonProps = {
   className?: string;
@@ -18,18 +19,15 @@ export function LogoutButton({ className }: LogoutButtonProps) {
 
     setPending(true);
 
-    try {
-      const response = await fetch("/api/v1/auth/logout", {
-        method: "POST",
-      });
+    const result = await requestApi<{ message?: string }>(
+      "/api/v1/auth/logout",
+      { method: "POST" },
+      "Unable to sign out.",
+    );
 
-      if (!response.ok) {
-        setPending(false);
-        return;
-      }
-
+    if (result.ok) {
       router.refresh();
-    } catch {
+    } else {
       setPending(false);
     }
   }

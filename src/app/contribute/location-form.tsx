@@ -2,26 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { getApiError, jsonRequest } from "@/lib/client-api";
+import { LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import styles from "./contribute.module.css";
-
-type ApiResponse = {
-  status?: "ok" | "error";
-  error?: {
-    message?: string;
-  };
-};
-
-const locationTypes = [
-  { value: "pub", label: "Pub" },
-  { value: "bar", label: "Bar" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "supermarket", label: "Supermarket" },
-] as const;
 
 export function LocationForm() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [locationType, setLocationType] = useState<(typeof locationTypes)[number]["value"]>("pub");
+  const [locationType, setLocationType] =
+    useState<(typeof LOCATION_TYPE_OPTIONS)[number]["value"]>("pub");
   const [district, setDistrict] = useState("");
   const [address, setAddress] = useState("");
   const [pending, setPending] = useState(false);
@@ -41,22 +30,19 @@ export function LocationForm() {
 
     try {
       const response = await fetch("/api/v1/locations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          locationType,
-          district,
-          address,
+        ...jsonRequest("POST", {
+          body: {
+            name,
+            locationType,
+            district,
+            address,
+          },
         }),
       });
 
-      const body = (await response.json().catch(() => null)) as ApiResponse | null;
-
       if (!response.ok) {
-        setErrorMessage(body?.error?.message ?? "Unable to submit location.");
+        const { message } = await getApiError(response, "Unable to submit location.");
+        setErrorMessage(message);
         setPending(false);
         return;
       }
@@ -97,10 +83,10 @@ export function LocationForm() {
           name="locationType"
           value={locationType}
           onChange={(event) =>
-            setLocationType(event.target.value as (typeof locationTypes)[number]["value"])
+            setLocationType(event.target.value as (typeof LOCATION_TYPE_OPTIONS)[number]["value"])
           }
         >
-          {locationTypes.map((type) => (
+          {LOCATION_TYPE_OPTIONS.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
             </option>

@@ -1,20 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireAdminPageUser } from "@/lib/page-auth";
 import { getAllBeerStylesForAdmin } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StylesManagement } from "./styles-management";
 import styles from "./styles.module.css";
 
 export default async function AdminStylesPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireAdminPageUser();
 
   const beerStyles = await getAllBeerStylesForAdmin();
 

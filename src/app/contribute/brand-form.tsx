@@ -2,14 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { getApiError, jsonRequest } from "@/lib/client-api";
 import styles from "./contribute.module.css";
-
-type ApiResponse = {
-  status?: "ok" | "error";
-  error?: {
-    message?: string;
-  };
-};
 
 export function BrandForm() {
   const router = useRouter();
@@ -31,19 +25,16 @@ export function BrandForm() {
 
     try {
       const response = await fetch("/api/v1/beer-brands", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
+        ...jsonRequest("POST", {
+          body: {
+            name,
+          },
         }),
       });
 
-      const body = (await response.json().catch(() => null)) as ApiResponse | null;
-
       if (!response.ok) {
-        setErrorMessage(body?.error?.message ?? "Unable to submit beer brand.");
+        const { message } = await getApiError(response, "Unable to submit beer brand.");
+        setErrorMessage(message);
         setPending(false);
         return;
       }

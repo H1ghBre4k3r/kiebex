@@ -1,17 +1,10 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { getApiError, parseApiJson, jsonRequest } from "@/lib/client-api";
 import styles from "../auth.module.css";
 
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
-
-type ApiSuccessBody = {
-  status?: "ok";
-  data?: { user?: { displayName?: string } };
-};
+type ProfileResponse = { user?: { displayName?: string } };
 
 type Props = {
   initialDisplayName: string;
@@ -51,20 +44,19 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
 
     try {
       const response = await fetch("/api/v1/auth/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName }),
+        ...jsonRequest("PATCH", { body: { displayName } }),
       });
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setDisplayNameError(
-          body?.error?.message ?? "Unable to update display name. Please try again.",
+        const { message } = await getApiError(
+          response,
+          "Unable to update display name. Please try again.",
         );
+        setDisplayNameError(message);
         return;
       }
 
-      const body = (await response.json().catch(() => null)) as ApiSuccessBody | null;
+      const body = await parseApiJson<{ status?: "ok"; data?: ProfileResponse }>(response);
       const updated = body?.data?.user?.displayName;
 
       if (updated) {
@@ -97,14 +89,15 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
 
     try {
       const response = await fetch("/api/v1/auth/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        ...jsonRequest("PATCH", { body: { currentPassword, newPassword } }),
       });
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setPasswordError(body?.error?.message ?? "Unable to update password. Please try again.");
+        const { message } = await getApiError(
+          response,
+          "Unable to update password. Please try again.",
+        );
+        setPasswordError(message);
         return;
       }
 
@@ -132,14 +125,15 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
 
     try {
       const response = await fetch("/api/v1/auth/change-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newEmail, currentPassword: emailPassword }),
+        ...jsonRequest("POST", { body: { newEmail, currentPassword: emailPassword } }),
       });
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setEmailError(body?.error?.message ?? "Unable to request email change. Please try again.");
+        const { message } = await getApiError(
+          response,
+          "Unable to request email change. Please try again.",
+        );
+        setEmailError(message);
         return;
       }
 

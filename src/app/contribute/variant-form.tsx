@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { getApiError, jsonRequest } from "@/lib/client-api";
+import { submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
 type BrandOption = {
@@ -19,25 +21,6 @@ type VariantFormProps = {
   brands: BrandOption[];
   styleOptions: StyleOption[];
 };
-
-type ApiResponse = {
-  status?: "ok" | "error";
-  error?: {
-    message?: string;
-  };
-};
-
-function brandStatusLabel(status: BrandOption["status"]): string {
-  if (status === "pending") {
-    return "Pending";
-  }
-
-  if (status === "rejected") {
-    return "Rejected";
-  }
-
-  return "Approved";
-}
 
 export function VariantForm({ brands, styleOptions }: VariantFormProps) {
   const router = useRouter();
@@ -61,21 +44,18 @@ export function VariantForm({ brands, styleOptions }: VariantFormProps) {
 
     try {
       const response = await fetch("/api/v1/beer-variants", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          brandId,
-          styleId,
+        ...jsonRequest("POST", {
+          body: {
+            name,
+            brandId,
+            styleId,
+          },
         }),
       });
 
-      const body = (await response.json().catch(() => null)) as ApiResponse | null;
-
       if (!response.ok) {
-        setErrorMessage(body?.error?.message ?? "Unable to submit beer variant.");
+        const { message } = await getApiError(response, "Unable to submit beer variant.");
+        setErrorMessage(message);
         setPending(false);
         return;
       }
@@ -117,7 +97,7 @@ export function VariantForm({ brands, styleOptions }: VariantFormProps) {
         >
           {brands.map((brand) => (
             <option key={brand.id} value={brand.id}>
-              {brand.name} ({brandStatusLabel(brand.status)})
+              {brand.name} ({submissionStatusLabel(brand.status)})
             </option>
           ))}
         </select>

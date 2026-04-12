@@ -223,6 +223,21 @@
   margin-top: 0.5rem;
 }
 
+.auditFooter {
+  margin-top: 0.75rem;
+}
+
+.pagination {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.paginationDisabled {
+  color: var(--ink-muted);
+}
+
 @media (min-width: 1100px) {
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

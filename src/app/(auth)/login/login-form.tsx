@@ -3,15 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { getApiError, jsonRequest } from "@/lib/client-api";
 import styles from "../auth.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: {
-    code?: string;
-    message?: string;
-  };
-};
 
 export function LoginForm() {
   const router = useRouter();
@@ -37,21 +30,20 @@ export function LoginForm() {
 
     try {
       const response = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+        ...jsonRequest("POST", { body: { email, password } }),
       });
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
+        const { code, message } = await getApiError(
+          response,
+          "Unable to sign in. Please try again.",
+        );
 
-        if (body?.error?.code === "EMAIL_NOT_VERIFIED") {
+        if (code === "EMAIL_NOT_VERIFIED") {
           setEmailNotVerified(true);
           setErrorMessage("Your email address has not been verified yet.");
         } else {
-          setErrorMessage(body?.error?.message ?? "Unable to sign in. Please try again.");
+          setErrorMessage(message);
         }
 
         setPending(false);
@@ -76,9 +68,7 @@ export function LoginForm() {
 
     try {
       await fetch("/api/v1/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        ...jsonRequest("POST", { body: { email } }),
       });
 
       setResendMessage("Verification email resent. Please check your inbox.");

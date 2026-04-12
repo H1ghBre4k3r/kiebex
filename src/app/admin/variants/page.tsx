@@ -1,20 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireAdminPageUser } from "@/lib/page-auth";
 import { getAllBeerVariantsForAdmin, getBeerStyles } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { VariantsManagement } from "./variants-management";
 import styles from "./variants.module.css";
 
 export default async function AdminVariantsPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireAdminPageUser();
 
   const [variants, beerStyles] = await Promise.all([getAllBeerVariantsForAdmin(), getBeerStyles()]);
 

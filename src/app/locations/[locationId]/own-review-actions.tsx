@@ -2,13 +2,10 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getApiError, jsonRequest } from "@/lib/client-api";
+import { formatDate } from "@/lib/display";
 import type { ReviewWithAuthor } from "@/lib/types";
 import styles from "./page.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
 
 type Props = {
   review: ReviewWithAuthor;
@@ -52,18 +49,18 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
 
     try {
       const response = await fetch(editEndpoint, {
-        method: editMethod,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rating: Number(rating),
-          title: title || null,
-          body: body || null,
+        ...jsonRequest(editMethod, {
+          body: {
+            rating: Number(rating),
+            title: title || null,
+            body: body || null,
+          },
         }),
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
+        const { message } = await getApiError(response, "Unable to save. Please try again.");
+        setErrorMessage(message);
         return;
       }
 
@@ -90,8 +87,8 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
+        const { message } = await getApiError(response, "Unable to delete. Please try again.");
+        setErrorMessage(message);
         setConfirmDelete(false);
         return;
       }
@@ -113,14 +110,12 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
 
     try {
       const response = await fetch(`/api/v1/moderation/reviews/${review.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        ...jsonRequest("PATCH", { body: { status } }),
       });
 
       if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to moderate. Please try again.");
+        const { message } = await getApiError(response, "Unable to moderate. Please try again.");
+        setErrorMessage(message);
         return;
       }
 
@@ -212,7 +207,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
       </p>
       {review.title && <p>{review.title}</p>}
       {review.body && <p>{review.body}</p>}
-      <p>{new Date(review.createdAt).toLocaleDateString("en-GB")}</p>
+      <p>{formatDate(review.createdAt)}</p>
 
       {canAct && (
         <div className={styles.reviewActions}>

@@ -3,20 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { LOCATION_TYPE_OPTIONS, SERVING_TYPE_OPTIONS } from "@/lib/display";
 import styles from "./filter-panel.module.css";
-
-const SERVING_TYPES = [
-  { value: "tap", label: "On Tap" },
-  { value: "bottle", label: "Bottle" },
-  { value: "can", label: "Can" },
-] as const;
-
-const LOCATION_TYPES = [
-  { value: "pub", label: "Pub" },
-  { value: "bar", label: "Bar" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "supermarket", label: "Supermarket" },
-] as const;
 
 type Props = {
   brands: { id: string; name: string }[];
@@ -273,7 +261,7 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
           <div className={styles.group}>
             <p className={styles.groupLabel}>Serving</p>
             <ul className={styles.checkList} role="list">
-              {SERVING_TYPES.map(({ value, label }) => (
+              {SERVING_TYPE_OPTIONS.map(({ value, label }) => (
                 <li key={value} className={styles.checkItem}>
                   <input
                     type="checkbox"
@@ -313,7 +301,7 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
           <div className={styles.group}>
             <p className={styles.groupLabel}>Location Type</p>
             <ul className={styles.checkList} role="list">
-              {LOCATION_TYPES.map(({ value, label }) => (
+              {LOCATION_TYPE_OPTIONS.map(({ value, label }) => (
                 <li key={value} className={styles.checkItem}>
                   <input
                     type="checkbox"

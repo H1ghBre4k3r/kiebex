@@ -1,28 +1,13 @@
 import { authenticateUser, createSession } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
+import { parseJsonBody } from "@/lib/route-handlers";
 import { loginBodySchema } from "@/lib/validation";
 
 export async function POST(request: Request): Promise<Response> {
-  let body: unknown;
+  const parsed = await parseJsonBody(request, loginBodySchema);
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
-
-  const parsed = loginBodySchema.safeParse(body);
-
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const result = await authenticateUser(parsed.data);

@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireModeratorPageUser } from "@/lib/page-auth";
 import {
   getAllReviewsForModeration,
   getModerationAuditLog,
@@ -14,15 +13,7 @@ import { ModerationClient } from "./moderation-client";
 import styles from "./moderation.module.css";
 
 export default async function ModerationPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "moderator" && authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireModeratorPageUser();
 
   const [
     pendingLocations,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
+import { formatDate } from "@/lib/display";
 import {
   formatEur,
   getLocationById,
@@ -86,7 +87,7 @@ export default async function LocationPage({
                       {history.map((entry) => (
                         <li key={entry.id}>
                           <p>{formatEur(entry.priceEur)}</p>
-                          <p>{new Date(entry.effectiveAt).toLocaleDateString("en-GB")}</p>
+                          <p>{formatDate(entry.effectiveAt)}</p>
                         </li>
                       ))}
                     </ul>

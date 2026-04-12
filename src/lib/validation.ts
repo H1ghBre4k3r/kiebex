@@ -1,7 +1,6 @@
 import { z } from "zod";
+import { LOCATION_TYPES, SERVING_TYPES } from "@/lib/display";
 
-const servingTypes = ["tap", "bottle", "can"] as const;
-const locationTypes = ["pub", "bar", "restaurant", "supermarket"] as const;
 const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;
 const reviewStatuses = ["approved", "rejected"] as const;
@@ -12,8 +11,8 @@ export const beerQuerySchema = z.object({
   variantId: z.array(z.string().trim().min(1).max(100)).optional(),
   styleId: z.array(z.string().trim().min(1).max(100)).optional(),
   sizeMl: z.array(z.coerce.number().int().positive().max(2000)).optional(),
-  serving: z.array(z.enum(servingTypes)).optional(),
-  locationType: z.array(z.enum(locationTypes)).optional(),
+  serving: z.array(z.enum(SERVING_TYPES)).optional(),
+  locationType: z.array(z.enum(LOCATION_TYPES)).optional(),
   locationId: z.array(z.string().trim().min(1).max(100)).optional(),
   sort: z.enum(sortOrders).optional(),
 });
@@ -36,7 +35,7 @@ export const loginBodySchema = z.object({
 
 export const createLocationBodySchema = z.object({
   name: z.string().trim().min(2).max(120),
-  locationType: z.enum(locationTypes),
+  locationType: z.enum(LOCATION_TYPES),
   district: z.string().trim().min(2).max(80),
   address: z.string().trim().min(5).max(200),
 });
@@ -54,7 +53,7 @@ export const createBeerVariantBodySchema = z.object({
 export const createBeerOfferBodySchema = z.object({
   variantId: z.string().trim().min(1).max(100),
   sizeMl: z.number().int().positive().max(2000),
-  serving: z.enum(servingTypes),
+  serving: z.enum(SERVING_TYPES),
   priceCents: z.number().int().positive().max(50000),
   locationId: z.string().trim().min(1).max(100),
 });
@@ -195,7 +194,7 @@ export const updateReviewBodySchema = z.object({
 export const editModerationLocationBodySchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
-    locationType: z.enum(locationTypes).optional(),
+    locationType: z.enum(LOCATION_TYPES).optional(),
     district: z.string().trim().min(2).max(80).optional(),
     address: z.string().trim().min(5).max(200).optional(),
   })

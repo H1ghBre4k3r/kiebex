@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
 import { getCurrentAuthUser } from "@/lib/auth";
+import { formatEur, getServingLabel, locationTypeLabel } from "@/lib/display";
 import {
-  formatEur,
   getBeerBrands,
   getBeerOffers,
   getBeerOffersPage,
@@ -12,8 +12,6 @@ import {
   getLocationReviewSummaries,
   getBeerVariants,
   getLocations,
-  getServingLabel,
-  locationTypeLabel,
 } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";

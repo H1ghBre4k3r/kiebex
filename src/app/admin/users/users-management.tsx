@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
+import { getApiError, jsonRequest } from "@/lib/client-api";
+import { formatDate } from "@/lib/display";
 import type { UserRole } from "@/lib/types";
 import styles from "./users.module.css";
 
@@ -18,18 +20,6 @@ type UsersManagementProps = {
   currentAdminId: string;
   users: UserForAdmin[];
 };
-
-type ApiErrorResponse = {
-  status?: "error";
-  error?: {
-    message?: string;
-  };
-};
-
-async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
-  const body = (await response.json().catch(() => null)) as ApiErrorResponse | null;
-  return body?.error?.message ?? fallback;
-}
 
 function UserItem({
   user,
@@ -87,7 +77,7 @@ function UserItem({
                 <span className={styles.unverified}>unverified</span>
               )}
             </p>
-            <p>Joined: {new Date(user.createdAt).toLocaleDateString("en-GB")}</p>
+            <p>Joined: {formatDate(user.createdAt)}</p>
           </div>
 
           <div className={styles.controls}>
@@ -170,15 +160,11 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
 
     try {
       const response = await fetch(`/api/v1/admin/users/${userId}/role`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role }),
+        ...jsonRequest("PATCH", { body: { role } }),
       });
 
       if (!response.ok) {
-        const message = await parseErrorMessage(response, "Unable to update user role.");
+        const { message } = await getApiError(response, "Unable to update user role.");
         setFeedback({ kind: "error", message });
         setPendingUserId(null);
         return;
@@ -203,7 +189,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
       });
 
       if (!response.ok) {
-        const message = await parseErrorMessage(response, "Unable to verify user.");
+        const { message } = await getApiError(response, "Unable to verify user.");
         setFeedback({ kind: "error", message });
         setVerifyingUserId(null);
         return;
@@ -228,7 +214,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
       });
 
       if (!response.ok) {
-        const message = await parseErrorMessage(response, "Unable to resend verification email.");
+        const { message } = await getApiError(response, "Unable to resend verification email.");
         setFeedback({ kind: "error", message });
         setResendingUserId(null);
         return;

@@ -1,5 +1,4 @@
-import { ForbiddenError, UnauthorizedError, requireModeratorUser } from "@/lib/auth";
-import { jsonError, jsonOk } from "@/lib/http";
+import { jsonOk } from "@/lib/http";
 import {
   getPendingBeerBrandSubmissions,
   getPendingBeerOfferSubmissions,
@@ -7,43 +6,32 @@ import {
   getPendingLocationSubmissions,
   getPendingPriceUpdateProposals,
 } from "@/lib/query";
+import { withApiModerator } from "@/lib/route-handlers";
 
 export async function GET(): Promise<Response> {
-  try {
-    await requireModeratorUser();
-  } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return jsonError(401, "UNAUTHORIZED", "Authentication required.");
-    }
+  return withApiModerator(async () => {
+    const [pendingLocations, pendingBrands, pendingVariants, pendingOffers, pendingPriceUpdates] =
+      await Promise.all([
+        getPendingLocationSubmissions(),
+        getPendingBeerBrandSubmissions(),
+        getPendingBeerVariantSubmissions(),
+        getPendingBeerOfferSubmissions(),
+        getPendingPriceUpdateProposals(),
+      ]);
 
-    if (error instanceof ForbiddenError) {
-      return jsonError(403, "FORBIDDEN", "Moderator permissions required.");
-    }
-
-    throw error;
-  }
-
-  const [pendingLocations, pendingBrands, pendingVariants, pendingOffers, pendingPriceUpdates] =
-    await Promise.all([
-      getPendingLocationSubmissions(),
-      getPendingBeerBrandSubmissions(),
-      getPendingBeerVariantSubmissions(),
-      getPendingBeerOfferSubmissions(),
-      getPendingPriceUpdateProposals(),
-    ]);
-
-  return jsonOk({
-    pendingLocations,
-    pendingBrands,
-    pendingVariants,
-    pendingOffers,
-    pendingPriceUpdates,
-    counts: {
-      locations: pendingLocations.length,
-      brands: pendingBrands.length,
-      variants: pendingVariants.length,
-      offers: pendingOffers.length,
-      priceUpdates: pendingPriceUpdates.length,
-    },
+    return jsonOk({
+      pendingLocations,
+      pendingBrands,
+      pendingVariants,
+      pendingOffers,
+      pendingPriceUpdates,
+      counts: {
+        locations: pendingLocations.length,
+        brands: pendingBrands.length,
+        variants: pendingVariants.length,
+        offers: pendingOffers.length,
+        priceUpdates: pendingPriceUpdates.length,
+      },
+    });
   });
 }
