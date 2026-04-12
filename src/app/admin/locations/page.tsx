@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
-import { getBeerBrands } from "@/lib/query";
+import { getLocations } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { BrandsManagement } from "./brands-management";
-import styles from "./brands.module.css";
+import { LocationsManagement } from "./locations-management";
+import styles from "./locations.module.css";
 
-export default async function AdminBrandsPage() {
+export default async function AdminLocationsPage() {
   const authUser = await getCurrentAuthUser();
 
   if (!authUser) {
@@ -16,7 +16,7 @@ export default async function AdminBrandsPage() {
     redirect("/");
   }
 
-  const brands = await getBeerBrands();
+  const locations = await getLocations();
 
   return (
     <main className={styles.page}>
@@ -28,17 +28,24 @@ export default async function AdminBrandsPage() {
       />
 
       <section className={styles.panel}>
-        <h1>Brand Management</h1>
-        <p>Edit or delete beer brands in the catalog.</p>
+        <h1>Location Management</h1>
+        <p>Edit or delete approved locations.</p>
         <p className={styles.notice}>
           Signed in as <strong>{authUser.displayName}</strong> (admin).
         </p>
       </section>
 
       <section className={styles.panel}>
-        <h2>All Brands ({brands.length})</h2>
-        <BrandsManagement
-          brands={brands.map((b) => ({ id: b.id, name: b.name, status: b.status }))}
+        <h2>All Locations ({locations.length})</h2>
+        <LocationsManagement
+          locations={locations.map((l) => ({
+            id: l.id,
+            name: l.name,
+            locationType: l.locationType,
+            district: l.district,
+            address: l.address,
+            status: l.status,
+          }))}
         />
       </section>
     </main>

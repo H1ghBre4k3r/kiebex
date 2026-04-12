@@ -20,8 +20,9 @@ export async function GET(request: Request): Promise<Response> {
 
   const result = token ? await verifyEmailToken(token) : null;
 
-  if (!result) {
-    redirect("/verify-email?error=invalid");
+  if (!result?.ok) {
+    const reason = result?.reason ?? "invalid";
+    redirect(`/verify-email?error=${reason}`);
   }
 
   await createSession(result.userId);
@@ -45,7 +46,15 @@ export async function POST(request: Request): Promise<Response> {
 
   const result = await verifyEmailToken(parsed.data.token);
 
-  if (!result) {
+  if (!result.ok) {
+    if (result.reason === "email_conflict") {
+      return jsonError(
+        409,
+        "EMAIL_CONFLICT",
+        "The email address has already been taken by another account.",
+      );
+    }
+
     return jsonError(
       400,
       "INVALID_OR_EXPIRED_TOKEN",

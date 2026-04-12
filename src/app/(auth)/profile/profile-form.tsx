@@ -15,9 +15,11 @@ type ApiSuccessBody = {
 
 type Props = {
   initialDisplayName: string;
+  currentEmail: string;
+  pendingEmail: string | null;
 };
 
-export function ProfileForm({ initialDisplayName }: Props) {
+export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: Props) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [displayNamePending, setDisplayNamePending] = useState(false);
   const [displayNameMessage, setDisplayNameMessage] = useState<string | null>(null);
@@ -29,6 +31,12 @@ export function ProfileForm({ initialDisplayName }: Props) {
   const [passwordPending, setPasswordPending] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailPending, setEmailPending] = useState(false);
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   async function handleDisplayNameSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,6 +116,40 @@ export function ProfileForm({ initialDisplayName }: Props) {
       setPasswordError("Unable to update password. Please try again.");
     } finally {
       setPasswordPending(false);
+    }
+  }
+
+  async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (emailPending) {
+      return;
+    }
+
+    setEmailPending(true);
+    setEmailMessage(null);
+    setEmailError(null);
+
+    try {
+      const response = await fetch("/api/v1/auth/change-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail, currentPassword: emailPassword }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
+        setEmailError(body?.error?.message ?? "Unable to request email change. Please try again.");
+        return;
+      }
+
+      setNewEmail("");
+      setEmailPassword("");
+      setEmailMessage(`Verification email sent to ${newEmail}. Click the link to confirm.`);
+    } catch {
+      setEmailError("Unable to request email change. Please try again.");
+    } finally {
+      setEmailPending(false);
     }
   }
 
@@ -216,6 +258,68 @@ export function ProfileForm({ initialDisplayName }: Props) {
           <div className={styles.actions}>
             <button type="submit" className={styles.button} disabled={passwordPending}>
               {passwordPending ? "Updating..." : "Update Password"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className={styles.panel} aria-labelledby="email-heading">
+        <h2 id="email-heading">Change Email</h2>
+
+        <p className={styles.notice}>
+          Current email: <strong>{currentEmail}</strong>
+        </p>
+
+        {pendingEmail && (
+          <p className={styles.notice} role="status">
+            A verification email was sent to <strong>{pendingEmail}</strong>. Click the link in that
+            email to confirm the change.
+          </p>
+        )}
+
+        <form className={styles.form} onSubmit={handleEmailSubmit}>
+          <label className={styles.field} htmlFor="profile-new-email">
+            New Email Address
+            <input
+              id="profile-new-email"
+              name="newEmail"
+              type="email"
+              autoComplete="email"
+              required
+              maxLength={255}
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
+            />
+          </label>
+
+          <label className={styles.field} htmlFor="profile-email-password">
+            Current Password
+            <input
+              id="profile-email-password"
+              name="currentPassword"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={emailPassword}
+              onChange={(event) => setEmailPassword(event.target.value)}
+            />
+          </label>
+
+          {emailError && (
+            <p className={styles.error} role="alert" aria-live="polite">
+              {emailError}
+            </p>
+          )}
+
+          {emailMessage && (
+            <p className={styles.notice} role="status" aria-live="polite">
+              {emailMessage}
+            </p>
+          )}
+
+          <div className={styles.actions}>
+            <button type="submit" className={styles.button} disabled={emailPending}>
+              {emailPending ? "Sending..." : "Send Verification Email"}
             </button>
           </div>
         </form>

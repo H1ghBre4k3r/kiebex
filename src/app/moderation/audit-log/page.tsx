@@ -2,51 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { getModerationAuditLogPage } from "@/lib/query";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { parseDetails, formatAuditContext, formatEditedFields } from "../audit-utils";
 import styles from "../moderation.module.css";
 
 const PAGE_SIZE = 25;
-
-type ModerationAction = "approve" | "reject" | "delete" | "edit";
-type ModerationContentType =
-  | "location"
-  | "brand"
-  | "style"
-  | "variant"
-  | "offer"
-  | "price_update"
-  | "review";
-
-function auditActionLabel(action: ModerationAction): string {
-  switch (action) {
-    case "approve":
-      return "approved";
-    case "reject":
-      return "rejected";
-    case "delete":
-      return "deleted";
-    case "edit":
-      return "edited";
-  }
-}
-
-function auditContentLabel(type: ModerationContentType): string {
-  switch (type) {
-    case "location":
-      return "location";
-    case "brand":
-      return "brand";
-    case "style":
-      return "beer style";
-    case "variant":
-      return "variant";
-    case "offer":
-      return "offer";
-    case "price_update":
-      return "price update";
-    case "review":
-      return "review";
-  }
-}
 
 function formatDateTime(date: Date): string {
   return new Date(date).toLocaleString("en-GB", {
@@ -81,17 +41,13 @@ export default async function AuditLogPage({
 
   return (
     <main className={styles.page}>
-      <p>
-        <Link href="/">Back to offer directory</Link>
-        {authUser.role === "admin" && (
-          <>
-            {" | "}
-            <Link href="/admin">Admin Hub</Link>
-          </>
-        )}
-        {" | "}
-        <Link href="/moderation">Moderation Queue</Link>
-      </p>
+      <Breadcrumbs
+        crumbs={[
+          { label: "Back to offer directory", href: "/" },
+          ...(authUser.role === "admin" ? [{ label: "Admin Hub", href: "/admin" }] : []),
+          { label: "Moderation Queue", href: "/moderation" },
+        ]}
+      />
 
       <section className={styles.panel}>
         <h1>Audit Log</h1>
@@ -114,21 +70,38 @@ export default async function AuditLogPage({
           <p className={styles.notice}>No moderation actions recorded yet.</p>
         ) : (
           <ul className={styles.list}>
-            {entries.map((entry) => (
-              <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
-                <p>
-                  <strong>{entry.moderatorName}</strong>{" "}
-                  <span
-                    className={styles[`audit_${entry.action}` as keyof typeof styles] as string}
-                  >
-                    {auditActionLabel(entry.action as ModerationAction)}
-                  </span>{" "}
-                  {auditContentLabel(entry.contentType as ModerationContentType)}{" "}
-                  <code>{entry.contentId.slice(0, 8)}…</code>
-                </p>
-                <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
-              </li>
-            ))}
+            {entries.map((entry) => {
+              const details = parseDetails(entry.contentType, entry.details);
+              const context = formatAuditContext(entry.contentType, details);
+              const editedFields = entry.action === "edit" ? formatEditedFields(details) : null;
+              const moderatorLabel = entry.currentModeratorName ?? entry.moderatorName;
+              return (
+                <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
+                  <p>
+                    <strong>{moderatorLabel}</strong>{" "}
+                    <span
+                      className={styles[`audit_${entry.action}` as keyof typeof styles] as string}
+                    >
+                      {entry.action}
+                    </span>{" "}
+                    {entry.contentType.replace("_", " ")}
+                    {context && (
+                      <>
+                        {" "}
+                        <span className={styles.auditContext}>({context})</span>
+                      </>
+                    )}
+                    {editedFields && (
+                      <>
+                        {" "}
+                        <span className={styles.auditMeta}>[{editedFields}]</span>
+                      </>
+                    )}
+                  </p>
+                  <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
 

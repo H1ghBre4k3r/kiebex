@@ -12,6 +12,7 @@ import type {
   PendingLocationSubmission,
   PendingPriceUpdateProposal,
 } from "@/lib/types";
+import { parseDetails, formatAuditContext, formatEditedFields } from "./audit-utils";
 import styles from "./moderation.module.css";
 
 type ModerationClientProps = {
@@ -80,18 +81,6 @@ function reviewStatusLabel(status: ModerationReview["status"]): string {
   if (status === "rejected") return "Rejected";
   if (status === "new") return "New";
   return "Pending";
-}
-
-function auditActionLabel(action: ModerationAuditLogEntry["action"]): string {
-  if (action === "approve") return "Approved";
-  if (action === "reject") return "Rejected";
-  if (action === "delete") return "Deleted";
-  return "Edited";
-}
-
-function auditContentLabel(type: ModerationAuditLogEntry["contentType"]): string {
-  if (type === "price_update") return "Price Update";
-  return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -1176,18 +1165,38 @@ export function ModerationClient({
           <p className={styles.notice}>No moderation actions recorded yet.</p>
         ) : (
           <ul className={styles.list}>
-            {auditLog.map((entry) => (
-              <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
-                <p>
-                  <strong>{entry.moderatorName}</strong>{" "}
-                  <span className={styles[`audit_${entry.action}`]}>
-                    {auditActionLabel(entry.action)}
-                  </span>{" "}
-                  {auditContentLabel(entry.contentType)} <code>{entry.contentId.slice(0, 8)}…</code>
-                </p>
-                <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
-              </li>
-            ))}
+            {auditLog.map((entry) => {
+              const details = parseDetails(entry.contentType, entry.details);
+              const context = formatAuditContext(entry.contentType, details);
+              const editedFields = entry.action === "edit" ? formatEditedFields(details) : null;
+              const moderatorLabel = entry.currentModeratorName ?? entry.moderatorName;
+              return (
+                <li key={entry.id} className={`${styles.item} ${styles.auditItem}`}>
+                  <p>
+                    <strong>{moderatorLabel}</strong>{" "}
+                    <span
+                      className={styles[`audit_${entry.action}` as keyof typeof styles] as string}
+                    >
+                      {entry.action}
+                    </span>{" "}
+                    {entry.contentType.replace("_", " ")}
+                    {context && (
+                      <>
+                        {" "}
+                        <span className={styles.auditContext}>({context})</span>
+                      </>
+                    )}
+                    {editedFields && (
+                      <>
+                        {" "}
+                        <span className={styles.auditMeta}>[{editedFields}]</span>
+                      </>
+                    )}
+                  </p>
+                  <p className={styles.auditMeta}>{formatDateTime(entry.createdAt)}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
         <p style={{ marginTop: "0.75rem" }}>

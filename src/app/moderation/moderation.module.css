@@ -147,6 +147,11 @@
   color: #555;
 }
 
+.auditContext {
+  font-size: 0.9rem;
+  color: #333;
+}
+
 /* Review status inline labels */
 .status_new {
   color: #00337a;

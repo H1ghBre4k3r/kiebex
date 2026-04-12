@@ -90,6 +90,15 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "offer",
       contentId: offerId,
+      details: {
+        variant: result.offer.variant,
+        brand: result.offer.brand,
+        style: result.offer.style,
+        sizeMl: result.offer.sizeMl,
+        serving: result.offer.serving,
+        location: result.offer.location.name,
+        priceEur: result.offer.priceEur,
+      },
     });
 
     return jsonOk({ offer: result.offer });
@@ -124,9 +133,9 @@ export async function PUT(
     }
 
     const { offerId } = await context.params;
-    const offer = await editModerationOffer(offerId, parsed.data.priceCents);
+    const result = await editModerationOffer(offerId, parsed.data.priceCents);
 
-    if (!offer) {
+    if (!result) {
       return jsonError(404, "OFFER_NOT_FOUND", `No offer found for id '${offerId}'.`);
     }
 
@@ -136,10 +145,19 @@ export async function PUT(
       action: "edit",
       contentType: "offer",
       contentId: offerId,
-      details: { priceCents: parsed.data.priceCents },
+      details: {
+        variant: result.offer.variant,
+        brand: result.offer.brand,
+        style: result.offer.style,
+        sizeMl: result.offer.sizeMl,
+        serving: result.offer.serving,
+        location: result.offer.location.name,
+        priceCents: parsed.data.priceCents,
+        previousPriceEur: result.previousPriceEur,
+      },
     });
 
-    return jsonOk({ offer });
+    return jsonOk({ offer: result.offer });
   });
 }
 
@@ -149,9 +167,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { offerId } = await context.params;
-    const deleted = await deleteModerationOffer(offerId);
+    const result = await deleteModerationOffer(offerId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "OFFER_NOT_FOUND", `No offer found for id '${offerId}'.`);
     }
 
@@ -161,6 +179,15 @@ export async function DELETE(
       action: "delete",
       contentType: "offer",
       contentId: offerId,
+      details: {
+        variant: result.variant,
+        brand: result.brand,
+        style: result.style,
+        sizeMl: result.sizeMl,
+        serving: result.serving,
+        location: result.location,
+        priceEur: result.priceEur,
+      },
     });
 
     return jsonOk({ deleted: true });

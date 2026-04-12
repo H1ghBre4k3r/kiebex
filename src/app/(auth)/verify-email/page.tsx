@@ -21,6 +21,17 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
             This verification link is invalid or has expired.
           </p>
         )}
+        {error === "expired" && (
+          <p className={styles.error} role="alert">
+            This verification link has expired.
+          </p>
+        )}
+        {error === "email_conflict" && (
+          <p className={styles.error} role="alert">
+            The email address you were trying to switch to has already been taken by another
+            account.
+          </p>
+        )}
         <p>
           You can request a new link from the <Link href="/login">sign in page</Link>.
         </p>

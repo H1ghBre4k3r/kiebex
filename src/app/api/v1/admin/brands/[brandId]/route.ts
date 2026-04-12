@@ -53,9 +53,9 @@ export async function PUT(
     }
 
     const { brandId } = await context.params;
-    const brand = await editAdminBrand(brandId, parsed.data.name);
+    const result = await editAdminBrand(brandId, parsed.data.name);
 
-    if (!brand) {
+    if (!result) {
       return jsonError(404, "BRAND_NOT_FOUND", `No brand found for id '${brandId}'.`);
     }
 
@@ -65,10 +65,10 @@ export async function PUT(
       action: "edit",
       contentType: "brand",
       contentId: brandId,
-      details: { name: parsed.data.name },
+      details: { name: result.brand.name, previousName: result.previousName },
     });
 
-    return jsonOk({ brand });
+    return jsonOk({ brand: result.brand });
   });
 }
 
@@ -78,9 +78,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withAdmin(async (admin) => {
     const { brandId } = await context.params;
-    const deleted = await deleteModerationBrand(brandId);
+    const result = await deleteModerationBrand(brandId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "BRAND_NOT_FOUND", `No brand found for id '${brandId}'.`);
     }
 
@@ -90,6 +90,7 @@ export async function DELETE(
       action: "delete",
       contentType: "brand",
       contentId: brandId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

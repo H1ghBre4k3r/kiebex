@@ -74,6 +74,12 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "location",
       contentId: locationId,
+      details: {
+        name: location.name,
+        locationType: location.locationType,
+        district: location.district,
+        address: location.address,
+      },
     });
 
     return jsonOk({ location });
@@ -108,10 +114,30 @@ export async function PUT(
     }
 
     const { locationId } = await context.params;
-    const location = await editModerationLocation(locationId, parsed.data);
+    const result = await editModerationLocation(locationId, parsed.data);
 
-    if (!location) {
+    if (!result) {
       return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
+    }
+
+    const logDetails: Record<string, unknown> = {
+      name: result.location.name,
+      locationType: result.location.locationType,
+      district: result.location.district,
+      address: result.location.address,
+      fields: Object.keys(parsed.data),
+    };
+    if (parsed.data.name !== undefined) {
+      logDetails.previousName = result.previousName;
+    }
+    if (parsed.data.locationType !== undefined) {
+      logDetails.previousLocationType = result.previousLocationType;
+    }
+    if (parsed.data.district !== undefined) {
+      logDetails.previousDistrict = result.previousDistrict;
+    }
+    if (parsed.data.address !== undefined) {
+      logDetails.previousAddress = result.previousAddress;
     }
 
     await logModerationAction({
@@ -120,10 +146,10 @@ export async function PUT(
       action: "edit",
       contentType: "location",
       contentId: locationId,
-      details: { fields: Object.keys(parsed.data) },
+      details: logDetails,
     });
 
-    return jsonOk({ location });
+    return jsonOk({ location: result.location });
   });
 }
 
@@ -133,9 +159,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { locationId } = await context.params;
-    const deleted = await deleteModerationLocation(locationId);
+    const result = await deleteModerationLocation(locationId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "LOCATION_NOT_FOUND", `No location found for id '${locationId}'.`);
     }
 
@@ -145,6 +171,12 @@ export async function DELETE(
       action: "delete",
       contentType: "location",
       contentId: locationId,
+      details: {
+        name: result.name,
+        locationType: result.locationType,
+        district: result.district,
+        address: result.address,
+      },
     });
 
     return jsonOk({ deleted: true });

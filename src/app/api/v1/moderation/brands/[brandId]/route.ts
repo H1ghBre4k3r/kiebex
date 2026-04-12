@@ -73,6 +73,7 @@ export async function PATCH(
       action: parsed.data.status === "approved" ? "approve" : "reject",
       contentType: "brand",
       contentId: brandId,
+      details: { name: brand.name },
     });
 
     return jsonOk({ brand });
@@ -85,9 +86,9 @@ export async function DELETE(
 ): Promise<Response> {
   return withModerator(async (moderator) => {
     const { brandId } = await context.params;
-    const deleted = await deleteModerationBrand(brandId);
+    const result = await deleteModerationBrand(brandId);
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "BRAND_NOT_FOUND", `No beer brand found for id '${brandId}'.`);
     }
 
@@ -97,6 +98,7 @@ export async function DELETE(
       action: "delete",
       contentType: "brand",
       contentId: brandId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

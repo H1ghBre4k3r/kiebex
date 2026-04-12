@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { ForbiddenError, UnauthorizedError, requireAdminUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
 import { deleteAdminStyle, editAdminStyle, logModerationAction } from "@/lib/query";
+import type { BeerStyle } from "@/lib/types";
 import { editAdminStyleBodySchema } from "@/lib/validation";
 
 function isKnownRequestError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
@@ -59,10 +60,10 @@ export async function PUT(
 
     const { styleId } = await context.params;
 
-    let style;
+    let result: { style: BeerStyle; previousName: string } | null;
 
     try {
-      style = await editAdminStyle(styleId, parsed.data.name);
+      result = await editAdminStyle(styleId, parsed.data.name);
     } catch (error) {
       if (isKnownRequestError(error) && error.code === "P2002") {
         return jsonError(409, "STYLE_NAME_CONFLICT", "A beer style with that name already exists.");
@@ -71,7 +72,7 @@ export async function PUT(
       throw error;
     }
 
-    if (!style) {
+    if (!result) {
       return jsonError(404, "STYLE_NOT_FOUND", `No beer style found for id '${styleId}'.`);
     }
 
@@ -81,10 +82,10 @@ export async function PUT(
       action: "edit",
       contentType: "style",
       contentId: styleId,
-      details: { name: parsed.data.name },
+      details: { name: result.style.name, previousName: result.previousName },
     });
 
-    return jsonOk({ style });
+    return jsonOk({ style: result.style });
   });
 }
 
@@ -95,10 +96,10 @@ export async function DELETE(
   return withAdmin(async (admin) => {
     const { styleId } = await context.params;
 
-    let deleted: boolean;
+    let result: { deleted: false } | { deleted: true; name: string };
 
     try {
-      deleted = await deleteAdminStyle(styleId);
+      result = await deleteAdminStyle(styleId);
     } catch (error) {
       if (isKnownRequestError(error) && error.code === "P2003") {
         return jsonError(
@@ -111,7 +112,7 @@ export async function DELETE(
       throw error;
     }
 
-    if (!deleted) {
+    if (!result.deleted) {
       return jsonError(404, "STYLE_NOT_FOUND", `No beer style found for id '${styleId}'.`);
     }
 
@@ -121,6 +122,7 @@ export async function DELETE(
       action: "delete",
       contentType: "style",
       contentId: styleId,
+      details: { name: result.name },
     });
 
     return jsonOk({ deleted: true });

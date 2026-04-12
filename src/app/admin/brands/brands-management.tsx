@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { BeerBrand } from "@/lib/types";
 import styles from "./brands.module.css";
@@ -19,6 +19,7 @@ type Props = {
 function BrandItem({ brand }: { brand: BrandRow }) {
   const router = useRouter();
 
+  const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(brand.name);
   const [savePending, setSavePending] = useState(false);
@@ -86,99 +87,149 @@ function BrandItem({ brand }: { brand: BrandRow }) {
   }
 
   return (
-    <li className={styles.item}>
-      <dl className={styles.meta}>
-        <div>
-          <dt>Name</dt>
-          <dd>{brand.name}</dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{brand.status}</dd>
-        </div>
-      </dl>
+    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
+      <button
+        type="button"
+        className={styles.rowHeader}
+        onClick={() => {
+          setExpanded((prev) => !prev);
+          if (expanded) {
+            setEditing(false);
+            setConfirmDelete(false);
+            setErrorMessage(null);
+          }
+        }}
+        aria-expanded={expanded}
+      >
+        <span className={styles.rowTitle}>{brand.name}</span>
+        <span className={styles.rowStatus}>{brand.status}</span>
+        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
+      </button>
 
-      {errorMessage && (
-        <p className={styles.error} role="alert" aria-live="polite">
-          {errorMessage}
-        </p>
-      )}
+      {expanded && (
+        <div className={styles.rowBody}>
+          <dl className={styles.meta}>
+            <div>
+              <dt>Name</dt>
+              <dd>{brand.name}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{brand.status}</dd>
+            </div>
+          </dl>
 
-      <div className={styles.controls}>
-        {confirmDelete ? (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                void handleDelete();
-              }}
-              disabled={deletePending}
-            >
-              {deletePending ? "Deleting…" : "Confirm Delete"}
-            </button>
-            <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing((prev) => !prev);
-                setErrorMessage(null);
-              }}
-            >
-              {editing ? "Cancel Edit" : "Edit"}
-            </button>
-            <button type="button" onClick={() => setConfirmDelete(true)}>
-              Delete
-            </button>
-          </>
-        )}
-      </div>
+          {errorMessage && (
+            <p className={styles.error} role="alert" aria-live="polite">
+              {errorMessage}
+            </p>
+          )}
 
-      {editing && (
-        <form
-          className={styles.editForm}
-          onSubmit={(e) => {
-            void handleSave(e);
-          }}
-        >
-          <label htmlFor={`brand-name-${brand.id}`}>
-            Name
-            <input
-              id={`brand-name-${brand.id}`}
-              type="text"
-              minLength={2}
-              maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
-
-          <div className={styles.editActions}>
-            <button type="submit" disabled={savePending}>
-              {savePending ? "Saving…" : "Save"}
-            </button>
+          <div className={styles.controls}>
+            {confirmDelete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleDelete();
+                  }}
+                  disabled={deletePending}
+                >
+                  {deletePending ? "Deleting…" : "Confirm Delete"}
+                </button>
+                <button
+                  type="button"
+                  disabled={deletePending}
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing((prev) => !prev);
+                    setErrorMessage(null);
+                  }}
+                >
+                  {editing ? "Cancel Edit" : "Edit"}
+                </button>
+                <button type="button" onClick={() => setConfirmDelete(true)}>
+                  Delete
+                </button>
+              </>
+            )}
           </div>
-        </form>
+
+          {editing && (
+            <form
+              className={styles.editForm}
+              onSubmit={(e) => {
+                void handleSave(e);
+              }}
+            >
+              <label htmlFor={`brand-name-${brand.id}`}>
+                Name
+                <input
+                  id={`brand-name-${brand.id}`}
+                  type="text"
+                  minLength={2}
+                  maxLength={120}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </label>
+
+              <div className={styles.editActions}>
+                <button type="submit" disabled={savePending}>
+                  {savePending ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       )}
     </li>
   );
 }
 
 export function BrandsManagement({ brands }: Props) {
-  if (brands.length === 0) {
-    return <p>No brands found.</p>;
-  }
+  const [search, setSearch] = useState("");
+
+  const filteredBrands = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return brands;
+    return brands.filter(
+      (b) => b.name.toLowerCase().includes(q) || b.status.toLowerCase().includes(q),
+    );
+  }, [brands, search]);
 
   return (
-    <ul className={styles.list}>
-      {brands.map((brand) => (
-        <BrandItem key={brand.id} brand={brand} />
-      ))}
-    </ul>
+    <div className={styles.container}>
+      <div className={styles.searchBar}>
+        <label htmlFor="search-brands">Search brands</label>
+        <input
+          id="search-brands"
+          type="search"
+          placeholder="Search by name or status..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={styles.searchInput}
+        />
+      </div>
+
+      {filteredBrands.length === 0 ? (
+        <p className={styles.empty}>No brands found matching your search.</p>
+      ) : (
+        <ul className={styles.list}>
+          {filteredBrands.map((brand) => (
+            <BrandItem key={brand.id} brand={brand} />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

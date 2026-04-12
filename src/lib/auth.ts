@@ -182,31 +182,60 @@ export async function createEmailVerificationToken(userId: string): Promise<stri
   return token;
 }
 
-export async function verifyEmailToken(rawToken: string): Promise<{ userId: string } | null> {
+export type VerifyEmailResult =
+  | { ok: true; userId: string }
+  | { ok: false; reason: "invalid" | "expired" | "email_conflict" };
+
+export async function verifyEmailToken(rawToken: string): Promise<VerifyEmailResult> {
   const tokenHash = hashVerificationToken(rawToken);
 
   const record = await db.emailVerificationToken.findUnique({
-    where: { tokenHash },
-    select: { userId: true, expiresAt: true },
+    where: {
+      tokenHash,
+    },
+    select: {
+      userId: true,
+      expiresAt: true,
+    },
   });
 
   if (!record) {
-    return null;
+    return { ok: false, reason: "invalid" };
   }
 
   if (record.expiresAt <= new Date()) {
     await db.emailVerificationToken.deleteMany({ where: { tokenHash } });
-    return null;
+    return { ok: false, reason: "expired" };
   }
 
-  await db.user.update({
+  // Check whether this is an email-change verification.
+  const user = await db.user.findUnique({
     where: { id: record.userId },
-    data: { emailVerified: true },
+    select: { pendingEmail: true },
   });
+
+  if (user?.pendingEmail) {
+    try {
+      await db.user.update({
+        where: { id: record.userId },
+        data: { email: user.pendingEmail, pendingEmail: null, emailVerified: true },
+      });
+    } catch {
+      // The target email was claimed by another account before verification completed.
+      await db.user.update({ where: { id: record.userId }, data: { pendingEmail: null } });
+      await db.emailVerificationToken.deleteMany({ where: { tokenHash } });
+      return { ok: false, reason: "email_conflict" };
+    }
+  } else {
+    await db.user.update({
+      where: { id: record.userId },
+      data: { emailVerified: true },
+    });
+  }
 
   await db.emailVerificationToken.deleteMany({ where: { tokenHash } });
 
-  return { userId: record.userId };
+  return { ok: true, userId: record.userId };
 }
 
 export async function createSession(userId: string): Promise<void> {
@@ -345,4 +374,48 @@ export async function updatePassword(
   });
 
   return { ok: true };
+}
+
+export async function requestEmailChange(
+  userId: string,
+  newEmail: string,
+  currentPassword: string,
+): Promise<
+  { ok: true; token: string } | { ok: false; code: "WRONG_PASSWORD" | "EMAIL_TAKEN" | "SAME_EMAIL" }
+> {
+  const normalized = normalizeEmail(newEmail);
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, passwordHash: true },
+  });
+
+  if (!user?.passwordHash) {
+    return { ok: false, code: "WRONG_PASSWORD" };
+  }
+
+  if (user.email === normalized) {
+    return { ok: false, code: "SAME_EMAIL" };
+  }
+
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+
+  if (!valid) {
+    return { ok: false, code: "WRONG_PASSWORD" };
+  }
+
+  const existing = await db.user.findUnique({
+    where: { email: normalized },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return { ok: false, code: "EMAIL_TAKEN" };
+  }
+
+  await db.user.update({ where: { id: userId }, data: { pendingEmail: normalized } });
+
+  const token = await createEmailVerificationToken(userId);
+
+  return { ok: true, token };
 }

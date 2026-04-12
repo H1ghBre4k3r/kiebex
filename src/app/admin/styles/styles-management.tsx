@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./styles.module.css";
 
@@ -22,6 +22,7 @@ type Props = {
 function StyleItem({ style }: { style: StyleRow }) {
   const router = useRouter();
 
+  const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(style.name);
   const [savePending, setSavePending] = useState(false);
@@ -89,95 +90,121 @@ function StyleItem({ style }: { style: StyleRow }) {
   }
 
   return (
-    <li className={styles.item}>
-      <dl className={styles.meta}>
-        <div>
-          <dt>Name</dt>
-          <dd>{style.name}</dd>
-        </div>
-        <div>
-          <dt>Variants using this style</dt>
-          <dd>
-            <span className={styles.variantCount}>{style.variantCount}</span>
-          </dd>
-        </div>
-      </dl>
+    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
+      <button
+        type="button"
+        className={styles.rowHeader}
+        onClick={() => {
+          setExpanded((prev) => !prev);
+          if (expanded) {
+            setEditing(false);
+            setConfirmDelete(false);
+            setErrorMessage(null);
+          }
+        }}
+        aria-expanded={expanded}
+      >
+        <span className={styles.rowTitle}>{style.name}</span>
+        <span className={styles.rowStatus}>{style.variantCount} variant(s)</span>
+        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
+      </button>
 
-      {errorMessage && (
-        <p className={styles.error} role="alert" aria-live="polite">
-          {errorMessage}
-        </p>
-      )}
+      {expanded && (
+        <div className={styles.rowBody}>
+          <dl className={styles.meta}>
+            <div>
+              <dt>Name</dt>
+              <dd>{style.name}</dd>
+            </div>
+            <div>
+              <dt>Variants using this style</dt>
+              <dd>
+                <span className={styles.variantCount}>{style.variantCount}</span>
+              </dd>
+            </div>
+          </dl>
 
-      <div className={styles.controls}>
-        {confirmDelete ? (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                void handleDelete();
-              }}
-              disabled={deletePending}
-            >
-              {deletePending ? "Deleting…" : "Confirm Delete"}
-            </button>
-            <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing((prev) => !prev);
-                setErrorMessage(null);
-              }}
-            >
-              {editing ? "Cancel Edit" : "Edit"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              disabled={style.variantCount > 0}
-              title={
-                style.variantCount > 0
-                  ? `Cannot delete: ${style.variantCount} variant(s) use this style`
-                  : undefined
-              }
-            >
-              Delete
-            </button>
-          </>
-        )}
-      </div>
+          {errorMessage && (
+            <p className={styles.error} role="alert" aria-live="polite">
+              {errorMessage}
+            </p>
+          )}
 
-      {editing && (
-        <form
-          className={styles.editForm}
-          onSubmit={(e) => {
-            void handleSave(e);
-          }}
-        >
-          <label htmlFor={`style-name-${style.id}`}>
-            Name
-            <input
-              id={`style-name-${style.id}`}
-              type="text"
-              minLength={2}
-              maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
-
-          <div className={styles.editActions}>
-            <button type="submit" disabled={savePending}>
-              {savePending ? "Saving…" : "Save"}
-            </button>
+          <div className={styles.controls}>
+            {confirmDelete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleDelete();
+                  }}
+                  disabled={deletePending}
+                >
+                  {deletePending ? "Deleting…" : "Confirm Delete"}
+                </button>
+                <button
+                  type="button"
+                  disabled={deletePending}
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing((prev) => !prev);
+                    setErrorMessage(null);
+                  }}
+                >
+                  {editing ? "Cancel Edit" : "Edit"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={style.variantCount > 0}
+                  title={
+                    style.variantCount > 0
+                      ? `Cannot delete: ${style.variantCount} variant(s) use this style`
+                      : undefined
+                  }
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
-        </form>
+
+          {editing && (
+            <form
+              className={styles.editForm}
+              onSubmit={(e) => {
+                void handleSave(e);
+              }}
+            >
+              <label htmlFor={`style-name-${style.id}`}>
+                Name
+                <input
+                  id={`style-name-${style.id}`}
+                  type="text"
+                  minLength={2}
+                  maxLength={120}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </label>
+
+              <div className={styles.editActions}>
+                <button type="submit" disabled={savePending}>
+                  {savePending ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       )}
     </li>
   );
@@ -270,19 +297,39 @@ function CreateStyleForm() {
 }
 
 export function StylesManagement({ beerStyles }: Props) {
+  const [search, setSearch] = useState("");
+
+  const filteredStyles = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return beerStyles;
+    return beerStyles.filter((s) => s.name.toLowerCase().includes(q));
+  }, [beerStyles, search]);
+
   return (
-    <>
-      {beerStyles.length === 0 ? (
-        <p>No beer styles found.</p>
+    <div className={styles.container}>
+      <div className={styles.searchBar}>
+        <label htmlFor="search-styles">Search styles</label>
+        <input
+          id="search-styles"
+          type="search"
+          placeholder="Search by style name..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={styles.searchInput}
+        />
+      </div>
+
+      {filteredStyles.length === 0 ? (
+        <p className={styles.empty}>No beer styles found matching your search.</p>
       ) : (
         <ul className={styles.list}>
-          {beerStyles.map((style) => (
+          {filteredStyles.map((style) => (
             <StyleItem key={style.id} style={style} />
           ))}
         </ul>
       )}
 
       <CreateStyleForm />
-    </>
+    </div>
   );
 }

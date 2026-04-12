@@ -2,37 +2,41 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import type { BeerVariant, BeerStyle } from "@/lib/types";
-import styles from "./variants.module.css";
+import type { Location, LocationType } from "@/lib/types";
+import styles from "./locations.module.css";
 
 type ApiErrorBody = {
   status?: "error";
   error?: { message?: string };
 };
 
-type VariantRow = Pick<BeerVariant, "id" | "name" | "brandId" | "styleId" | "status"> & {
-  brandName: string;
-  styleName: string;
+const LOCATION_TYPES: LocationType[] = ["pub", "bar", "restaurant", "supermarket"];
+
+const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
+  pub: "Pub",
+  bar: "Bar",
+  restaurant: "Restaurant",
+  supermarket: "Supermarket",
 };
+
+type LocationRow = Pick<
+  Location,
+  "id" | "name" | "locationType" | "district" | "address" | "status"
+>;
 
 type Props = {
-  variants: VariantRow[];
-  beerStyles: Pick<BeerStyle, "id" | "name">[];
+  locations: LocationRow[];
 };
 
-function VariantItem({
-  variant,
-  beerStyles,
-}: {
-  variant: VariantRow;
-  beerStyles: Pick<BeerStyle, "id" | "name">[];
-}) {
+function LocationItem({ location }: { location: LocationRow }) {
   const router = useRouter();
 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(variant.name);
-  const [styleId, setStyleId] = useState(variant.styleId);
+  const [name, setName] = useState(location.name);
+  const [locationType, setLocationType] = useState<LocationType>(location.locationType);
+  const [district, setDistrict] = useState(location.district);
+  const [address, setAddress] = useState(location.address);
   const [savePending, setSavePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -49,10 +53,10 @@ function VariantItem({
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`/api/v1/admin/variants/${variant.id}`, {
+      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, styleId }),
+        body: JSON.stringify({ name, locationType, district, address }),
       });
 
       if (!response.ok) {
@@ -79,7 +83,7 @@ function VariantItem({
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`/api/v1/admin/variants/${variant.id}`, {
+      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
         method: "DELETE",
       });
 
@@ -112,10 +116,8 @@ function VariantItem({
         }}
         aria-expanded={expanded}
       >
-        <span className={styles.rowTitle}>
-          {variant.brandName} {variant.name}
-        </span>
-        <span className={styles.rowStatus}>{variant.status}</span>
+        <span className={styles.rowTitle}>{location.name}</span>
+        <span className={styles.rowStatus}>{LOCATION_TYPE_LABELS[location.locationType]}</span>
         <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
       </button>
 
@@ -124,19 +126,19 @@ function VariantItem({
           <dl className={styles.meta}>
             <div>
               <dt>Name</dt>
-              <dd>{variant.name}</dd>
+              <dd>{location.name}</dd>
             </div>
             <div>
-              <dt>Brand</dt>
-              <dd>{variant.brandName}</dd>
+              <dt>Type</dt>
+              <dd>{LOCATION_TYPE_LABELS[location.locationType]}</dd>
             </div>
             <div>
-              <dt>Style</dt>
-              <dd>{variant.styleName}</dd>
+              <dt>District</dt>
+              <dd>{location.district}</dd>
             </div>
             <div>
-              <dt>Status</dt>
-              <dd>{variant.status}</dd>
+              <dt>Address</dt>
+              <dd>{location.address}</dd>
             </div>
           </dl>
 
@@ -191,10 +193,10 @@ function VariantItem({
                 void handleSave(e);
               }}
             >
-              <label htmlFor={`variant-name-${variant.id}`}>
+              <label htmlFor={`loc-name-${location.id}`}>
                 Name
                 <input
-                  id={`variant-name-${variant.id}`}
+                  id={`loc-name-${location.id}`}
                   type="text"
                   minLength={2}
                   maxLength={120}
@@ -204,20 +206,45 @@ function VariantItem({
                 />
               </label>
 
-              <label htmlFor={`variant-style-${variant.id}`}>
-                Style
+              <label htmlFor={`loc-type-${location.id}`}>
+                Type
                 <select
-                  id={`variant-style-${variant.id}`}
-                  value={styleId}
-                  onChange={(e) => setStyleId(e.target.value)}
-                  required
+                  id={`loc-type-${location.id}`}
+                  value={locationType}
+                  onChange={(e) => setLocationType(e.target.value as LocationType)}
                 >
-                  {beerStyles.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
+                  {LOCATION_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {LOCATION_TYPE_LABELS[t]}
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label htmlFor={`loc-district-${location.id}`}>
+                District
+                <input
+                  id={`loc-district-${location.id}`}
+                  type="text"
+                  minLength={2}
+                  maxLength={80}
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
+                  required
+                />
+              </label>
+
+              <label htmlFor={`loc-address-${location.id}`}>
+                Address
+                <input
+                  id={`loc-address-${location.id}`}
+                  type="text"
+                  minLength={5}
+                  maxLength={200}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                />
               </label>
 
               <div className={styles.editActions}>
@@ -233,41 +260,41 @@ function VariantItem({
   );
 }
 
-export function VariantsManagement({ variants, beerStyles }: Props) {
+export function LocationsManagement({ locations }: Props) {
   const [search, setSearch] = useState("");
 
-  const filteredVariants = useMemo(() => {
+  const filteredLocations = useMemo(() => {
     const q = search.toLowerCase();
-    if (!q) return variants;
-    return variants.filter(
-      (v) =>
-        v.name.toLowerCase().includes(q) ||
-        v.brandName.toLowerCase().includes(q) ||
-        v.styleName.toLowerCase().includes(q) ||
-        v.status.toLowerCase().includes(q),
+    if (!q) return locations;
+    return locations.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        LOCATION_TYPE_LABELS[l.locationType].toLowerCase().includes(q) ||
+        l.district.toLowerCase().includes(q) ||
+        l.address.toLowerCase().includes(q),
     );
-  }, [variants, search]);
+  }, [locations, search]);
 
   return (
     <div className={styles.container}>
       <div className={styles.searchBar}>
-        <label htmlFor="search-variants">Search variants</label>
+        <label htmlFor="search-locations">Search locations</label>
         <input
-          id="search-variants"
+          id="search-locations"
           type="search"
-          placeholder="Search by variant name, brand, style or status..."
+          placeholder="Search by name, type, district, address..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className={styles.searchInput}
         />
       </div>
 
-      {filteredVariants.length === 0 ? (
-        <p className={styles.empty}>No variants found matching your search.</p>
+      {filteredLocations.length === 0 ? (
+        <p className={styles.empty}>No approved locations found matching your search.</p>
       ) : (
         <ul className={styles.list}>
-          {filteredVariants.map((variant) => (
-            <VariantItem key={variant.id} variant={variant} beerStyles={beerStyles} />
+          {filteredLocations.map((location) => (
+            <LocationItem key={location.id} location={location} />
           ))}
         </ul>
       )}

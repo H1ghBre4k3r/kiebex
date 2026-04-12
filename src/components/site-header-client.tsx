@@ -48,7 +48,7 @@ export function SiteHeaderClient({ authUser }: Props) {
             <Link href="/profile" className={styles.navLink} onClick={close}>
               Profile
             </Link>
-            {(authUser.role === "moderator" || authUser.role === "admin") && (
+            {authUser.role === "moderator" && (
               <Link href="/moderation" className={styles.navLink} onClick={close}>
                 Moderation
               </Link>
