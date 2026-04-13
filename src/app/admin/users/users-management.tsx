@@ -74,9 +74,11 @@ function UserItem({
       }
       status={user.isBanned ? "banned" : user.role}
       statusExtra={
-        <span className={user.emailVerified ? styles.verifiedChip : styles.unverifiedChip}>
-          {user.emailVerified ? "verified" : "unverified"}
-        </span>
+        !user.isBanned ? (
+          <span className={user.emailVerified ? styles.verifiedChip : styles.unverifiedChip}>
+            {user.emailVerified ? "verified" : "unverified"}
+          </span>
+        ) : undefined
       }
       expanded={expanded}
       onToggle={() => setExpanded((prev) => !prev)}
@@ -115,7 +117,7 @@ function UserItem({
           {pending ? "Saving..." : "Save Role"}
         </button>
 
-        {!user.emailVerified && (
+        {!user.emailVerified && !user.isBanned && (
           <button
             type="button"
             className={styles.verifyButton}
@@ -126,7 +128,7 @@ function UserItem({
           </button>
         )}
 
-        {!user.emailVerified && (
+        {!user.emailVerified && !user.isBanned && (
           <button type="button" disabled={anyPending} onClick={onResendVerification}>
             {resending ? "Sending..." : "Resend Verification Email"}
           </button>
@@ -188,6 +190,79 @@ function UserItem({
   );
 }
 
+function UserGroup({
+  heading,
+  headingId,
+  users,
+  currentAdminId,
+  selectedRoles,
+  onRoleChange,
+  onSaveRole,
+  onVerifyEmail,
+  onResendVerification,
+  onBan,
+  onUnban,
+  onDelete,
+  pendingUserId,
+  verifyingUserId,
+  resendingUserId,
+  banningUserId,
+  unbanningUserId,
+  deletingUserId,
+}: {
+  heading: string;
+  headingId: string;
+  users: UserForAdmin[];
+  currentAdminId: string;
+  selectedRoles: Record<string, UserRole>;
+  onRoleChange: (userId: string, role: UserRole) => void;
+  onSaveRole: (userId: string) => void;
+  onVerifyEmail: (userId: string) => void;
+  onResendVerification: (userId: string) => void;
+  onBan: (userId: string) => void;
+  onUnban: (userId: string) => void;
+  onDelete: (userId: string) => void;
+  pendingUserId: string | null;
+  verifyingUserId: string | null;
+  resendingUserId: string | null;
+  banningUserId: string | null;
+  unbanningUserId: string | null;
+  deletingUserId: string | null;
+}) {
+  if (users.length === 0) return null;
+
+  return (
+    <div className={styles.group}>
+      <h3 id={headingId} className={styles.groupHeading}>
+        {heading} <span className={styles.groupCount}>({users.length})</span>
+      </h3>
+      <ul className={styles.list} aria-labelledby={headingId}>
+        {users.map((user) => (
+          <UserItem
+            key={user.id}
+            user={user}
+            currentAdminId={currentAdminId}
+            selectedRole={selectedRoles[user.id] ?? user.role}
+            onRoleChange={(role) => onRoleChange(user.id, role)}
+            onSaveRole={() => onSaveRole(user.id)}
+            onVerifyEmail={() => onVerifyEmail(user.id)}
+            onResendVerification={() => onResendVerification(user.id)}
+            onBan={() => onBan(user.id)}
+            onUnban={() => onUnban(user.id)}
+            onDelete={() => onDelete(user.id)}
+            pending={pendingUserId === user.id}
+            verifying={verifyingUserId === user.id}
+            resending={resendingUserId === user.id}
+            banning={banningUserId === user.id}
+            unbanning={unbanningUserId === user.id}
+            deleting={deletingUserId === user.id}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function UsersManagement({ currentAdminId, users }: UsersManagementProps) {
   const router = useRouter();
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>(
@@ -233,23 +308,26 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
     params.setPending(null);
   }
 
-  const filteredUsers = useMemo(() => {
+  const { verifiedUsers, unverifiedUsers, bannedUsers } = useMemo(() => {
     const q = search.toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
-        u.email.toLowerCase().includes(q) ||
-        u.displayName.toLowerCase().includes(q) ||
-        u.role.toLowerCase().includes(q),
-    );
+    const matches = (u: UserForAdmin) =>
+      !q ||
+      u.email.toLowerCase().includes(q) ||
+      u.displayName.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q);
+
+    return {
+      verifiedUsers: users.filter((u) => !u.isBanned && u.emailVerified && matches(u)),
+      unverifiedUsers: users.filter((u) => !u.isBanned && !u.emailVerified && matches(u)),
+      bannedUsers: users.filter((u) => u.isBanned && matches(u)),
+    };
   }, [users, search]);
+
+  const totalFiltered = verifiedUsers.length + unverifiedUsers.length + bannedUsers.length;
 
   async function updateRole(userId: string) {
     const role = selectedRoles[userId];
-
-    if (!role) {
-      return;
-    }
+    if (!role) return;
 
     await runUserMutation({
       userId,
@@ -321,6 +399,25 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
     });
   }
 
+  const groupProps = {
+    currentAdminId,
+    selectedRoles,
+    onRoleChange: (userId: string, role: UserRole) =>
+      setSelectedRoles((current) => ({ ...current, [userId]: role })),
+    onSaveRole: updateRole,
+    onVerifyEmail: verifyUser,
+    onResendVerification: resendVerification,
+    onBan: banUser,
+    onUnban: unbanUser,
+    onDelete: deleteUser,
+    pendingUserId,
+    verifyingUserId,
+    resendingUserId,
+    banningUserId,
+    unbanningUserId,
+    deletingUserId,
+  };
+
   return (
     <section className={styles.panel} aria-labelledby="users-management-heading">
       <h2 id="users-management-heading">Users ({users.length})</h2>
@@ -344,34 +441,29 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
           />
         </div>
 
-        {filteredUsers.length === 0 ? (
+        {totalFiltered === 0 ? (
           <p className={styles.empty}>No users found matching your search.</p>
         ) : (
-          <ul className={styles.list}>
-            {filteredUsers.map((user) => (
-              <UserItem
-                key={user.id}
-                user={user}
-                currentAdminId={currentAdminId}
-                selectedRole={selectedRoles[user.id] ?? user.role}
-                onRoleChange={(role) =>
-                  setSelectedRoles((current) => ({ ...current, [user.id]: role }))
-                }
-                onSaveRole={() => updateRole(user.id)}
-                onVerifyEmail={() => verifyUser(user.id)}
-                onResendVerification={() => resendVerification(user.id)}
-                onBan={() => banUser(user.id)}
-                onUnban={() => unbanUser(user.id)}
-                onDelete={() => deleteUser(user.id)}
-                pending={pendingUserId === user.id}
-                verifying={verifyingUserId === user.id}
-                resending={resendingUserId === user.id}
-                banning={banningUserId === user.id}
-                unbanning={unbanningUserId === user.id}
-                deleting={deletingUserId === user.id}
-              />
-            ))}
-          </ul>
+          <>
+            <UserGroup
+              heading="Verified"
+              headingId="group-verified"
+              users={verifiedUsers}
+              {...groupProps}
+            />
+            <UserGroup
+              heading="Unverified"
+              headingId="group-unverified"
+              users={unverifiedUsers}
+              {...groupProps}
+            />
+            <UserGroup
+              heading="Banned"
+              headingId="group-banned"
+              users={bannedUsers}
+              {...groupProps}
+            />
+          </>
         )}
       </div>
     </section>
