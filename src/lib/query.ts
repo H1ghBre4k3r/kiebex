@@ -1258,6 +1258,7 @@ export async function getUsersForAdmin(): Promise<User[]> {
     role: user.role,
     passwordHash: null,
     emailVerified: user.emailVerified,
+    isBanned: user.isBanned,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }));
@@ -1304,6 +1305,7 @@ export async function updateUserRoleByAdmin(params: {
       role: updatedUser.role,
       passwordHash: null,
       emailVerified: updatedUser.emailVerified,
+      isBanned: updatedUser.isBanned,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
     },
@@ -1344,6 +1346,7 @@ export async function verifyUserByAdmin(params: {
       role: updatedUser.role,
       passwordHash: null,
       emailVerified: updatedUser.emailVerified,
+      isBanned: updatedUser.isBanned,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
     },
@@ -1353,6 +1356,132 @@ export async function verifyUserByAdmin(params: {
 // ---------------------------------------------------------------------------
 // Moderation audit log
 // ---------------------------------------------------------------------------
+
+export async function banUserByAdmin(params: {
+  targetUserId: string;
+  actingAdminId: string;
+}): Promise<
+  | { outcome: "banned"; user: User }
+  | { outcome: "not_found" }
+  | { outcome: "already_banned" }
+  | { outcome: "cannot_ban_self" }
+> {
+  if (params.targetUserId === params.actingAdminId) {
+    return { outcome: "cannot_ban_self" };
+  }
+
+  const targetUser = await db.user.findUnique({
+    where: { id: params.targetUserId },
+  });
+
+  if (!targetUser) {
+    return { outcome: "not_found" };
+  }
+
+  if (targetUser.isBanned) {
+    return { outcome: "already_banned" };
+  }
+
+  // Invalidate all sessions so the user is immediately signed out.
+  const updatedUser = await db.user.update({
+    where: { id: params.targetUserId },
+    data: {
+      isBanned: true,
+      sessions: { deleteMany: {} },
+    },
+  });
+
+  return {
+    outcome: "banned",
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      role: updatedUser.role,
+      passwordHash: null,
+      emailVerified: updatedUser.emailVerified,
+      isBanned: updatedUser.isBanned,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+    },
+  };
+}
+
+export async function unbanUserByAdmin(params: {
+  targetUserId: string;
+}): Promise<
+  { outcome: "unbanned"; user: User } | { outcome: "not_found" } | { outcome: "not_banned" }
+> {
+  const targetUser = await db.user.findUnique({
+    where: { id: params.targetUserId },
+  });
+
+  if (!targetUser) {
+    return { outcome: "not_found" };
+  }
+
+  if (!targetUser.isBanned) {
+    return { outcome: "not_banned" };
+  }
+
+  const updatedUser = await db.user.update({
+    where: { id: params.targetUserId },
+    data: { isBanned: false },
+  });
+
+  return {
+    outcome: "unbanned",
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      role: updatedUser.role,
+      passwordHash: null,
+      emailVerified: updatedUser.emailVerified,
+      isBanned: updatedUser.isBanned,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+    },
+  };
+}
+
+export async function deleteUserByAdmin(params: {
+  targetUserId: string;
+  actingAdminId: string;
+}): Promise<
+  | { outcome: "deleted"; email: string; displayName: string }
+  | { outcome: "not_found" }
+  | { outcome: "cannot_delete_self" }
+  | { outcome: "cannot_delete_last_admin" }
+> {
+  if (params.targetUserId === params.actingAdminId) {
+    return { outcome: "cannot_delete_self" };
+  }
+
+  const targetUser = await db.user.findUnique({
+    where: { id: params.targetUserId },
+  });
+
+  if (!targetUser) {
+    return { outcome: "not_found" };
+  }
+
+  if (targetUser.role === "admin") {
+    const adminCount = await db.user.count({ where: { role: "admin" } });
+
+    if (adminCount <= 1) {
+      return { outcome: "cannot_delete_last_admin" };
+    }
+  }
+
+  await db.user.delete({ where: { id: params.targetUserId } });
+
+  return {
+    outcome: "deleted",
+    email: targetUser.email,
+    displayName: targetUser.displayName,
+  };
+}
 
 export async function logModerationAction<T extends ModerationContentType>(params: {
   moderatorId: string;

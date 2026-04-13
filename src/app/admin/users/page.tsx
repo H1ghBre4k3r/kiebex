@@ -34,6 +34,7 @@ export default async function AdminUsersPage() {
           displayName: user.displayName,
           role: user.role,
           emailVerified: user.emailVerified,
+          isBanned: user.isBanned,
           createdAt: user.createdAt.toISOString(),
         }))}
       />

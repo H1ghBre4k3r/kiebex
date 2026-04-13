@@ -11,6 +11,7 @@ const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE_NAME = "kbi_session";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const VERIFICATION_TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TOKEN_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
 const authUserSelect = {
   id: true,
@@ -122,7 +123,7 @@ export async function registerUser(input: {
 
 export type AuthenticateResult =
   | { ok: true; user: AuthUser }
-  | { ok: false; reason: "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" };
+  | { ok: false; reason: "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "ACCOUNT_BANNED" };
 
 export async function authenticateUser(input: {
   email: string;
@@ -139,6 +140,7 @@ export async function authenticateUser(input: {
       role: true,
       passwordHash: true,
       emailVerified: true,
+      isBanned: true,
     },
   });
 
@@ -154,6 +156,10 @@ export async function authenticateUser(input: {
 
   if (!user.emailVerified) {
     return { ok: false, reason: "EMAIL_NOT_VERIFIED" };
+  }
+
+  if (user.isBanned) {
+    return { ok: false, reason: "ACCOUNT_BANNED" };
   }
 
   return {
@@ -418,4 +424,87 @@ export async function requestEmailChange(
   const token = await createEmailVerificationToken(userId);
 
   return { ok: true, token };
+}
+
+/**
+ * Generates a password reset token and stores its hash.
+ * Always returns ok: true to prevent email enumeration — callers must send
+ * the token only when the user actually exists.
+ */
+export async function createPasswordResetToken(userId: string): Promise<string> {
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_DURATION_MS);
+
+  // Invalidate any existing reset tokens for this user.
+  await db.passwordResetToken.deleteMany({ where: { userId } });
+
+  await db.passwordResetToken.create({
+    data: { userId, tokenHash, expiresAt },
+  });
+
+  return token;
+}
+
+export type RequestPasswordResetResult =
+  | { ok: true; userId: string; token: string }
+  | { ok: false; reason: "USER_NOT_FOUND" };
+
+/** Looks up a user by email and creates a reset token. */
+export async function requestPasswordReset(email: string): Promise<RequestPasswordResetResult> {
+  const normalized = normalizeEmail(email);
+
+  const user = await db.user.findUnique({
+    where: { email: normalized },
+    select: { id: true, emailVerified: true, isBanned: true },
+  });
+
+  // Do not reveal whether an account exists — still return a stable response.
+  // But only create a token for active (verified, non-banned) accounts.
+  if (!user || !user.emailVerified || user.isBanned) {
+    return { ok: false, reason: "USER_NOT_FOUND" };
+  }
+
+  const token = await createPasswordResetToken(user.id);
+
+  return { ok: true, userId: user.id, token };
+}
+
+export type ResetPasswordResult = { ok: true } | { ok: false; reason: "invalid" | "expired" };
+
+/** Validates the reset token and updates the user's password. */
+export async function resetPassword(
+  rawToken: string,
+  newPassword: string,
+): Promise<ResetPasswordResult> {
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+
+  const record = await db.passwordResetToken.findUnique({
+    where: { tokenHash },
+    select: { userId: true, expiresAt: true },
+  });
+
+  if (!record) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  if (record.expiresAt <= new Date()) {
+    await db.passwordResetToken.deleteMany({ where: { tokenHash } });
+    return { ok: false, reason: "expired" };
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  // Update password, delete the reset token, and invalidate all sessions
+  // so any existing logins are signed out.
+  await db.user.update({
+    where: { id: record.userId },
+    data: {
+      passwordHash,
+      sessions: { deleteMany: {} },
+      passwordResetTokens: { deleteMany: {} },
+    },
+  });
+
+  return { ok: true };
 }

@@ -269,3 +269,17 @@ export const changeEmailBodySchema = z.object({
   newEmail: z.string().trim().email().max(255),
   currentPassword: z.string().min(1).max(128),
 });
+
+export const forgotPasswordBodySchema = z.object({
+  email: z.string().trim().email().max(255),
+});
+
+export const resetPasswordBodySchema = z.object({
+  token: z.string().min(1).max(128),
+  password: z
+    .string()
+    .min(8)
+    .max(128)
+    .regex(/[A-Za-z]/, "Password must include at least one letter.")
+    .regex(/[0-9]/, "Password must include at least one number."),
+});

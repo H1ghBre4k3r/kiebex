@@ -19,6 +19,7 @@ export type User = {
   role: UserRole;
   passwordHash?: string | null;
   emailVerified: boolean;
+  isBanned: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -227,7 +228,7 @@ export type PendingPriceUpdateProposal = PriceUpdateProposal & {
   submitter: ModerationSubmitter | null;
 };
 
-export type ModerationAction = "approve" | "reject" | "delete" | "edit";
+export type ModerationAction = "approve" | "reject" | "delete" | "edit" | "ban" | "unban";
 
 export type ModerationContentType =
   | "location"
@@ -236,7 +237,8 @@ export type ModerationContentType =
   | "variant"
   | "offer"
   | "price_update"
-  | "review";
+  | "review"
+  | "user";
 
 // Per-content-type audit detail shapes
 export type BrandAuditDetails = {
@@ -298,6 +300,12 @@ export type ReviewAuditDetails = {
   fields?: string[];
 };
 
+export type UserAuditDetails = {
+  email?: string;
+  displayName?: string;
+  role?: string;
+};
+
 export type AuditDetailsMap = {
   brand: BrandAuditDetails;
   style: StyleAuditDetails;
@@ -306,6 +314,7 @@ export type AuditDetailsMap = {
   offer: OfferAuditDetails;
   price_update: PriceUpdateAuditDetails;
   review: ReviewAuditDetails;
+  user: UserAuditDetails;
 };
 
 export type AuditDetails = AuditDetailsMap[ModerationContentType];
