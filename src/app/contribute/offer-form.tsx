@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
+import { jsonInit, requestApi } from "@/lib/client-api";
+import { SERVING_TYPE_OPTIONS, submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
 type LocationOption = {
@@ -29,45 +31,9 @@ type OfferFormProps = {
   variants: VariantOption[];
 };
 
-type ApiResponse = {
-  status?: "ok" | "error";
-  error?: {
-    message?: string;
-  };
-  data?: {
-    outcome?: "offer_submission_created" | "price_update_proposed";
-  };
+type OfferApiSuccess = {
+  outcome?: "offer_submission_created" | "price_update_proposed";
 };
-
-const servingTypes = [
-  { value: "tap", label: "On Tap" },
-  { value: "bottle", label: "Bottle" },
-  { value: "can", label: "Can" },
-] as const;
-
-function locationStatusLabel(status: LocationOption["status"]): string {
-  if (status === "pending") {
-    return "Pending";
-  }
-
-  if (status === "rejected") {
-    return "Rejected";
-  }
-
-  return "Approved";
-}
-
-function variantStatusLabel(status: VariantOption["status"]): string {
-  if (status === "pending") {
-    return "Pending";
-  }
-
-  if (status === "rejected") {
-    return "Rejected";
-  }
-
-  return "Approved";
-}
 
 export function OfferForm({ locations, brands, variants }: OfferFormProps) {
   const router = useRouter();
@@ -79,7 +45,7 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
   );
   const [variantId, setVariantId] = useState(availableVariants[0]?.id ?? "");
   const [sizeMl, setSizeMl] = useState("500");
-  const [serving, setServing] = useState<(typeof servingTypes)[number]["value"]>("tap");
+  const [serving, setServing] = useState<(typeof SERVING_TYPE_OPTIONS)[number]["value"]>("tap");
   const [priceCents, setPriceCents] = useState("500");
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [pending, setPending] = useState(false);
@@ -103,45 +69,38 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/beers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    const result = await requestApi<OfferApiSuccess>(
+      "/api/v1/beers",
+      jsonInit("POST", {
+        body: {
           variantId,
           sizeMl: Number(sizeMl),
           serving,
           priceCents: Number(priceCents),
           locationId,
-        }),
-      });
+        },
+      }),
+      "Unable to submit offer.",
+    );
 
-      const body = (await response.json().catch(() => null)) as ApiResponse | null;
-
-      if (!response.ok) {
-        setErrorMessage(body?.error?.message ?? "Unable to submit offer.");
-        setPending(false);
-        return;
-      }
-
-      setSizeMl("500");
-      setServing("tap");
-      setPriceCents("500");
-
-      if (body?.data?.outcome === "price_update_proposed") {
-        setSuccessMessage("Price update proposal submitted for moderation.");
-      } else {
-        setSuccessMessage("Offer submission created for moderation.");
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
       setPending(false);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit offer.");
-      setPending(false);
+      return;
     }
+
+    setSizeMl("500");
+    setServing("tap");
+    setPriceCents("500");
+
+    if (result.data?.outcome === "price_update_proposed") {
+      setSuccessMessage("Price update proposal submitted for moderation.");
+    } else {
+      setSuccessMessage("Offer submission created for moderation.");
+    }
+
+    setPending(false);
+    router.refresh();
   }
 
   return (
@@ -174,7 +133,7 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
         >
           {availableVariants.map((variant) => (
             <option key={variant.id} value={variant.id}>
-              {variant.name} ({variant.styleName}, {variantStatusLabel(variant.status)})
+              {variant.name} ({variant.styleName}, {submissionStatusLabel(variant.status)})
             </option>
           ))}
         </select>
@@ -201,10 +160,10 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
           name="serving"
           value={serving}
           onChange={(event) =>
-            setServing(event.target.value as (typeof servingTypes)[number]["value"])
+            setServing(event.target.value as (typeof SERVING_TYPE_OPTIONS)[number]["value"])
           }
         >
-          {servingTypes.map((type) => (
+          {SERVING_TYPE_OPTIONS.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
             </option>
@@ -237,7 +196,7 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
         >
           {locations.map((location) => (
             <option key={location.id} value={location.id}>
-              {location.name} ({locationStatusLabel(location.status)})
+              {location.name} ({submissionStatusLabel(location.status)})
             </option>
           ))}
         </select>

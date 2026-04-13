@@ -1,0 +1,76 @@
+import type { LocationType, ReviewStatus, ServingType, SubmissionStatus } from "@/lib/types";
+import { LOCATION_TYPES, SERVING_TYPES } from "@/lib/types";
+
+const EUR_FORMATTER = new Intl.NumberFormat("de-DE", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+});
+
+export const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
+  pub: "Pub",
+  bar: "Bar",
+  restaurant: "Restaurant",
+  supermarket: "Supermarket",
+};
+
+export const LOCATION_TYPE_OPTIONS = LOCATION_TYPES.map((value) => ({
+  value,
+  label: LOCATION_TYPE_LABELS[value],
+})) satisfies ReadonlyArray<{ value: LocationType; label: string }>;
+
+export const SERVING_TYPE_LABELS: Record<ServingType, string> = {
+  tap: "On Tap",
+  bottle: "Bottle",
+  can: "Can",
+};
+
+export const SERVING_TYPE_OPTIONS = SERVING_TYPES.map((value) => ({
+  value,
+  label: SERVING_TYPE_LABELS[value],
+})) satisfies ReadonlyArray<{ value: ServingType; label: string }>;
+
+export const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
+  new: "New",
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+export function formatEur(value: number): string {
+  return EUR_FORMATTER.format(value);
+}
+
+export function formatDate(value: Date | string, options?: Intl.DateTimeFormatOptions): string {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("de-DE", options);
+}
+
+export function formatDateTime(value: Date | string, options?: Intl.DateTimeFormatOptions): string {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("de-DE", options);
+}
+
+export function servingLabel(serving: ServingType): string {
+  return SERVING_TYPE_LABELS[serving];
+}
+
+export function locationTypeLabel(locationType: LocationType): string {
+  return LOCATION_TYPE_LABELS[locationType];
+}
+
+export function submissionStatusLabel(status: SubmissionStatus): string {
+  return SUBMISSION_STATUS_LABELS[status];
+}
+
+export function reviewStatusLabel(status: ReviewStatus): string {
+  return REVIEW_STATUS_LABELS[status];
+}

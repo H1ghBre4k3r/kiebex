@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
+import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
+import { servingLabel, locationTypeLabel } from "@/lib/display";
 import {
-  formatEur,
   getBeerBrands,
   getBeerOffers,
   getBeerOffersPage,
@@ -12,8 +13,6 @@ import {
   getLocationReviewSummaries,
   getBeerVariants,
   getLocations,
-  getServingLabel,
-  locationTypeLabel,
 } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";
@@ -116,7 +115,7 @@ function buildActiveChips(
   // Serving chips
   for (const serving of map.serving ?? []) {
     chips.push({
-      label: `Serving: ${getServingLabel(serving as "tap" | "bottle" | "can")}`,
+      label: `Serving: ${servingLabel(serving as "tap" | "bottle" | "can")}`,
       removeUrl: rawMapToUrl(removeOneValue(map, "serving", serving)),
     });
   }
@@ -269,12 +268,10 @@ export default async function Home({
                 {offers.map((offer, index) => (
                   <li key={offer.id} className={styles.offerItem}>
                     <article>
-                      <div className={styles.offerHead}>
-                        <h3>
-                          {offer.brand} {offer.variant}
-                        </h3>
-                        <p className={styles.price}>{formatEur(offer.priceEur)}</p>
-                      </div>
+                      <OfferSummary
+                        offer={offer}
+                        reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
+                      />
 
                       {index === 0 && (
                         <p className={styles.cheapest}>
@@ -284,58 +281,11 @@ export default async function Home({
                         </p>
                       )}
 
-                      <dl className={styles.meta}>
-                        <div>
-                          <dt>Style</dt>
-                          <dd>{offer.style}</dd>
-                        </div>
-                        <div>
-                          <dt>Size</dt>
-                          <dd>{offer.sizeMl} ml</dd>
-                        </div>
-                        <div>
-                          <dt>Serving</dt>
-                          <dd>{getServingLabel(offer.serving)}</dd>
-                        </div>
-                        <div>
-                          <dt>Location</dt>
-                          <dd>
-                            <Link href={`/locations/${offer.location.id}`}>
-                              {offer.location.name}
-                            </Link>
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Type</dt>
-                          <dd>{locationTypeLabel(offer.location.locationType)}</dd>
-                        </div>
-                        <div>
-                          <dt>Reviews</dt>
-                          <dd>
-                            {(() => {
-                              const summary = reviewSummaryByLocation.get(offer.location.id);
-
-                              if (
-                                !summary ||
-                                summary.reviewCount === 0 ||
-                                summary.averageRating === null
-                              ) {
-                                return "No reviews";
-                              }
-
-                              return `${summary.averageRating.toFixed(1)}/5 (${summary.reviewCount})`;
-                            })()}
-                          </dd>
-                        </div>
-                      </dl>
-
                       {authUser?.role === "admin" && (
                         <AdminOfferActions
                           offerId={offer.id}
                           currentPriceCents={Math.round(offer.priceEur * 100)}
                           className={styles.adminActions}
-                          buttonClassName={undefined}
-                          errorClassName={styles.adminError}
                         />
                       )}
                     </article>

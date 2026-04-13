@@ -1,20 +1,11 @@
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireAdminPageUser } from "@/lib/page-auth";
 import { getLocations } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { LocationsManagement } from "./locations-management";
 import styles from "./locations.module.css";
 
 export default async function AdminLocationsPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireAdminPageUser();
 
   const locations = await getLocations();
 

@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { jsonInit, requestApi } from "@/lib/client-api";
+import { submissionStatusLabel } from "@/lib/display";
 import styles from "./contribute.module.css";
 
 type BrandOption = {
@@ -19,25 +21,6 @@ type VariantFormProps = {
   brands: BrandOption[];
   styleOptions: StyleOption[];
 };
-
-type ApiResponse = {
-  status?: "ok" | "error";
-  error?: {
-    message?: string;
-  };
-};
-
-function brandStatusLabel(status: BrandOption["status"]): string {
-  if (status === "pending") {
-    return "Pending";
-  }
-
-  if (status === "rejected") {
-    return "Rejected";
-  }
-
-  return "Approved";
-}
 
 export function VariantForm({ brands, styleOptions }: VariantFormProps) {
   const router = useRouter();
@@ -59,35 +42,27 @@ export function VariantForm({ brands, styleOptions }: VariantFormProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/beer-variants", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    const result = await requestApi<null>(
+      "/api/v1/beer-variants",
+      jsonInit("POST", {
+        body: {
           name,
           brandId,
           styleId,
-        }),
-      });
+        },
+      }),
+      "Unable to submit beer variant.",
+    );
 
-      const body = (await response.json().catch(() => null)) as ApiResponse | null;
-
-      if (!response.ok) {
-        setErrorMessage(body?.error?.message ?? "Unable to submit beer variant.");
-        setPending(false);
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setName("");
       setSuccessMessage("Beer variant submitted for moderation.");
-      setPending(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to submit beer variant.");
-      setPending(false);
     }
+
+    setPending(false);
   }
 
   return (
@@ -117,7 +92,7 @@ export function VariantForm({ brands, styleOptions }: VariantFormProps) {
         >
           {brands.map((brand) => (
             <option key={brand.id} value={brand.id}>
-              {brand.name} ({brandStatusLabel(brand.status)})
+              {brand.name} ({submissionStatusLabel(brand.status)})
             </option>
           ))}
         </select>

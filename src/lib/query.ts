@@ -34,46 +34,6 @@ import type {
   UserRole,
 } from "@/lib/types";
 
-function servingLabel(serving: ServingType): string {
-  if (serving === "tap") {
-    return "On Tap";
-  }
-
-  if (serving === "bottle") {
-    return "Bottle";
-  }
-
-  return "Can";
-}
-
-export function formatEur(value: number): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
-
-export function locationTypeLabel(locationType: Location["locationType"]): string {
-  if (locationType === "pub") {
-    return "Pub";
-  }
-
-  if (locationType === "bar") {
-    return "Bar";
-  }
-
-  if (locationType === "restaurant") {
-    return "Restaurant";
-  }
-
-  return "Supermarket";
-}
-
-export function getServingLabel(serving: ServingType): string {
-  return servingLabel(serving);
-}
-
 function mapLocation(location: {
   id: string;
   name: string;

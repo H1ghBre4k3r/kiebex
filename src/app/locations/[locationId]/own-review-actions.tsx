@@ -2,13 +2,10 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { jsonInit, requestApi } from "@/lib/client-api";
+import { formatDate } from "@/lib/display";
 import type { ReviewWithAuthor } from "@/lib/types";
 import styles from "./page.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
 
 type Props = {
   review: ReviewWithAuthor;
@@ -50,30 +47,26 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(editEndpoint, {
-        method: editMethod,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const result = await requestApi<null>(
+      editEndpoint,
+      jsonInit(editMethod, {
+        body: {
           rating: Number(rating),
           title: title || null,
           body: body || null,
-        }),
-      });
+        },
+      }),
+      "Unable to save. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setEditing(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -84,23 +77,20 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(deleteEndpoint, {
-        method: "DELETE",
-      });
+    const result = await requestApi<null>(
+      deleteEndpoint,
+      { method: "DELETE" },
+      "Unable to delete. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
       setDeletePending(false);
+      return;
     }
+
+    router.refresh();
   }
 
   async function handleModerate(status: "approved" | "rejected") {
@@ -111,25 +101,19 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setModeratePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/reviews/${review.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/reviews/${review.id}`,
+      jsonInit("PATCH", { body: { status } }),
+      "Unable to moderate. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to moderate. Please try again.");
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to moderate. Please try again.");
-    } finally {
-      setModeratePending(false);
     }
+
+    setModeratePending(false);
   }
 
   if (editing) {
@@ -212,7 +196,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
       </p>
       {review.title && <p>{review.title}</p>}
       {review.body && <p>{review.body}</p>}
-      <p>{new Date(review.createdAt).toLocaleDateString("en-GB")}</p>
+      <p>{formatDate(review.createdAt)}</p>
 
       {canAct && (
         <div className={styles.reviewActions}>

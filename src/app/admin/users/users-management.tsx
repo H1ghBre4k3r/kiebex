@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
+import { jsonInit } from "@/lib/client-api";
+import { runAdminMutation } from "@/app/admin/management-client";
+import { ManagementItem } from "@/app/admin/management-item";
+import { formatDate } from "@/lib/display";
 import type { UserRole } from "@/lib/types";
 import styles from "./users.module.css";
 
@@ -18,18 +22,6 @@ type UsersManagementProps = {
   currentAdminId: string;
   users: UserForAdmin[];
 };
-
-type ApiErrorResponse = {
-  status?: "error";
-  error?: {
-    message?: string;
-  };
-};
-
-async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
-  const body = (await response.json().catch(() => null)) as ApiErrorResponse | null;
-  return body?.error?.message ?? fallback;
-}
 
 function UserItem({
   user,
@@ -58,79 +50,71 @@ function UserItem({
   const roleChanged = selectedRole !== user.role;
 
   return (
-    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
-      <button
-        type="button"
-        className={styles.rowHeader}
-        onClick={() => setExpanded((prev) => !prev)}
-        aria-expanded={expanded}
-      >
-        <span className={styles.rowTitle}>
+    <ManagementItem
+      title={
+        <>
           {user.displayName} <span className={styles.rowEmail}>({user.email})</span>
-        </span>
-        <span className={styles.rowStatus}>{user.role}</span>
-        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
-      </button>
-
-      {expanded && (
-        <div className={styles.rowBody}>
-          <div className={styles.meta}>
-            <p>
-              <strong>{user.displayName}</strong> ({user.email})
-            </p>
-            <p>Current role: {user.role}</p>
-            <p>
-              Email:{" "}
-              {user.emailVerified ? (
-                <span className={styles.verified}>verified</span>
-              ) : (
-                <span className={styles.unverified}>unverified</span>
-              )}
-            </p>
-            <p>Joined: {new Date(user.createdAt).toLocaleDateString("en-GB")}</p>
-          </div>
-
-          <div className={styles.controls}>
-            <label htmlFor={`role-${user.id}`}>Role</label>
-            <select
-              id={`role-${user.id}`}
-              value={selectedRole}
-              onChange={(event) => onRoleChange(event.target.value as UserRole)}
-              disabled={pending}
-            >
-              <option value="user">user</option>
-              <option value="moderator">moderator</option>
-              <option value="admin">admin</option>
-            </select>
-
-            <button type="button" disabled={pending || !roleChanged} onClick={onSaveRole}>
-              {pending ? "Saving..." : "Save Role"}
-            </button>
-
-            {!user.emailVerified && (
-              <button
-                type="button"
-                className={styles.verifyButton}
-                disabled={verifying}
-                onClick={onVerifyEmail}
-              >
-                {verifying ? "Verifying..." : "Verify Email"}
-              </button>
-            )}
-
-            {!user.emailVerified && (
-              <button type="button" disabled={resending} onClick={onResendVerification}>
-                {resending ? "Sending..." : "Resend Verification Email"}
-              </button>
-            )}
-          </div>
-
-          {user.id === currentAdminId && (
-            <p className={styles.notice}>This is your account. Last-admin protection applies.</p>
+        </>
+      }
+      status={user.role}
+      expanded={expanded}
+      onToggle={() => setExpanded((prev) => !prev)}
+    >
+      <div className={styles.meta}>
+        <p>
+          <strong>{user.displayName}</strong> ({user.email})
+        </p>
+        <p>Current role: {user.role}</p>
+        <p>
+          Email:{" "}
+          {user.emailVerified ? (
+            <span className={styles.verified}>verified</span>
+          ) : (
+            <span className={styles.unverified}>unverified</span>
           )}
-        </div>
+        </p>
+        <p>Joined: {formatDate(user.createdAt)}</p>
+      </div>
+
+      <div className={styles.controls}>
+        <label htmlFor={`role-${user.id}`}>Role</label>
+        <select
+          id={`role-${user.id}`}
+          value={selectedRole}
+          onChange={(event) => onRoleChange(event.target.value as UserRole)}
+          disabled={pending}
+        >
+          <option value="user">user</option>
+          <option value="moderator">moderator</option>
+          <option value="admin">admin</option>
+        </select>
+
+        <button type="button" disabled={pending || !roleChanged} onClick={onSaveRole}>
+          {pending ? "Saving..." : "Save Role"}
+        </button>
+
+        {!user.emailVerified && (
+          <button
+            type="button"
+            className={styles.verifyButton}
+            disabled={verifying}
+            onClick={onVerifyEmail}
+          >
+            {verifying ? "Verifying..." : "Verify Email"}
+          </button>
+        )}
+
+        {!user.emailVerified && (
+          <button type="button" disabled={resending} onClick={onResendVerification}>
+            {resending ? "Sending..." : "Resend Verification Email"}
+          </button>
+        )}
+      </div>
+
+      {user.id === currentAdminId && (
+        <p className={styles.notice}>This is your account. Last-admin protection applies.</p>
       )}
-    </li>
+    </ManagementItem>
   );
 }
 
@@ -146,6 +130,35 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
     null,
   );
   const [search, setSearch] = useState("");
+
+  async function runUserMutation(params: {
+    userId: string;
+    setPending: (userId: string | null) => void;
+    input: RequestInfo | URL;
+    init: RequestInit;
+    fallbackMessage: string;
+    successMessage: string;
+    refresh?: boolean;
+  }) {
+    setFeedback(null);
+    params.setPending(params.userId);
+
+    const result = await runAdminMutation({
+      input: params.input,
+      init: params.init,
+      fallbackMessage: params.fallbackMessage,
+      refresh: params.refresh ? () => router.refresh() : undefined,
+    });
+
+    if (!result.ok) {
+      setFeedback({ kind: "error", message: result.message });
+      params.setPending(null);
+      return;
+    }
+
+    setFeedback({ kind: "success", message: params.successMessage });
+    params.setPending(null);
+  }
 
   const filteredUsers = useMemo(() => {
     const q = search.toLowerCase();
@@ -165,81 +178,38 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
       return;
     }
 
-    setFeedback(null);
-    setPendingUserId(userId);
-
-    try {
-      const response = await fetch(`/api/v1/admin/users/${userId}/role`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role }),
-      });
-
-      if (!response.ok) {
-        const message = await parseErrorMessage(response, "Unable to update user role.");
-        setFeedback({ kind: "error", message });
-        setPendingUserId(null);
-        return;
-      }
-
-      setFeedback({ kind: "success", message: "User role updated." });
-      setPendingUserId(null);
-      router.refresh();
-    } catch {
-      setFeedback({ kind: "error", message: "Unable to update user role." });
-      setPendingUserId(null);
-    }
+    await runUserMutation({
+      userId,
+      setPending: setPendingUserId,
+      input: `/api/v1/admin/users/${userId}/role`,
+      init: jsonInit("PATCH", { body: { role } }),
+      fallbackMessage: "Unable to update user role.",
+      successMessage: "User role updated.",
+      refresh: true,
+    });
   }
 
   async function verifyUser(userId: string) {
-    setFeedback(null);
-    setVerifyingUserId(userId);
-
-    try {
-      const response = await fetch(`/api/v1/admin/users/${userId}/verify`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const message = await parseErrorMessage(response, "Unable to verify user.");
-        setFeedback({ kind: "error", message });
-        setVerifyingUserId(null);
-        return;
-      }
-
-      setFeedback({ kind: "success", message: "User email verified." });
-      setVerifyingUserId(null);
-      router.refresh();
-    } catch {
-      setFeedback({ kind: "error", message: "Unable to verify user." });
-      setVerifyingUserId(null);
-    }
+    await runUserMutation({
+      userId,
+      setPending: setVerifyingUserId,
+      input: `/api/v1/admin/users/${userId}/verify`,
+      init: { method: "POST" },
+      fallbackMessage: "Unable to verify user.",
+      successMessage: "User email verified.",
+      refresh: true,
+    });
   }
 
   async function resendVerification(userId: string) {
-    setFeedback(null);
-    setResendingUserId(userId);
-
-    try {
-      const response = await fetch(`/api/v1/admin/users/${userId}/resend-verification`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const message = await parseErrorMessage(response, "Unable to resend verification email.");
-        setFeedback({ kind: "error", message });
-        setResendingUserId(null);
-        return;
-      }
-
-      setFeedback({ kind: "success", message: "Verification email sent." });
-      setResendingUserId(null);
-    } catch {
-      setFeedback({ kind: "error", message: "Unable to resend verification email." });
-      setResendingUserId(null);
-    }
+    await runUserMutation({
+      userId,
+      setPending: setResendingUserId,
+      input: `/api/v1/admin/users/${userId}/resend-verification`,
+      init: { method: "POST" },
+      fallbackMessage: "Unable to resend verification email.",
+      successMessage: "Verification email sent.",
+    });
   }
 
   return (

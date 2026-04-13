@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requirePageAuthUser } from "@/lib/page-auth";
 import { LogoutButton } from "@/components/logout-button";
 import { getUserPendingEmail } from "@/lib/query";
 import { ProfileForm } from "./profile-form";
@@ -9,11 +8,7 @@ import styles from "../auth.module.css";
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
-  const user = await getCurrentAuthUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await requirePageAuthUser();
 
   const pendingEmail = await getUserPendingEmail(user.id);
 

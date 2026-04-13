@@ -3,15 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: {
-    code?: string;
-    message?: string;
-  };
-};
 
 export function LoginForm() {
   const router = useRouter();
@@ -35,35 +28,26 @@ export function LoginForm() {
     setEmailNotVerified(false);
     setResendMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/auth/login",
+      jsonInit("POST", { body: { email, password } }),
+      "Unable to sign in. Please try again.",
+    );
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-
-        if (body?.error?.code === "EMAIL_NOT_VERIFIED") {
-          setEmailNotVerified(true);
-          setErrorMessage("Your email address has not been verified yet.");
-        } else {
-          setErrorMessage(body?.error?.message ?? "Unable to sign in. Please try again.");
-        }
-
-        setPending(false);
-        return;
+    if (!result.ok) {
+      if (result.code === "EMAIL_NOT_VERIFIED") {
+        setEmailNotVerified(true);
+        setErrorMessage("Your email address has not been verified yet.");
+      } else {
+        setErrorMessage(result.message);
       }
 
-      router.push("/");
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to sign in. Please try again.");
       setPending(false);
+      return;
     }
+
+    router.push("/");
+    router.refresh();
   }
 
   async function handleResend() {
@@ -74,19 +58,19 @@ export function LoginForm() {
     setResendPending(true);
     setResendMessage(null);
 
-    try {
-      await fetch("/api/v1/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/auth/resend-verification",
+      jsonInit("POST", { body: { email } }),
+      "Could not resend email. Please try again.",
+    );
 
+    if (result.ok) {
       setResendMessage("Verification email resent. Please check your inbox.");
-    } catch {
-      setResendMessage("Could not resend email. Please try again.");
-    } finally {
-      setResendPending(false);
+    } else {
+      setResendMessage(result.message);
     }
+
+    setResendPending(false);
   }
 
   return (

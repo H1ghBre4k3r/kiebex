@@ -1,17 +1,10 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
 
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
-
-type ApiSuccessBody = {
-  status?: "ok";
-  data?: { user?: { displayName?: string } };
-};
+type ProfileResponse = { user?: { displayName?: string } };
 
 type Props = {
   initialDisplayName: string;
@@ -49,34 +42,25 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
     setDisplayNameMessage(null);
     setDisplayNameError(null);
 
-    try {
-      const response = await fetch("/api/v1/auth/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName }),
-      });
+    const result = await requestApi<ProfileResponse>(
+      "/api/v1/auth/profile",
+      jsonInit("PATCH", { body: { displayName } }),
+      "Unable to update display name. Please try again.",
+    );
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setDisplayNameError(
-          body?.error?.message ?? "Unable to update display name. Please try again.",
-        );
-        return;
-      }
-
-      const body = (await response.json().catch(() => null)) as ApiSuccessBody | null;
-      const updated = body?.data?.user?.displayName;
+    if (!result.ok) {
+      setDisplayNameError(result.message);
+    } else {
+      const updated = result.data?.user?.displayName;
 
       if (updated) {
         setDisplayName(updated);
       }
 
       setDisplayNameMessage("Display name updated.");
-    } catch {
-      setDisplayNameError("Unable to update display name. Please try again.");
-    } finally {
-      setDisplayNamePending(false);
     }
+
+    setDisplayNamePending(false);
   }
 
   async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
@@ -95,28 +79,22 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
     setPasswordMessage(null);
     setPasswordError(null);
 
-    try {
-      const response = await fetch("/api/v1/auth/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
+    const result = await requestApi<null>(
+      "/api/v1/auth/profile",
+      jsonInit("PATCH", { body: { currentPassword, newPassword } }),
+      "Unable to update password. Please try again.",
+    );
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setPasswordError(body?.error?.message ?? "Unable to update password. Please try again.");
-        return;
-      }
-
+    if (!result.ok) {
+      setPasswordError(result.message);
+    } else {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setPasswordMessage("Password updated.");
-    } catch {
-      setPasswordError("Unable to update password. Please try again.");
-    } finally {
-      setPasswordPending(false);
     }
+
+    setPasswordPending(false);
   }
 
   async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
@@ -130,27 +108,22 @@ export function ProfileForm({ initialDisplayName, currentEmail, pendingEmail }: 
     setEmailMessage(null);
     setEmailError(null);
 
-    try {
-      const response = await fetch("/api/v1/auth/change-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newEmail, currentPassword: emailPassword }),
-      });
+    const requestedEmail = newEmail;
+    const result = await requestApi<null>(
+      "/api/v1/auth/change-email",
+      jsonInit("POST", { body: { newEmail, currentPassword: emailPassword } }),
+      "Unable to request email change. Please try again.",
+    );
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setEmailError(body?.error?.message ?? "Unable to request email change. Please try again.");
-        return;
-      }
-
+    if (!result.ok) {
+      setEmailError(result.message);
+    } else {
       setNewEmail("");
       setEmailPassword("");
-      setEmailMessage(`Verification email sent to ${newEmail}. Click the link to confirm.`);
-    } catch {
-      setEmailError("Unable to request email change. Please try again.");
-    } finally {
-      setEmailPending(false);
+      setEmailMessage(`Verification email sent to ${requestedEmail}. Click the link to confirm.`);
     }
+
+    setEmailPending(false);
   }
 
   return (

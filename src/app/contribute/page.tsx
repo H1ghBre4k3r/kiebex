@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser } from "@/lib/auth";
+import { locationTypeLabel } from "@/lib/display";
 import {
   getBeerStyles,
   getContributableBeerBrands,
   getContributableBeerVariants,
   getContributableLocations,
-  locationTypeLabel,
 } from "@/lib/query";
 import { BrandForm } from "./brand-form";
 import { LocationForm } from "./location-form";

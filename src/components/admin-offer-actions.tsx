@@ -2,33 +2,19 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
+import { jsonInit, requestApi } from "@/lib/client-api";
+import styles from "./admin-offer-actions.module.css";
 
 type Props = {
   offerId: string;
   currentPriceCents: number;
   /** Optional: called after a successful delete (e.g. to redirect) */
   onDeleted?: () => void;
-  /** CSS class applied to the outer wrapper div */
+  /** CSS class applied to the outer wrapper div; defaults to the component's built-in flex layout */
   className?: string;
-  /** CSS class applied to buttons */
-  buttonClassName?: string;
-  /** CSS class for error text */
-  errorClassName?: string;
 };
 
-export function AdminOfferActions({
-  offerId,
-  currentPriceCents,
-  onDeleted,
-  className,
-  buttonClassName,
-  errorClassName,
-}: Props) {
+export function AdminOfferActions({ offerId, currentPriceCents, onDeleted, className }: Props) {
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
@@ -55,26 +41,20 @@ export function AdminOfferActions({
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/offers/${offerId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceCents }),
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/offers/${offerId}`,
+      jsonInit("PUT", { body: { priceCents } }),
+      "Unable to save. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setEditing(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -85,39 +65,36 @@ export function AdminOfferActions({
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/offers/${offerId}`, {
-        method: "DELETE",
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/offers/${offerId}`,
+      { method: "DELETE" },
+      "Unable to delete. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
-        setConfirmDelete(false);
-        return;
-      }
-
-      if (onDeleted) {
-        onDeleted();
-      } else {
-        router.refresh();
-      }
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
       setDeletePending(false);
+      return;
+    }
+
+    if (onDeleted) {
+      onDeleted();
+    } else {
+      router.refresh();
     }
   }
 
   if (editing) {
     return (
-      <div className={className}>
+      <div className={className ?? styles.actions}>
         <form
           onSubmit={(e) => {
             void handleSave(e);
           }}
-          style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "flex-end" }}
+          className={styles.editForm}
         >
-          <label style={{ display: "grid", gap: "0.2rem", fontWeight: 700 }}>
+          <label className={styles.field}>
             Price (€)
             <input
               type="number"
@@ -127,16 +104,16 @@ export function AdminOfferActions({
               value={priceInput}
               onChange={(e) => setPriceInput(e.target.value)}
               required
-              style={{ border: "var(--border-regular)", padding: "0.25rem 0.4rem", width: "7rem" }}
+              className={styles.input}
             />
           </label>
-          <button type="submit" disabled={savePending} className={buttonClassName}>
+          <button type="submit" disabled={savePending} className={styles.button}>
             {savePending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
             disabled={savePending}
-            className={buttonClassName}
+            className={styles.button}
             onClick={() => {
               setEditing(false);
               setErrorMessage(null);
@@ -146,7 +123,7 @@ export function AdminOfferActions({
           </button>
         </form>
         {errorMessage && (
-          <p className={errorClassName} role="alert" aria-live="polite">
+          <p className={styles.error} role="alert" aria-live="polite">
             {errorMessage}
           </p>
         )}
@@ -155,9 +132,9 @@ export function AdminOfferActions({
   }
 
   return (
-    <div className={className}>
+    <div className={className ?? styles.actions}>
       {errorMessage && (
-        <p className={errorClassName} role="alert" aria-live="polite">
+        <p className={styles.error} role="alert" aria-live="polite">
           {errorMessage}
         </p>
       )}
@@ -169,7 +146,7 @@ export function AdminOfferActions({
               void handleDelete();
             }}
             disabled={deletePending}
-            className={buttonClassName}
+            className={styles.button}
             aria-label="Confirm delete offer"
           >
             {deletePending ? "Deleting…" : "Confirm Delete"}
@@ -177,7 +154,7 @@ export function AdminOfferActions({
           <button
             type="button"
             disabled={deletePending}
-            className={buttonClassName}
+            className={styles.button}
             onClick={() => setConfirmDelete(false)}
           >
             Cancel
@@ -187,7 +164,7 @@ export function AdminOfferActions({
         <>
           <button
             type="button"
-            className={buttonClassName}
+            className={styles.button}
             onClick={() => setEditing(true)}
             aria-label="Edit offer price"
           >
@@ -195,7 +172,7 @@ export function AdminOfferActions({
           </button>
           <button
             type="button"
-            className={buttonClassName}
+            className={styles.button}
             onClick={() => setConfirmDelete(true)}
             aria-label="Delete offer"
           >

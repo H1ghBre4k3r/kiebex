@@ -2,22 +2,10 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { jsonInit, requestApi } from "@/lib/client-api";
+import { LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import type { Location, LocationType } from "@/lib/types";
 import styles from "./page.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
-
-const LOCATION_TYPES: LocationType[] = ["pub", "bar", "restaurant", "supermarket"];
-
-const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
-  pub: "Pub",
-  bar: "Bar",
-  restaurant: "Restaurant",
-  supermarket: "Supermarket",
-};
 
 type Props = {
   location: Location;
@@ -47,26 +35,20 @@ export function AdminLocationActions({ location }: Props) {
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, locationType, district, address }),
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/locations/${location.id}`,
+      jsonInit("PUT", { body: { name, locationType, district, address } }),
+      "Unable to save. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
-        return;
-      }
-
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    } else {
       setEditing(false);
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -77,23 +59,20 @@ export function AdminLocationActions({ location }: Props) {
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        method: "DELETE",
-      });
+    const result = await requestApi<null>(
+      `/api/v1/moderation/locations/${location.id}`,
+      { method: "DELETE" },
+      "Unable to delete. Please try again.",
+    );
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.push("/");
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
       setDeletePending(false);
+      return;
     }
+
+    router.push("/");
   }
 
   if (editing) {
@@ -124,9 +103,9 @@ export function AdminLocationActions({ location }: Props) {
             value={locationType}
             onChange={(e) => setLocationType(e.target.value as LocationType)}
           >
-            {LOCATION_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {LOCATION_TYPE_LABELS[t]}
+            {LOCATION_TYPE_OPTIONS.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
               </option>
             ))}
           </select>

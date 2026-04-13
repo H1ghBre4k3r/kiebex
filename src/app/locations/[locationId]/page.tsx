@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminOfferActions } from "@/components/admin-offer-actions";
+import { LocationOfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
+import { locationTypeLabel } from "@/lib/display";
 import {
-  formatEur,
   getLocationById,
   getLocationOffers,
   getLocationReviews,
   getOfferPriceHistory,
-  getServingLabel,
-  locationTypeLabel,
 } from "@/lib/query";
-import { AdminOfferActions } from "@/components/admin-offer-actions";
 import { AdminLocationActions } from "./admin-location-actions";
 import { OwnReviewActions } from "./own-review-actions";
 import { ReviewForm } from "./review-form";
@@ -72,34 +71,13 @@ export default async function LocationPage({
 
               return (
                 <li key={offer.id} className={styles.item}>
-                  <h3>
-                    {offer.brand} {offer.variant}
-                  </h3>
-                  <p>{formatEur(offer.priceEur)}</p>
-                  <p>{offer.style}</p>
-                  <p>
-                    {offer.sizeMl} ml - {getServingLabel(offer.serving)}
-                  </p>
-                  <p>Price history ({history.length})</p>
-                  {history.length > 0 ? (
-                    <ul>
-                      {history.map((entry) => (
-                        <li key={entry.id}>
-                          <p>{formatEur(entry.priceEur)}</p>
-                          <p>{new Date(entry.effectiveAt).toLocaleDateString("en-GB")}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No tracked price history yet.</p>
-                  )}
+                  <LocationOfferSummary offer={offer} history={history} />
 
                   {isAdmin && (
                     <AdminOfferActions
                       offerId={offer.id}
                       currentPriceCents={Math.round(offer.priceEur * 100)}
                       className={styles.adminActions}
-                      errorClassName={styles.error}
                     />
                   )}
                 </li>

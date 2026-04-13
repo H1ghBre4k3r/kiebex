@@ -1,26 +1,14 @@
-import { Prisma } from "@/generated/prisma/client";
-import { UnauthorizedError, requireAuthUser } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createReview, getLocationReviewPermission, getLocationReviews } from "@/lib/query";
+import { jsonQueryValidationError, parseJsonBody, withApiAuth } from "@/lib/route-handlers";
 import { createReviewBodySchema, parseReviewQueryParams } from "@/lib/validation";
-
-function isKnownRequestError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
-  return error instanceof Prisma.PrismaClientKnownRequestError;
-}
 
 export async function GET(request: Request): Promise<Response> {
   const parsed = parseReviewQueryParams(new URL(request.url).searchParams);
 
   if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_QUERY",
-      "One or more query parameters are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
+    return jsonQueryValidationError(parsed.error);
   }
 
   const permission = await getLocationReviewPermission(parsed.data.locationId);
@@ -42,75 +30,48 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let userId: string;
+  return withApiAuth(async (user) => {
+    const parsed = await parseJsonBody(request, createReviewBodySchema);
 
-  try {
-    const user = await requireAuthUser();
-    userId = user.id;
-  } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return jsonError(401, "UNAUTHORIZED", "Authentication required.");
+    if (!parsed.ok) {
+      return parsed.response;
     }
 
-    throw error;
-  }
+    const permission = await getLocationReviewPermission(parsed.data.locationId);
 
-  let body: unknown;
+    if (permission === "missing") {
+      return jsonError(404, "LOCATION_NOT_FOUND", "No location found for the supplied locationId.");
+    }
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
-
-  const parsed = createReviewBodySchema.safeParse(body);
-
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
-  }
-
-  const permission = await getLocationReviewPermission(parsed.data.locationId);
-
-  if (permission === "missing") {
-    return jsonError(404, "LOCATION_NOT_FOUND", "No location found for the supplied locationId.");
-  }
-
-  if (permission === "forbidden") {
-    return jsonError(
-      403,
-      "LOCATION_NOT_APPROVED",
-      "Reviews can only be submitted for approved locations.",
-    );
-  }
-
-  try {
-    const review = await createReview({
-      locationId: parsed.data.locationId,
-      userId,
-      rating: parsed.data.rating,
-      title: parsed.data.title,
-      body: parsed.data.body,
-      status: "approved",
-    });
-
-    return jsonOk({ review }, { status: 201 });
-  } catch (error) {
-    if (isKnownRequestError(error) && error.code === "P2003") {
+    if (permission === "forbidden") {
       return jsonError(
-        404,
-        "RELATION_NOT_FOUND",
-        "A related entity referenced by this review does not exist.",
+        403,
+        "LOCATION_NOT_APPROVED",
+        "Reviews can only be submitted for approved locations.",
       );
     }
 
-    throw error;
-  }
+    try {
+      const review = await createReview({
+        locationId: parsed.data.locationId,
+        userId: user.id,
+        rating: parsed.data.rating,
+        title: parsed.data.title,
+        body: parsed.data.body,
+        status: "approved",
+      });
+
+      return jsonOk({ review }, { status: 201 });
+    } catch (error) {
+      if (isPrismaErrorCode(error, "P2003")) {
+        return jsonError(
+          404,
+          "RELATION_NOT_FOUND",
+          "A related entity referenced by this review does not exist.",
+        );
+      }
+
+      throw error;
+    }
+  });
 }

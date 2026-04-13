@@ -2,34 +2,15 @@ import { createEmailVerificationToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email";
 import { jsonError, jsonOk } from "@/lib/http";
+import { parseJsonBody } from "@/lib/route-handlers";
+import { buildVerificationUrl } from "@/lib/verification";
 import { resendVerificationBodySchema } from "@/lib/validation";
 
-function buildVerificationUrl(request: Request, token: string): string {
-  const appUrl = process.env.APP_URL ?? new URL(request.url).origin;
-  return `${appUrl}/api/v1/auth/verify-email?token=${token}`;
-}
-
 export async function POST(request: Request): Promise<Response> {
-  let body: unknown;
+  const parsed = await parseJsonBody(request, resendVerificationBodySchema);
 
-  try {
-    body = await request.json();
-  } catch {
-    return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
-  }
-
-  const parsed = resendVerificationBodySchema.safeParse(body);
-
-  if (!parsed.success) {
-    return jsonError(
-      400,
-      "INVALID_BODY",
-      "One or more fields are invalid.",
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    );
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const email = parsed.data.email.trim().toLowerCase();
@@ -42,7 +23,19 @@ export async function POST(request: Request): Promise<Response> {
 
   if (user && !user.emailVerified) {
     const token = await createEmailVerificationToken(user.id);
-    const verificationUrl = buildVerificationUrl(request, token);
+
+    let verificationUrl: string;
+
+    try {
+      verificationUrl = buildVerificationUrl(request, token);
+    } catch {
+      return jsonError(
+        500,
+        "CONFIGURATION_ERROR",
+        "Server configuration error. Please contact support.",
+      );
+    }
+
     await sendVerificationEmail(user.email, verificationUrl);
   }
 

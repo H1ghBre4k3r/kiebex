@@ -2,22 +2,12 @@
 
 import { type FormEvent, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { jsonInit } from "@/lib/client-api";
+import { runAdminMutation } from "@/app/admin/management-client";
+import { ManagementError, ManagementItem } from "@/app/admin/management-item";
+import { LOCATION_TYPE_LABELS, LOCATION_TYPE_OPTIONS } from "@/lib/display";
 import type { Location, LocationType } from "@/lib/types";
 import styles from "./locations.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: { message?: string };
-};
-
-const LOCATION_TYPES: LocationType[] = ["pub", "bar", "restaurant", "supermarket"];
-
-const LOCATION_TYPE_LABELS: Record<LocationType, string> = {
-  pub: "Pub",
-  bar: "Bar",
-  restaurant: "Restaurant",
-  supermarket: "Supermarket",
-};
 
 type LocationRow = Pick<
   Location,
@@ -52,26 +42,19 @@ function LocationItem({ location }: { location: LocationRow }) {
     setSavePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, locationType, district, address }),
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/moderation/locations/${location.id}`,
+      init: jsonInit("PUT", { body: { name, locationType, district, address } }),
+      fallbackMessage: "Unable to save. Please try again.",
+      onSuccess: () => setEditing(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to save. Please try again.");
-        return;
-      }
-
-      setEditing(false);
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to save. Please try again.");
-    } finally {
-      setSavePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
     }
+
+    setSavePending(false);
   }
 
   async function handleDelete() {
@@ -82,181 +65,160 @@ function LocationItem({ location }: { location: LocationRow }) {
     setDeletePending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch(`/api/v1/moderation/locations/${location.id}`, {
-        method: "DELETE",
-      });
+    const result = await runAdminMutation({
+      input: `/api/v1/moderation/locations/${location.id}`,
+      init: { method: "DELETE" },
+      fallbackMessage: "Unable to delete. Please try again.",
+      onSuccess: () => setConfirmDelete(false),
+      refresh: () => router.refresh(),
+    });
 
-      if (!response.ok) {
-        const err = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(err?.error?.message ?? "Unable to delete. Please try again.");
-        setConfirmDelete(false);
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      setErrorMessage("Unable to delete. Please try again.");
-      setDeletePending(false);
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setConfirmDelete(false);
     }
+
+    setDeletePending(false);
   }
 
   return (
-    <li className={`${styles.item} ${expanded ? styles.expanded : ""}`}>
-      <button
-        type="button"
-        className={styles.rowHeader}
-        onClick={() => {
-          setExpanded((prev) => !prev);
-          if (expanded) {
-            setEditing(false);
-            setConfirmDelete(false);
-            setErrorMessage(null);
-          }
-        }}
-        aria-expanded={expanded}
-      >
-        <span className={styles.rowTitle}>{location.name}</span>
-        <span className={styles.rowStatus}>{LOCATION_TYPE_LABELS[location.locationType]}</span>
-        <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
-      </button>
+    <ManagementItem
+      title={location.name}
+      status={LOCATION_TYPE_LABELS[location.locationType]}
+      expanded={expanded}
+      onToggle={() => {
+        setExpanded((prev) => !prev);
+        if (expanded) {
+          setEditing(false);
+          setConfirmDelete(false);
+          setErrorMessage(null);
+        }
+      }}
+    >
+      <dl className={styles.meta}>
+        <div>
+          <dt>Name</dt>
+          <dd>{location.name}</dd>
+        </div>
+        <div>
+          <dt>Type</dt>
+          <dd>{LOCATION_TYPE_LABELS[location.locationType]}</dd>
+        </div>
+        <div>
+          <dt>District</dt>
+          <dd>{location.district}</dd>
+        </div>
+        <div>
+          <dt>Address</dt>
+          <dd>{location.address}</dd>
+        </div>
+      </dl>
 
-      {expanded && (
-        <div className={styles.rowBody}>
-          <dl className={styles.meta}>
-            <div>
-              <dt>Name</dt>
-              <dd>{location.name}</dd>
-            </div>
-            <div>
-              <dt>Type</dt>
-              <dd>{LOCATION_TYPE_LABELS[location.locationType]}</dd>
-            </div>
-            <div>
-              <dt>District</dt>
-              <dd>{location.district}</dd>
-            </div>
-            <div>
-              <dt>Address</dt>
-              <dd>{location.address}</dd>
-            </div>
-          </dl>
+      {errorMessage && <ManagementError message={errorMessage} />}
 
-          {errorMessage && (
-            <p className={styles.error} role="alert" aria-live="polite">
-              {errorMessage}
-            </p>
-          )}
-
-          <div className={styles.controls}>
-            {confirmDelete ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleDelete();
-                  }}
-                  disabled={deletePending}
-                >
-                  {deletePending ? "Deleting…" : "Confirm Delete"}
-                </button>
-                <button
-                  type="button"
-                  disabled={deletePending}
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing((prev) => !prev);
-                    setErrorMessage(null);
-                  }}
-                >
-                  {editing ? "Cancel Edit" : "Edit"}
-                </button>
-                <button type="button" onClick={() => setConfirmDelete(true)}>
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-
-          {editing && (
-            <form
-              className={styles.editForm}
-              onSubmit={(e) => {
-                void handleSave(e);
+      <div className={styles.controls}>
+        {confirmDelete ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void handleDelete();
+              }}
+              disabled={deletePending}
+            >
+              {deletePending ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing((prev) => !prev);
+                setErrorMessage(null);
               }}
             >
-              <label htmlFor={`loc-name-${location.id}`}>
-                Name
-                <input
-                  id={`loc-name-${location.id}`}
-                  type="text"
-                  minLength={2}
-                  maxLength={120}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </label>
+              {editing ? "Cancel Edit" : "Edit"}
+            </button>
+            <button type="button" onClick={() => setConfirmDelete(true)}>
+              Delete
+            </button>
+          </>
+        )}
+      </div>
 
-              <label htmlFor={`loc-type-${location.id}`}>
-                Type
-                <select
-                  id={`loc-type-${location.id}`}
-                  value={locationType}
-                  onChange={(e) => setLocationType(e.target.value as LocationType)}
-                >
-                  {LOCATION_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {LOCATION_TYPE_LABELS[t]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+      {editing && (
+        <form
+          className={styles.editForm}
+          onSubmit={(e) => {
+            void handleSave(e);
+          }}
+        >
+          <label htmlFor={`loc-name-${location.id}`}>
+            Name
+            <input
+              id={`loc-name-${location.id}`}
+              type="text"
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
 
-              <label htmlFor={`loc-district-${location.id}`}>
-                District
-                <input
-                  id={`loc-district-${location.id}`}
-                  type="text"
-                  minLength={2}
-                  maxLength={80}
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  required
-                />
-              </label>
+          <label htmlFor={`loc-type-${location.id}`}>
+            Type
+            <select
+              id={`loc-type-${location.id}`}
+              value={locationType}
+              onChange={(e) => setLocationType(e.target.value as LocationType)}
+            >
+              {LOCATION_TYPE_OPTIONS.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-              <label htmlFor={`loc-address-${location.id}`}>
-                Address
-                <input
-                  id={`loc-address-${location.id}`}
-                  type="text"
-                  minLength={5}
-                  maxLength={200}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  required
-                />
-              </label>
+          <label htmlFor={`loc-district-${location.id}`}>
+            District
+            <input
+              id={`loc-district-${location.id}`}
+              type="text"
+              minLength={2}
+              maxLength={80}
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              required
+            />
+          </label>
 
-              <div className={styles.editActions}>
-                <button type="submit" disabled={savePending}>
-                  {savePending ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+          <label htmlFor={`loc-address-${location.id}`}>
+            Address
+            <input
+              id={`loc-address-${location.id}`}
+              type="text"
+              minLength={5}
+              maxLength={200}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              required
+            />
+          </label>
+
+          <div className={styles.editActions}>
+            <button type="submit" disabled={savePending}>
+              {savePending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </form>
       )}
-    </li>
+    </ManagementItem>
   );
 }
 

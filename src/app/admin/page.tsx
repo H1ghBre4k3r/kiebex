@@ -1,19 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentAuthUser } from "@/lib/auth";
+import { requireAdminPageUser } from "@/lib/page-auth";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import styles from "./admin.module.css";
 
 export default async function AdminPage() {
-  const authUser = await getCurrentAuthUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  if (authUser.role !== "admin") {
-    redirect("/");
-  }
+  const authUser = await requireAdminPageUser();
 
   return (
     <main className={styles.page}>

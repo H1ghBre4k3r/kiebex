@@ -1,6 +1,8 @@
-export type ServingType = "tap" | "bottle" | "can";
+export const SERVING_TYPES = ["tap", "bottle", "can"] as const;
+export type ServingType = (typeof SERVING_TYPES)[number];
 
-export type LocationType = "pub" | "bar" | "restaurant" | "supermarket";
+export const LOCATION_TYPES = ["pub", "bar", "restaurant", "supermarket"] as const;
+export type LocationType = (typeof LOCATION_TYPES)[number];
 
 export type UserRole = "user" | "moderator" | "admin";
 

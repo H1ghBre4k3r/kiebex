@@ -2,14 +2,8 @@
 
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
+import { jsonInit, requestApi } from "@/lib/client-api";
 import styles from "../auth.module.css";
-
-type ApiErrorBody = {
-  status?: "error";
-  error?: {
-    message?: string;
-  };
-};
 
 export function RegisterForm() {
   const [displayName, setDisplayName] = useState("");
@@ -30,32 +24,26 @@ export function RegisterForm() {
     setPending(true);
     setErrorMessage(null);
 
-    try {
-      const response = await fetch("/api/v1/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    const result = await requestApi<null>(
+      "/api/v1/auth/register",
+      jsonInit("POST", {
+        body: {
           displayName,
           email,
           password,
-        }),
-      });
+        },
+      }),
+      "Unable to create account. Please try again.",
+    );
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-        setErrorMessage(body?.error?.message ?? "Unable to create account. Please try again.");
-        setPending(false);
-        return;
-      }
-
-      setSubmittedEmail(email);
-      setSubmitted(true);
-    } catch {
-      setErrorMessage("Unable to create account. Please try again.");
+    if (!result.ok) {
+      setErrorMessage(result.message);
       setPending(false);
+      return;
     }
+
+    setSubmittedEmail(email);
+    setSubmitted(true);
   }
 
   if (submitted) {
