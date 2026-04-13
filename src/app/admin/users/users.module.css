@@ -72,6 +72,7 @@
 }
 
 .verifiedChip {
+  display: inline-block;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -82,6 +83,7 @@
 }
 
 .unverifiedChip {
+  display: inline-block;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;

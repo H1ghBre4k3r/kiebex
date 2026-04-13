@@ -273,6 +273,8 @@ export function BrandsManagement({ brands }: Props) {
         />
       </div>
 
+      <CreateBrandForm />
+
       {filteredBrands.length === 0 ? (
         <p className={styles.empty}>No brands found matching your search.</p>
       ) : (
@@ -282,8 +284,6 @@ export function BrandsManagement({ brands }: Props) {
           ))}
         </ul>
       )}
-
-      <CreateBrandForm />
     </div>
   );
 }

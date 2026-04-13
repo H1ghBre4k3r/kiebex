@@ -364,6 +364,8 @@ export function VariantsManagement({ variants, beerStyles, brands }: Props) {
         />
       </div>
 
+      <CreateVariantForm beerStyles={beerStyles} brands={brands} />
+
       {filteredVariants.length === 0 ? (
         <p className={styles.empty}>No variants found matching your search.</p>
       ) : (
@@ -373,8 +375,6 @@ export function VariantsManagement({ variants, beerStyles, brands }: Props) {
           ))}
         </ul>
       )}
-
-      <CreateVariantForm beerStyles={beerStyles} brands={brands} />
     </div>
   );
 }

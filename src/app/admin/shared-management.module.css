@@ -163,20 +163,10 @@
 }
 
 .rowStatusExtra {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 0.2rem 0.5rem;
-  border: var(--border-regular);
+  /* transparent wrapper — child chip provides all visual styling */
 }
 
 .rowHeader:hover .rowStatus {
-  background: var(--surface-strong);
-  color: var(--ink);
-  border-color: var(--surface-strong);
-}
-
-.rowHeader:hover .rowStatusExtra {
   background: var(--surface-strong);
   color: var(--ink);
   border-color: var(--surface-strong);

@@ -251,6 +251,8 @@ export function LocationsManagement({ locations }: Props) {
         />
       </div>
 
+      <CreateLocationForm />
+
       {filteredLocations.length === 0 ? (
         <p className={styles.empty}>No approved locations found matching your search.</p>
       ) : (
@@ -260,8 +262,6 @@ export function LocationsManagement({ locations }: Props) {
           ))}
         </ul>
       )}
-
-      <CreateLocationForm />
     </div>
   );
 }

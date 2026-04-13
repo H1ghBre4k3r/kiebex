@@ -386,6 +386,8 @@ export function OffersManagement({ offers, locations, brands, variants }: Props)
         />
       </div>
 
+      <CreateOfferForm locations={locations} brands={brands} variants={variants} />
+
       {filteredOffers.length === 0 ? (
         <p className={styles.empty}>No approved offers found matching your search.</p>
       ) : (
@@ -395,8 +397,6 @@ export function OffersManagement({ offers, locations, brands, variants }: Props)
           ))}
         </ul>
       )}
-
-      <CreateOfferForm locations={locations} brands={brands} variants={variants} />
     </div>
   );
 }
