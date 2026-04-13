@@ -61,6 +61,41 @@
   background: #1a5c1a !important;
 }
 
+.banButton {
+  background: #7a3600 !important;
+  color: #fff !important;
+}
+
+.unbanButton {
+  background: #1a5c1a !important;
+  color: #fff !important;
+}
+
+.deleteButton {
+  background: #5e0f00 !important;
+  color: #fff !important;
+}
+
+.confirmRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.confirmLabel {
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.bannedNotice {
+  font-weight: 700;
+  color: #5e0f00;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
 .verified {
   color: #0a4a09;
   font-weight: 700;

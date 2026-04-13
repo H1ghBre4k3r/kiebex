@@ -21,6 +21,10 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    if (result.reason === "ACCOUNT_BANNED") {
+      return jsonError(403, "ACCOUNT_BANNED", "This account has been suspended.");
+    }
+
     return jsonError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
   }
 

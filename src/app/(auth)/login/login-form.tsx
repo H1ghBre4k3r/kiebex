@@ -38,6 +38,8 @@ export function LoginForm() {
       if (result.code === "EMAIL_NOT_VERIFIED") {
         setEmailNotVerified(true);
         setErrorMessage("Your email address has not been verified yet.");
+      } else if (result.code === "ACCOUNT_BANNED") {
+        setErrorMessage("This account has been suspended. Please contact support.");
       } else {
         setErrorMessage(result.message);
       }
@@ -132,6 +134,9 @@ export function LoginForm() {
         </button>
         <Link href="/register" className={styles.secondaryLink}>
           Create Account
+        </Link>
+        <Link href="/forgot-password" className={styles.secondaryLink}>
+          Forgot Password?
         </Link>
       </div>
     </form>

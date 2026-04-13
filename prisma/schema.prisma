@@ -52,6 +52,7 @@ model User {
   role          UserRole @default(user)
   passwordHash  String?
   emailVerified Boolean  @default(false)
+  isBanned      Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -63,10 +64,24 @@ model User {
   reviews                   Review[]
   sessions                  Session[]
   emailVerificationTokens   EmailVerificationToken[]
+  passwordResetTokens       PasswordResetToken[]
   moderationAuditLogs       ModerationAuditLog[]     @relation("ModerationAuditLogModerator")
 }
 
 model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
   id        String   @id @default(cuid())
   userId    String
   tokenHash String   @unique
