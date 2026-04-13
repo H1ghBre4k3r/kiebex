@@ -6,6 +6,7 @@ import styles from "./shared-management.module.css";
 type ManagementItemProps = {
   title: ReactNode;
   status: ReactNode;
+  statusExtra?: ReactNode;
   expanded: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -14,6 +15,7 @@ type ManagementItemProps = {
 export function ManagementItem({
   title,
   status,
+  statusExtra,
   expanded,
   onToggle,
   children,
@@ -28,6 +30,7 @@ export function ManagementItem({
       >
         <span className={styles.rowTitle}>{title}</span>
         <span className={styles.rowStatus}>{status}</span>
+        {statusExtra !== undefined && <span className={styles.rowStatusExtra}>{statusExtra}</span>}
         <span className={styles.rowIcon}>{expanded ? "−" : "+"}</span>
       </button>
 

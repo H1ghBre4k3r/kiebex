@@ -285,6 +285,8 @@ export function StylesManagement({ beerStyles }: Props) {
         />
       </div>
 
+      <CreateStyleForm />
+
       {filteredStyles.length === 0 ? (
         <p className={styles.empty}>No beer styles found matching your search.</p>
       ) : (
@@ -294,8 +296,6 @@ export function StylesManagement({ beerStyles }: Props) {
           ))}
         </ul>
       )}
-
-      <CreateStyleForm />
     </div>
   );
 }

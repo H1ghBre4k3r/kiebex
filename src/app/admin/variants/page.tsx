@@ -1,5 +1,5 @@
 import { requireAdminPageUser } from "@/lib/page-auth";
-import { getAllBeerVariantsForAdmin, getBeerStyles } from "@/lib/query";
+import { getAllBeerVariantsForAdmin, getBeerBrands, getBeerStyles } from "@/lib/query";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { VariantsManagement } from "./variants-management";
 import styles from "./variants.module.css";
@@ -7,7 +7,11 @@ import styles from "./variants.module.css";
 export default async function AdminVariantsPage() {
   const authUser = await requireAdminPageUser();
 
-  const [variants, beerStyles] = await Promise.all([getAllBeerVariantsForAdmin(), getBeerStyles()]);
+  const [variants, beerStyles, brands] = await Promise.all([
+    getAllBeerVariantsForAdmin(),
+    getBeerStyles(),
+    getBeerBrands(),
+  ]);
 
   return (
     <main className={styles.page}>
@@ -39,6 +43,7 @@ export default async function AdminVariantsPage() {
             styleName: v.style?.name ?? "Unknown",
           }))}
           beerStyles={beerStyles.map((s) => ({ id: s.id, name: s.name }))}
+          brands={brands.map((b) => ({ id: b.id, name: b.name }))}
         />
       </section>
     </main>

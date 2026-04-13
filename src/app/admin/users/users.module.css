@@ -70,3 +70,25 @@
   color: #5e0f00;
   font-weight: 700;
 }
+
+.verifiedChip {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #0a4a09;
+  background: #dbf7da;
+  color: #0a4a09;
+}
+
+.unverifiedChip {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #5e0f00;
+  background: #ffe3df;
+  color: #5e0f00;
+}

@@ -240,6 +240,31 @@ export const editAdminStyleBodySchema = z.object({
   name: z.string().trim().min(2).max(120),
 });
 
+export const createAdminBrandBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
+
+export const createAdminVariantBodySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  brandId: z.string().trim().min(1).max(100),
+  styleId: z.string().trim().min(1).max(100),
+});
+
+export const createAdminLocationBodySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  locationType: z.enum(LOCATION_TYPES),
+  district: z.string().trim().min(2).max(80),
+  address: z.string().trim().min(5).max(200),
+});
+
+export const createAdminOfferBodySchema = z.object({
+  variantId: z.string().trim().min(1).max(100),
+  sizeMl: z.number().int().positive().max(2000),
+  serving: z.enum(SERVING_TYPES),
+  priceCents: z.number().int().positive().max(50000),
+  locationId: z.string().trim().min(1).max(100),
+});
+
 export const changeEmailBodySchema = z.object({
   newEmail: z.string().trim().email().max(255),
   currentPassword: z.string().min(1).max(128),

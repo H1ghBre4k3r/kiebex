@@ -50,6 +50,11 @@ export default async function AdminPage() {
             <p>Edit or delete approved locations.</p>
             <Link href="/admin/locations">Go to Locations →</Link>
           </li>
+          <li className={styles.item}>
+            <h3>Offer Management</h3>
+            <p>Create or delete approved offers in the catalog.</p>
+            <Link href="/admin/offers">Go to Offers →</Link>
+          </li>
         </ul>
       </section>
     </main>

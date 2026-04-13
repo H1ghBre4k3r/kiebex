@@ -49,3 +49,15 @@
 .error {
   composes: error from "../shared-management.module.css";
 }
+
+.createForm {
+  composes: createForm from "../shared-management.module.css";
+}
+
+.createActions {
+  composes: createActions from "../shared-management.module.css";
+}
+
+.success {
+  composes: success from "../shared-management.module.css";
+}
