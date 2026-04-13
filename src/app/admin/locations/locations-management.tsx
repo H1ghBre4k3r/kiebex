@@ -260,6 +260,139 @@ export function LocationsManagement({ locations }: Props) {
           ))}
         </ul>
       )}
+
+      <CreateLocationForm />
     </div>
+  );
+}
+
+function CreateLocationForm() {
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [locationType, setLocationType] = useState<LocationType>(LOCATION_TYPE_OPTIONS[0]!.value);
+  const [district, setDistrict] = useState("");
+  const [address, setAddress] = useState("");
+  const [pending, setPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (pending) {
+      return;
+    }
+
+    setPending(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const createdName = name;
+    const result = await runAdminMutation({
+      input: "/api/v1/admin/locations",
+      init: jsonInit("POST", { body: { name, locationType, district, address } }),
+      fallbackMessage: "Unable to create location. Please try again.",
+      onSuccess: () => {
+        setName("");
+        setLocationType(LOCATION_TYPE_OPTIONS[0]!.value);
+        setDistrict("");
+        setAddress("");
+        setSuccessMessage(`Location "${createdName}" created.`);
+      },
+      refresh: () => router.refresh(),
+    });
+
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    }
+
+    setPending(false);
+  }
+
+  return (
+    <form
+      className={styles.createForm}
+      onSubmit={(e) => {
+        void handleCreate(e);
+      }}
+    >
+      <h3>Add New Location</h3>
+
+      {errorMessage && (
+        <p className={styles.error} role="alert" aria-live="polite">
+          {errorMessage}
+        </p>
+      )}
+
+      {successMessage && (
+        <p className={styles.success} role="status" aria-live="polite">
+          {successMessage}
+        </p>
+      )}
+
+      <label htmlFor="new-loc-name">
+        Name
+        <input
+          id="new-loc-name"
+          type="text"
+          minLength={2}
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Brauerei Hinz"
+          required
+        />
+      </label>
+
+      <label htmlFor="new-loc-type">
+        Type
+        <select
+          id="new-loc-type"
+          value={locationType}
+          onChange={(e) => setLocationType(e.target.value as LocationType)}
+        >
+          {LOCATION_TYPE_OPTIONS.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label htmlFor="new-loc-district">
+        District
+        <input
+          id="new-loc-district"
+          type="text"
+          minLength={2}
+          maxLength={80}
+          value={district}
+          onChange={(e) => setDistrict(e.target.value)}
+          placeholder="e.g. Altstadt"
+          required
+        />
+      </label>
+
+      <label htmlFor="new-loc-address">
+        Address
+        <input
+          id="new-loc-address"
+          type="text"
+          minLength={5}
+          maxLength={200}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="e.g. Holstenstraße 1, 24103 Kiel"
+          required
+        />
+      </label>
+
+      <div className={styles.createActions}>
+        <button type="submit" disabled={pending}>
+          {pending ? "Creating…" : "Create Location"}
+        </button>
+      </div>
+    </form>
   );
 }

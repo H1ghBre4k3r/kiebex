@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { jsonInit } from "@/lib/client-api";
 import { runAdminMutation } from "@/app/admin/management-client";
 import { ManagementError, ManagementItem } from "@/app/admin/management-item";
-import type { BeerVariant, BeerStyle } from "@/lib/types";
+import type { BeerBrand, BeerVariant, BeerStyle } from "@/lib/types";
 import styles from "./variants.module.css";
 
 type VariantRow = Pick<BeerVariant, "id" | "name" | "brandId" | "styleId" | "status"> & {
@@ -16,6 +16,7 @@ type VariantRow = Pick<BeerVariant, "id" | "name" | "brandId" | "styleId" | "sta
 type Props = {
   variants: VariantRow[];
   beerStyles: Pick<BeerStyle, "id" | "name">[];
+  brands: Pick<BeerBrand, "id" | "name">[];
 };
 
 function VariantItem({
@@ -201,7 +202,140 @@ function VariantItem({
   );
 }
 
-export function VariantsManagement({ variants, beerStyles }: Props) {
+function CreateVariantForm({
+  beerStyles,
+  brands,
+}: {
+  beerStyles: Pick<BeerStyle, "id" | "name">[];
+  brands: Pick<BeerBrand, "id" | "name">[];
+}) {
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [brandId, setBrandId] = useState(brands[0]?.id ?? "");
+  const [styleId, setStyleId] = useState(beerStyles[0]?.id ?? "");
+  const [pending, setPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const canCreate = brands.length > 0 && beerStyles.length > 0;
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (pending || !canCreate) {
+      return;
+    }
+
+    setPending(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const createdName = name;
+    const result = await runAdminMutation({
+      input: "/api/v1/admin/variants",
+      init: jsonInit("POST", { body: { name, brandId, styleId } }),
+      fallbackMessage: "Unable to create variant. Please try again.",
+      onSuccess: () => {
+        setName("");
+        setSuccessMessage(`Variant "${createdName}" created.`);
+      },
+      refresh: () => router.refresh(),
+    });
+
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    }
+
+    setPending(false);
+  }
+
+  return (
+    <form
+      className={styles.createForm}
+      onSubmit={(e) => {
+        void handleCreate(e);
+      }}
+    >
+      <h3>Add New Variant</h3>
+
+      {!canCreate && (
+        <p className={styles.error} role="status">
+          At least one approved brand and one style are required to create a variant.
+        </p>
+      )}
+
+      {errorMessage && (
+        <p className={styles.error} role="alert" aria-live="polite">
+          {errorMessage}
+        </p>
+      )}
+
+      {successMessage && (
+        <p className={styles.success} role="status" aria-live="polite">
+          {successMessage}
+        </p>
+      )}
+
+      <label htmlFor="new-variant-name">
+        Name
+        <input
+          id="new-variant-name"
+          type="text"
+          minLength={1}
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Pilsener"
+          required
+          disabled={!canCreate}
+        />
+      </label>
+
+      <label htmlFor="new-variant-brand">
+        Brand
+        <select
+          id="new-variant-brand"
+          value={brandId}
+          onChange={(e) => setBrandId(e.target.value)}
+          required
+          disabled={!canCreate}
+        >
+          {brands.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label htmlFor="new-variant-style">
+        Style
+        <select
+          id="new-variant-style"
+          value={styleId}
+          onChange={(e) => setStyleId(e.target.value)}
+          required
+          disabled={!canCreate}
+        >
+          {beerStyles.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className={styles.createActions}>
+        <button type="submit" disabled={pending || !canCreate}>
+          {pending ? "Creating…" : "Create Variant"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function VariantsManagement({ variants, beerStyles, brands }: Props) {
   const [search, setSearch] = useState("");
 
   const filteredVariants = useMemo(() => {
@@ -239,6 +373,8 @@ export function VariantsManagement({ variants, beerStyles }: Props) {
           ))}
         </ul>
       )}
+
+      <CreateVariantForm beerStyles={beerStyles} brands={brands} />
     </div>
   );
 }

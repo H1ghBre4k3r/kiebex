@@ -38,14 +38,6 @@
   composes: controls from "../shared-management.module.css";
 }
 
-.editForm {
-  composes: editForm from "../shared-management.module.css";
-}
-
-.editActions {
-  composes: editActions from "../shared-management.module.css";
-}
-
 .error {
   composes: error from "../shared-management.module.css";
 }

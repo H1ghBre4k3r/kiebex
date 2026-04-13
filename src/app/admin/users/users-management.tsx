@@ -57,6 +57,11 @@ function UserItem({
         </>
       }
       status={user.role}
+      statusExtra={
+        <span className={user.emailVerified ? styles.verifiedChip : styles.unverifiedChip}>
+          {user.emailVerified ? "verified" : "unverified"}
+        </span>
+      }
       expanded={expanded}
       onToggle={() => setExpanded((prev) => !prev)}
     >
@@ -68,9 +73,9 @@ function UserItem({
         <p>
           Email:{" "}
           {user.emailVerified ? (
-            <span className={styles.verified}>verified</span>
+            <span className={styles.verifiedChip}>verified</span>
           ) : (
-            <span className={styles.unverified}>unverified</span>
+            <span className={styles.unverifiedChip}>unverified</span>
           )}
         </p>
         <p>Joined: {formatDate(user.createdAt)}</p>

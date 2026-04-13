@@ -166,6 +166,88 @@ function BrandItem({ brand }: { brand: BrandRow }) {
   );
 }
 
+function CreateBrandForm() {
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [pending, setPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (pending) {
+      return;
+    }
+
+    setPending(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const createdName = name;
+    const result = await runAdminMutation({
+      input: "/api/v1/admin/brands",
+      init: jsonInit("POST", { body: { name } }),
+      fallbackMessage: "Unable to create brand. Please try again.",
+      onSuccess: () => {
+        setName("");
+        setSuccessMessage(`Brand "${createdName}" created.`);
+      },
+      refresh: () => router.refresh(),
+    });
+
+    if (!result.ok) {
+      setErrorMessage(result.message);
+    }
+
+    setPending(false);
+  }
+
+  return (
+    <form
+      className={styles.createForm}
+      onSubmit={(e) => {
+        void handleCreate(e);
+      }}
+    >
+      <h3>Add New Brand</h3>
+
+      {errorMessage && (
+        <p className={styles.error} role="alert" aria-live="polite">
+          {errorMessage}
+        </p>
+      )}
+
+      {successMessage && (
+        <p className={styles.success} role="status" aria-live="polite">
+          {successMessage}
+        </p>
+      )}
+
+      <label htmlFor="new-brand-name">
+        Name
+        <input
+          id="new-brand-name"
+          type="text"
+          minLength={2}
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Holsten"
+          required
+        />
+      </label>
+
+      <div className={styles.createActions}>
+        <button type="submit" disabled={pending}>
+          {pending ? "Creating…" : "Create Brand"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function BrandsManagement({ brands }: Props) {
   const [search, setSearch] = useState("");
 
@@ -200,6 +282,8 @@ export function BrandsManagement({ brands }: Props) {
           ))}
         </ul>
       )}
+
+      <CreateBrandForm />
     </div>
   );
 }

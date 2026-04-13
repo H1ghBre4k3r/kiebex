@@ -118,8 +118,7 @@
 }
 
 .rowHeader {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
   gap: 1rem;
   align-items: center;
   width: 100%;
@@ -141,6 +140,8 @@
 }
 
 .rowTitle {
+  flex: 1;
+  min-width: 0;
   font-weight: 700;
   font-family: var(--font-heading), Impact, sans-serif;
   letter-spacing: 0.02em;
@@ -161,7 +162,21 @@
   border: var(--border-regular);
 }
 
+.rowStatusExtra {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border: var(--border-regular);
+}
+
 .rowHeader:hover .rowStatus {
+  background: var(--surface-strong);
+  color: var(--ink);
+  border-color: var(--surface-strong);
+}
+
+.rowHeader:hover .rowStatusExtra {
   background: var(--surface-strong);
   color: var(--ink);
   border-color: var(--surface-strong);
@@ -257,7 +272,8 @@
 
 .editForm input,
 .editForm select,
-.createForm input {
+.createForm input,
+.createForm select {
   border: var(--border-regular);
   background: var(--white);
   padding: 0.5rem;
