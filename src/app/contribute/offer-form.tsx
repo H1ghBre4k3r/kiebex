@@ -139,37 +139,39 @@ export function OfferForm({ locations, brands, variants }: OfferFormProps) {
         </select>
       </label>
 
-      <label className={styles.field} htmlFor="offer-size-ml">
-        Size (ml)
-        <input
-          id="offer-size-ml"
-          name="sizeMl"
-          type="number"
-          required
-          min={1}
-          max={2000}
-          value={sizeMl}
-          onChange={(event) => setSizeMl(event.target.value)}
-        />
-      </label>
+      <div className={styles.formRow}>
+        <label className={styles.field} htmlFor="offer-size-ml">
+          Size (ml)
+          <input
+            id="offer-size-ml"
+            name="sizeMl"
+            type="number"
+            required
+            min={1}
+            max={2000}
+            value={sizeMl}
+            onChange={(event) => setSizeMl(event.target.value)}
+          />
+        </label>
 
-      <label className={styles.field} htmlFor="offer-serving">
-        Serving
-        <select
-          id="offer-serving"
-          name="serving"
-          value={serving}
-          onChange={(event) =>
-            setServing(event.target.value as (typeof SERVING_TYPE_OPTIONS)[number]["value"])
-          }
-        >
-          {SERVING_TYPE_OPTIONS.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-      </label>
+        <label className={styles.field} htmlFor="offer-serving">
+          Serving
+          <select
+            id="offer-serving"
+            name="serving"
+            value={serving}
+            onChange={(event) =>
+              setServing(event.target.value as (typeof SERVING_TYPE_OPTIONS)[number]["value"])
+            }
+          >
+            {SERVING_TYPE_OPTIONS.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <label className={styles.field} htmlFor="offer-price-cents">
         Price (cents)
