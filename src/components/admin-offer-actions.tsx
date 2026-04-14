@@ -107,7 +107,7 @@ export function AdminOfferActions({ offerId, currentPriceCents, onDeleted, class
               className={styles.input}
             />
           </label>
-          <button type="submit" disabled={savePending} className={styles.button}>
+          <button type="submit" disabled={savePending} className={`${styles.button} ${styles.saveButton}`}>
             {savePending ? "Saving…" : "Save"}
           </button>
           <button
@@ -146,7 +146,7 @@ export function AdminOfferActions({ offerId, currentPriceCents, onDeleted, class
               void handleDelete();
             }}
             disabled={deletePending}
-            className={styles.button}
+            className={`${styles.button} ${styles.deleteButton}`}
             aria-label="Confirm delete offer"
           >
             {deletePending ? "Deleting…" : "Confirm Delete"}
@@ -172,7 +172,7 @@ export function AdminOfferActions({ offerId, currentPriceCents, onDeleted, class
           </button>
           <button
             type="button"
-            className={styles.button}
+            className={`${styles.button} ${styles.deleteButton}`}
             onClick={() => setConfirmDelete(true)}
             aria-label="Delete offer"
           >

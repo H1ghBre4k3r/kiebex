@@ -104,7 +104,38 @@
 }
 
 .adminActions {
-  margin-top: 0.5rem;
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.adminButton {
+  border: var(--border-regular);
+  background: var(--white);
+  color: var(--ink);
+  padding: 0.35rem 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.adminButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.adminActions .saveButton {
+  background: #dff7d8;
+}
+
+.adminActions .deleteButton {
+  background: #ffe3df;
+}
+
+.adminActions .cancelButton {
+  background: #eee;
 }
 
 .adminForm {
