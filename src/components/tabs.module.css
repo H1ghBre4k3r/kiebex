@@ -47,3 +47,7 @@
   box-shadow: var(--shadow-block);
   padding: 1.25rem;
 }
+
+.tabPanel[hidden] {
+  display: none;
+}

@@ -14,23 +14,34 @@ export function Tabs({ tabs }: { tabs: Tab[] }) {
 
   return (
     <div className={styles.tabsContainer}>
-      <nav className={styles.tabList} aria-label="Tabbed navigation">
+      <nav className={styles.tabList} aria-label="Tabbed navigation" role="tablist">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
             type="button"
             className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabActive : ""}`}
             onClick={() => setActiveTab(tab.id)}
             aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
             role="tab"
           >
             {tab.label}
           </button>
         ))}
       </nav>
-      <div className={styles.tabPanel} role="tabpanel">
-        {tabs.find((t) => t.id === activeTab)?.content}
-      </div>
+      {tabs.map((tab) => (
+        <div
+          key={tab.id}
+          id={`panel-${tab.id}`}
+          className={styles.tabPanel}
+          role="tabpanel"
+          aria-labelledby={`tab-${tab.id}`}
+          hidden={activeTab !== tab.id}
+        >
+          {activeTab === tab.id && tab.content}
+        </div>
+      ))}
     </div>
   );
 }
