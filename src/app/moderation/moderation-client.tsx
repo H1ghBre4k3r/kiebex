@@ -36,6 +36,7 @@ type ModerationClientProps = {
   newReviews: ModerationReview[];
   approvedReviews: ModerationReview[];
   openReports: OpenReport[];
+  resolvedReports: ResolvedReport[];
   auditLog: ModerationAuditLogEntry[];
 };
 
@@ -384,6 +385,7 @@ export function ModerationClient({
   newReviews,
   approvedReviews,
   openReports,
+  resolvedReports,
   auditLog,
 }: ModerationClientProps) {
   const router = useRouter();
@@ -1054,18 +1056,23 @@ export function ModerationClient({
                         <p>
                           <strong>Content link:</strong>{" "}
                           {report.contentType === "review" ? (
-                            <Link
-                              href={`/locations/${report.reviewLocationId}#review-${report.contentId}`}
-                              className={styles.reportLink}
-                            >
-                              View review →
-                            </Link>
+                            report.reviewLocationId ? (
+                              <Link
+                                href={`/locations/${report.reviewLocationId}#review-${report.contentId}`}
+                                className={styles.reportLink}
+                              >
+                                View review →
+                              </Link>
+                            ) : (
+                              <span className={styles.deletedHint}>(Content deleted)</span>
+                            )
                           ) : (
                             <span>
                               {report.contentType} #{report.contentId}
                             </span>
                           )}
                         </p>
+
                       </div>
                       <div className={styles.actions}>
                         <button
@@ -1104,6 +1111,67 @@ export function ModerationClient({
                     </li>
                   );
                 })}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Resolved Reports */}
+          <CollapsibleSection
+            id="resolved-reports-heading"
+            heading={`Resolved Reports (${resolvedReports.length})`}
+          >
+            {resolvedReports.length === 0 ? (
+              <p className={styles.notice}>No resolved reports yet.</p>
+            ) : (
+              <ul className={styles.list}>
+                {resolvedReports.map((report) => (
+                  <li key={report.id} className={styles.item}>
+                    <h3>{report.contentType} report</h3>
+                    <div className={styles.meta}>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span
+                          className={
+                            report.status === "actioned" ? styles.status_approved : styles.status_rejected
+                          }
+                        >
+                          {report.status.toUpperCase()}
+                        </span>
+                      </p>
+                      <p>
+                        <strong>Reason:</strong>{" "}
+                        {REPORT_REASON_LABELS[report.reason] ?? report.reason}
+                      </p>
+                      <p>
+                        <strong>Resolved by:</strong>{" "}
+                        {report.resolvedBy?.displayName ?? "Unknown"} on{" "}
+                        {report.resolvedAt ? formatDate(report.resolvedAt) : "Unknown date"}
+                      </p>
+                      <p>
+                        <strong>Reporter:</strong> {report.reporter?.displayName ?? "Unknown user"}
+                      </p>
+                      <p>
+                        <strong>Content:</strong>{" "}
+                        {report.contentType === "review" ? (
+                          report.reviewLocationId ? (
+                            <Link
+                              href={`/locations/${report.reviewLocationId}#review-${report.contentId}`}
+                              className={styles.reportLink}
+                            >
+                              View review →
+                            </Link>
+                          ) : (
+                            <span className={styles.deletedHint}>(Content deleted)</span>
+                          )
+                        ) : (
+                          <span>
+                            {report.contentType} #{report.contentId}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </CollapsibleSection>

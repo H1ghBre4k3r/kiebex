@@ -2168,6 +2168,41 @@ export async function getOpenReports(): Promise<OpenReport[]> {
   }));
 }
 
+export async function getResolvedReports(): Promise<ResolvedReport[]> {
+  const reports = await db.report.findMany({
+    where: { status: { in: ["dismissed", "actioned"] } },
+    orderBy: { resolvedAt: "desc" },
+    include: {
+      reporter: { select: { id: true, displayName: true } },
+      resolvedBy: { select: { id: true, displayName: true } },
+    },
+    take: 50,
+  });
+
+  // Resolve location IDs for review reports so we can build deep-link URLs.
+  const reviewIds = reports.filter((r) => r.contentType === "review").map((r) => r.contentId);
+
+  const reviewLocationMap = new Map<string, string>();
+
+  if (reviewIds.length > 0) {
+    const reviews = await db.review.findMany({
+      where: { id: { in: reviewIds } },
+      select: { id: true, locationId: true },
+    });
+    for (const review of reviews) {
+      reviewLocationMap.set(review.id, review.locationId);
+    }
+  }
+
+  return reports.map((r) => ({
+    ...mapReport(r),
+    reporter: r.reporter ? { id: r.reporter.id, displayName: r.reporter.displayName } : null,
+    resolvedBy: r.resolvedBy ? { id: r.resolvedBy.id, displayName: r.resolvedBy.displayName } : null,
+    reviewLocationId:
+      r.contentType === "review" ? (reviewLocationMap.get(r.contentId) ?? null) : undefined,
+  }));
+}
+
 export async function resolveReport(
   reportId: string,
   decision: "dismissed" | "actioned",

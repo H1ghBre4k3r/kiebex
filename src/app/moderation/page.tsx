@@ -3,6 +3,7 @@ import {
   getAllReviewsForModeration,
   getModerationAuditLog,
   getOpenReports,
+  getResolvedReports,
   getPendingBeerBrandSubmissions,
   getPendingBeerOfferSubmissions,
   getPendingBeerVariantSubmissions,
@@ -24,6 +25,7 @@ export default async function ModerationPage() {
     pendingPriceUpdates,
     allReviews,
     openReports,
+    resolvedReports,
     auditLog,
   ] = await Promise.all([
     getPendingLocationSubmissions(),
@@ -33,6 +35,7 @@ export default async function ModerationPage() {
     getPendingPriceUpdateProposals(),
     getAllReviewsForModeration(),
     getOpenReports(),
+    getResolvedReports(),
     getModerationAuditLog(15),
   ]);
 
@@ -67,6 +70,7 @@ export default async function ModerationPage() {
         newReviews={newReviews}
         approvedReviews={approvedReviews}
         openReports={openReports}
+        resolvedReports={resolvedReports}
         auditLog={auditLog}
       />
     </main>

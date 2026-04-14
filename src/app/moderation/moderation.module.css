@@ -234,3 +234,9 @@
   font-weight: 700;
   text-decoration: underline;
 }
+
+.deletedHint {
+  color: var(--ink-muted);
+  font-style: italic;
+  font-weight: 700;
+}

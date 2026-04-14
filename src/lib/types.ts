@@ -263,6 +263,13 @@ export type OpenReport = Report & {
   reviewLocationId?: string | null;
 };
 
+export type ResolvedReport = Report & {
+  reporter: { id: string; displayName: string } | null;
+  resolvedBy: { id: string; displayName: string } | null;
+  /** For review reports: the locationId so we can build the deep-link URL. */
+  reviewLocationId?: string | null;
+};
+
 export type ModerationAction =
   | "approve"
   | "reject"
