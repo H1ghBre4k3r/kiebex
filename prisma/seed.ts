@@ -839,6 +839,79 @@ const reviewSeed = [
 ] as const;
 
 // ---------------------------------------------------------------------------
+// Pending moderation seed data
+// ---------------------------------------------------------------------------
+
+// Submitted by this contributor user (email used to upsert below)
+const contributorEmail = "max@example.com";
+
+const pendingBrandSeed = [{ id: "brand-stoertebeker", name: "Störtebeker" }] as const;
+
+const pendingVariantSeed = [
+  // New variant on an already-approved brand — classic community contribution
+  {
+    id: "variant-flensburger-sommer",
+    brandId: "brand-flensburger",
+    styleId: "style-lager",
+    name: "Sommer",
+  },
+] as const;
+
+const pendingLocationSeed = [
+  {
+    id: "brauwerk-kiel",
+    name: "Brauwerk Kiel",
+    locationType: "pub" as const,
+    district: "Schrevenpark",
+    address: "Gutenbergstrasse 48, 24118 Kiel",
+  },
+] as const;
+
+const pendingOfferSeed = [
+  // Augustiner at Celtic Corner — not in the default bar variant list
+  {
+    id: "offer-pending-0001",
+    brand: "Augustiner",
+    variant: "Lagerbier Hell",
+    variantId: "variant-augustiner-lager",
+    sizeMl: 500,
+    serving: "bottle" as Serving,
+    priceCents: 650,
+    locationId: "celtic-corner",
+  },
+  // Veltins tap at Förde Lounge — new size not currently offered there
+  {
+    id: "offer-pending-0002",
+    brand: "Veltins",
+    variant: "Pilsener",
+    variantId: "variant-veltins-pils",
+    sizeMl: 300,
+    serving: "tap" as Serving,
+    priceCents: 385,
+    locationId: "foerde-lounge",
+  },
+] as const;
+
+const pendingReviewSeed = [
+  {
+    locationId: "kieler-braustube",
+    authorEmail: contributorEmail,
+    rating: 4,
+    title: "Decent local spot",
+    body: "Good range of local beers on tap. Service can be slow on weekends, but the atmosphere makes up for it.",
+    status: "new" as const,
+  },
+  {
+    locationId: "tap-room-kiel",
+    authorEmail: contributorEmail,
+    rating: 2,
+    title: "Overrated selection",
+    body: "The rotating taps sound exciting but half of them were unavailable on my visit. Prices are steep for the area.",
+    status: "new" as const,
+  },
+] as const;
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -855,6 +928,7 @@ async function main() {
 
   try {
     // Clear all domain data in dependency order
+    await prisma.moderationAuditLog.deleteMany();
     await prisma.review.deleteMany();
     await prisma.offerPriceHistory.deleteMany();
     await prisma.priceUpdateProposal.deleteMany();
@@ -881,6 +955,15 @@ async function main() {
       [anna.email, anna.id],
       [lars.email, lars.id],
     ]);
+
+    // Contributor user (submits pending items)
+    const max = await prisma.user.upsert({
+      where: { email: contributorEmail },
+      update: { displayName: "Max" },
+      create: { email: contributorEmail, displayName: "Max" },
+    });
+
+    reviewUserIdByEmail.set(max.email, max.id);
 
     // Locations
     for (const location of locationSeed) {
@@ -979,9 +1062,102 @@ async function main() {
       });
     }
 
+    // Pending brands
+    for (const brand of pendingBrandSeed) {
+      await prisma.beerBrand.create({
+        data: { id: brand.id, name: brand.name, status: "pending", createdById: max.id },
+      });
+    }
+
+    // Pending variants (reference already-approved brands)
+    for (const variant of pendingVariantSeed) {
+      await prisma.beerVariant.create({
+        data: {
+          id: variant.id,
+          name: variant.name,
+          brandId: variant.brandId,
+          styleId: variant.styleId,
+          status: "pending",
+          createdById: max.id,
+        },
+      });
+    }
+
+    // Pending locations
+    for (const location of pendingLocationSeed) {
+      await prisma.location.create({
+        data: {
+          id: location.id,
+          name: location.name,
+          locationType: location.locationType,
+          district: location.district,
+          address: location.address,
+          status: "pending",
+          createdById: max.id,
+        },
+      });
+    }
+
+    // Pending offers (reference approved locations and approved variants)
+    for (const offer of pendingOfferSeed) {
+      await prisma.beerOffer.create({
+        data: {
+          id: offer.id,
+          brand: offer.brand,
+          variant: offer.variant,
+          variantId: offer.variantId,
+          sizeMl: offer.sizeMl,
+          serving: offer.serving,
+          priceCents: offer.priceCents,
+          locationId: offer.locationId,
+          status: "pending",
+          createdById: max.id,
+        },
+      });
+    }
+
+    // Pending price update proposal — suggest a lower price on an existing approved offer
+    const priceUpdateTarget = await prisma.beerOffer.findFirst({
+      where: { variantId: "variant-becks-pils", locationId: "pogue-mahone", status: "approved" },
+      select: { id: true, priceCents: true },
+    });
+
+    if (priceUpdateTarget) {
+      await prisma.priceUpdateProposal.create({
+        data: {
+          beerOfferId: priceUpdateTarget.id,
+          proposedPriceCents: priceUpdateTarget.priceCents - 50,
+          status: "pending",
+          createdById: max.id,
+        },
+      });
+    }
+
+    // Pending reviews (status "new" — awaiting moderation)
+    for (const review of pendingReviewSeed) {
+      const userId = reviewUserIdByEmail.get(review.authorEmail);
+      if (!userId) {
+        throw new Error(`Missing seed user for email '${review.authorEmail}'.`);
+      }
+
+      await prisma.review.create({
+        data: {
+          locationId: review.locationId,
+          userId,
+          rating: review.rating,
+          title: review.title,
+          body: review.body,
+          status: review.status,
+        },
+      });
+    }
+
     console.log(
       `Seed complete: ${locationSeed.length} locations, ${beerBrandSeed.length} brands, ` +
-        `${beerVariantSeed.length} variants, ${offers.length} offers.`,
+        `${beerVariantSeed.length} variants, ${offers.length} offers. ` +
+        `Pending: ${pendingLocationSeed.length} location(s), ${pendingBrandSeed.length} brand(s), ` +
+        `${pendingVariantSeed.length} variant(s), ${pendingOfferSeed.length} offer(s), ` +
+        `1 price update, ${pendingReviewSeed.length} review(s).`,
     );
   } finally {
     await prisma.$disconnect();

@@ -8,9 +8,10 @@ import styles from "./site-header.module.css";
 
 type Props = {
   authUser: AuthUser | null;
+  pendingCount: number;
 };
 
-export function SiteHeaderClient({ authUser }: Props) {
+export function SiteHeaderClient({ authUser, pendingCount }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
   function close() {
@@ -104,11 +105,21 @@ export function SiteHeaderClient({ authUser }: Props) {
             {authUser.role === "moderator" && (
               <Link href="/moderation" className={styles.navLink} onClick={close}>
                 Moderation
+                {pendingCount > 0 && (
+                  <span className={styles.queueBadge} aria-label={`${pendingCount} pending`}>
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             )}
             {authUser.role === "admin" && (
               <Link href="/admin" className={styles.navLink} onClick={close}>
                 Admin
+                {pendingCount > 0 && (
+                  <span className={styles.queueBadge} aria-label={`${pendingCount} pending`}>
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             )}
             <LogoutButton className={styles.navButton} />

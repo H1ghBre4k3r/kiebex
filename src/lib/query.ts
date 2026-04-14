@@ -933,6 +933,19 @@ export async function getPendingPriceUpdateProposals(): Promise<PendingPriceUpda
   }));
 }
 
+export async function getPendingQueueCount(): Promise<number> {
+  const [locations, brands, variants, offers, priceUpdates, reviews] = await Promise.all([
+    db.location.count({ where: { status: "pending" } }),
+    db.beerBrand.count({ where: { status: "pending" } }),
+    db.beerVariant.count({ where: { status: "pending" } }),
+    db.beerOffer.count({ where: { status: "pending" } }),
+    db.priceUpdateProposal.count({ where: { status: "pending" } }),
+    db.review.count({ where: { status: { in: ["new", "pending"] } } }),
+  ]);
+
+  return locations + brands + variants + offers + priceUpdates + reviews;
+}
+
 export async function moderateLocationSubmission(
   locationId: string,
   status: ModerationStatusDecision,
