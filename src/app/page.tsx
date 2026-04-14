@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
+import { UserOfferActions } from "@/components/offer-user-actions";
 import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
@@ -201,6 +202,13 @@ export default async function Home({
   const activeChips = buildActiveChips(rawSearchParams, brands, stylesList, variants, locations);
   const sortDesc = query.sort === "price_desc";
 
+  const approvedBrands = brands
+    .filter((b) => b.status === "approved")
+    .map((b) => ({ id: b.id, name: b.name }));
+  const approvedVariants = variants
+    .filter((v) => v.status === "approved")
+    .map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }));
+
   return (
     <div className={styles.page}>
       <header className={styles.hero}>
@@ -286,6 +294,13 @@ export default async function Home({
                           offerId={offer.id}
                           currentPriceCents={Math.round(offer.priceEur * 100)}
                           className={styles.adminActions}
+                        />
+                      )}
+                      {authUser && authUser.role !== "admin" && (
+                        <UserOfferActions
+                          offer={offer}
+                          brands={approvedBrands}
+                          variants={approvedVariants}
                         />
                       )}
                     </article>

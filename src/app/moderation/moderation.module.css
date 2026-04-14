@@ -238,9 +238,7 @@
   color: var(--ink-muted);
 }
 
-@media (min-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: start;
-  }
+.reportLink {
+  font-weight: 700;
+  text-decoration: underline;
 }

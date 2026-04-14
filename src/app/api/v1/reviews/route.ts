@@ -58,7 +58,6 @@ export async function POST(request: Request): Promise<Response> {
         rating: parsed.data.rating,
         title: parsed.data.title,
         body: parsed.data.body,
-        status: "approved",
       });
 
       return jsonOk({ review }, { status: 201 });

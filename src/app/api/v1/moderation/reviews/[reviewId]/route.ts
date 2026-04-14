@@ -2,6 +2,7 @@ import { jsonError, jsonOk } from "@/lib/http";
 import {
   deleteModerationReview,
   editModerationReview,
+  getReviewStatusById,
   logModerationAction,
   moderateReviewDecision,
 } from "@/lib/query";
@@ -20,6 +21,21 @@ export async function PATCH(
     }
 
     const { reviewId } = await context.params;
+
+    const currentStatus = await getReviewStatusById(reviewId);
+
+    if (currentStatus === null) {
+      return jsonError(404, "REVIEW_NOT_FOUND", `No review found for id '${reviewId}'.`);
+    }
+
+    if (currentStatus === "approved") {
+      return jsonError(
+        409,
+        "REVIEW_ALREADY_APPROVED",
+        "Approved reviews cannot have their status changed. Use Edit or Delete instead.",
+      );
+    }
+
     const review = await moderateReviewDecision(reviewId, parsed.data.status);
 
     if (!review) {

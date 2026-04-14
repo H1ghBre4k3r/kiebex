@@ -18,6 +18,7 @@ import type {
   ModerationReview,
   ModerationStatusDecision,
   OfferPriceHistory,
+  OpenReport,
   PendingBeerBrandSubmission,
   PendingBeerOfferSubmission,
   PendingBeerVariantSubmission,
@@ -25,6 +26,10 @@ import type {
   PendingPriceUpdateProposal,
   PriceUpdateProposal,
   LocationReviewSummary,
+  Report,
+  ReportContentType,
+  ReportReason,
+  ReportStatus,
   Review,
   ReviewStatus,
   ReviewWithAuthor,
@@ -934,16 +939,17 @@ export async function getPendingPriceUpdateProposals(): Promise<PendingPriceUpda
 }
 
 export async function getPendingQueueCount(): Promise<number> {
-  const [locations, brands, variants, offers, priceUpdates, reviews] = await Promise.all([
+  const [locations, brands, variants, offers, priceUpdates, reviews, reports] = await Promise.all([
     db.location.count({ where: { status: "pending" } }),
     db.beerBrand.count({ where: { status: "pending" } }),
     db.beerVariant.count({ where: { status: "pending" } }),
     db.beerOffer.count({ where: { status: "pending" } }),
     db.priceUpdateProposal.count({ where: { status: "pending" } }),
     db.review.count({ where: { status: { in: ["new", "pending"] } } }),
+    db.report.count({ where: { status: "open" } }),
   ]);
 
-  return locations + brands + variants + offers + priceUpdates + reviews;
+  return locations + brands + variants + offers + priceUpdates + reviews + reports;
 }
 
 export async function moderateLocationSubmission(
@@ -1608,6 +1614,14 @@ export async function getAllReviewsForModeration(): Promise<ModerationReview[]> 
   }));
 }
 
+export async function getReviewStatusById(reviewId: string): Promise<ReviewStatus | null> {
+  const review = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { status: true },
+  });
+  return review?.status ?? null;
+}
+
 export async function moderateReviewDecision(
   reviewId: string,
   status: ReviewStatus,
@@ -2067,4 +2081,151 @@ export async function deleteAdminStyle(
 
   await db.beerStyle.delete({ where: { id: styleId } });
   return { deleted: true, name: existing.name };
+}
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+function mapReport(r: {
+  id: string;
+  reporterId: string | null;
+  contentType: string;
+  contentId: string;
+  reason: string;
+  note: string | null;
+  status: string;
+  resolvedById: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): Report {
+  return {
+    id: r.id,
+    reporterId: r.reporterId,
+    contentType: r.contentType as ReportContentType,
+    contentId: r.contentId,
+    reason: r.reason as ReportReason,
+    note: r.note,
+    status: r.status as ReportStatus,
+    resolvedById: r.resolvedById,
+    resolvedAt: r.resolvedAt,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
+
+export async function createReport(input: {
+  reporterId: string;
+  contentType: ReportContentType;
+  contentId: string;
+  reason: ReportReason;
+  note?: string;
+}): Promise<Report> {
+  const created = await db.report.create({
+    data: {
+      reporterId: input.reporterId,
+      contentType: input.contentType,
+      contentId: input.contentId,
+      reason: input.reason,
+      note: input.note ?? null,
+      status: "open",
+    },
+  });
+
+  return mapReport(created);
+}
+
+export async function getOpenReports(): Promise<OpenReport[]> {
+  const reports = await db.report.findMany({
+    where: { status: "open" },
+    orderBy: { createdAt: "asc" },
+    include: {
+      reporter: { select: { id: true, displayName: true } },
+    },
+  });
+
+  // Resolve location IDs for review reports so we can build deep-link URLs.
+  const reviewIds = reports.filter((r) => r.contentType === "review").map((r) => r.contentId);
+
+  const reviewLocationMap = new Map<string, string>();
+
+  if (reviewIds.length > 0) {
+    const reviews = await db.review.findMany({
+      where: { id: { in: reviewIds } },
+      select: { id: true, locationId: true },
+    });
+    for (const review of reviews) {
+      reviewLocationMap.set(review.id, review.locationId);
+    }
+  }
+
+  return reports.map((r) => ({
+    ...mapReport(r),
+    reporter: r.reporter ? { id: r.reporter.id, displayName: r.reporter.displayName } : null,
+    reviewLocationId:
+      r.contentType === "review" ? (reviewLocationMap.get(r.contentId) ?? null) : undefined,
+  }));
+}
+
+export async function resolveReport(
+  reportId: string,
+  decision: "dismissed" | "actioned",
+  resolvedById: string,
+): Promise<Report | null> {
+  const existing = await db.report.findUnique({
+    where: { id: reportId },
+    select: { id: true, status: true },
+  });
+
+  if (!existing || existing.status !== "open") {
+    return null;
+  }
+
+  const updated = await db.report.update({
+    where: { id: reportId },
+    data: {
+      status: decision,
+      resolvedById,
+      resolvedAt: new Date(),
+    },
+  });
+
+  return mapReport(updated);
+}
+
+export async function getReportById(reportId: string): Promise<
+  | (Report & {
+      reporter: { id: string; displayName: string } | null;
+    })
+  | null
+> {
+  const report = await db.report.findUnique({
+    where: { id: reportId },
+    include: { reporter: { select: { id: true, displayName: true } } },
+  });
+
+  if (!report) {
+    return null;
+  }
+
+  return {
+    ...mapReport(report),
+    reporter: report.reporter
+      ? { id: report.reporter.id, displayName: report.reporter.displayName }
+      : null,
+  };
+}
+
+export async function hasUserReportedContent(
+  userId: string,
+  contentType: ReportContentType,
+  contentId: string,
+): Promise<boolean> {
+  const existing = await db.report.findFirst({
+    where: { reporterId: userId, contentType, contentId },
+    select: { id: true },
+  });
+
+  return existing !== null;
 }

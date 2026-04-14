@@ -12,9 +12,11 @@ import {
   locationTypeLabel,
   reviewStatusLabel,
 } from "@/lib/display";
+import { REPORT_REASON_LABELS } from "@/lib/types";
 import type {
   ModerationAuditLogEntry,
   ModerationReview,
+  OpenReport,
   PendingBeerBrandSubmission,
   PendingBeerOfferSubmission,
   PendingBeerVariantSubmission,
@@ -32,6 +34,7 @@ type ModerationClientProps = {
   pendingPriceUpdates: PendingPriceUpdateProposal[];
   newReviews: ModerationReview[];
   approvedReviews: ModerationReview[];
+  openReports: OpenReport[];
   auditLog: ModerationAuditLogEntry[];
 };
 
@@ -379,6 +382,7 @@ export function ModerationClient({
   pendingPriceUpdates,
   newReviews,
   approvedReviews,
+  openReports,
   auditLog,
 }: ModerationClientProps) {
   const router = useRouter();
@@ -990,6 +994,95 @@ export function ModerationClient({
                   onEditReview={editReview}
                 />
               ))}
+            </ul>
+          )}
+        </CollapsibleSection>
+
+        {/* Open Reports */}
+        <CollapsibleSection
+          id="open-reports-heading"
+          heading={`Open Reports (${openReports.length})`}
+        >
+          {openReports.length === 0 ? (
+            <p className={styles.notice}>No open reports.</p>
+          ) : (
+            <ul className={styles.list}>
+              {openReports.map((report) => {
+                const resolveKey = `resolve:report:${report.id}`;
+                const isWorking = pendingAction === resolveKey;
+
+                return (
+                  <li key={report.id} className={styles.item}>
+                    <h3>{report.contentType} report</h3>
+                    <div className={styles.meta}>
+                      <p>
+                        <strong>Reason:</strong>{" "}
+                        {REPORT_REASON_LABELS[report.reason] ?? report.reason}
+                      </p>
+                      {report.note && (
+                        <p>
+                          <strong>Note:</strong> {report.note}
+                        </p>
+                      )}
+                      <p>
+                        <strong>Reporter:</strong> {report.reporter?.displayName ?? "Unknown user"}
+                      </p>
+                      <p>
+                        <strong>Reported at:</strong> {formatDate(report.createdAt)}
+                      </p>
+                      <p>
+                        <strong>Content link:</strong>{" "}
+                        {report.contentType === "review" ? (
+                          <Link
+                            href={`/locations/${report.reviewLocationId}#review-${report.contentId}`}
+                            className={styles.reportLink}
+                          >
+                            View review →
+                          </Link>
+                        ) : (
+                          <span>
+                            {report.contentType} #{report.contentId}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className={styles.actions}>
+                      <button
+                        type="button"
+                        className={`${styles.button} ${styles.approve}`}
+                        disabled={!!pendingAction}
+                        onClick={() => {
+                          void runMutation({
+                            actionKey: resolveKey,
+                            input: `/api/v1/moderation/reports/${report.id}`,
+                            init: jsonInit("PATCH", { body: { decision: "actioned" } }),
+                            fallbackMessage: "Unable to resolve report.",
+                            successMessage: "Report marked as actioned.",
+                          });
+                        }}
+                      >
+                        {isWorking ? "Saving…" : "Mark Actioned"}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.button} ${styles.reject}`}
+                        disabled={!!pendingAction}
+                        onClick={() => {
+                          void runMutation({
+                            actionKey: resolveKey,
+                            input: `/api/v1/moderation/reports/${report.id}`,
+                            init: jsonInit("PATCH", { body: { decision: "dismissed" } }),
+                            fallbackMessage: "Unable to dismiss report.",
+                            successMessage: "Report dismissed.",
+                          });
+                        }}
+                      >
+                        {isWorking ? "Saving…" : "Dismiss"}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CollapsibleSection>
