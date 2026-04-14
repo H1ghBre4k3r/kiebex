@@ -69,6 +69,11 @@
   gap: 1rem;
 }
 
+.tabContentStack {
+  display: grid;
+  gap: 1rem;
+}
+
 .auditColumn {
   position: sticky;
   top: 1rem;

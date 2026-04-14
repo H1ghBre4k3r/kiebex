@@ -12,7 +12,7 @@ import { BrandForm } from "./brand-form";
 import { LocationForm } from "./location-form";
 import { OfferForm } from "./offer-form";
 import { VariantForm } from "./variant-form";
-import { ContributionTabs } from "./contribution-tabs";
+import { Tabs } from "@/components/tabs";
 import styles from "./contribute.module.css";
 
 export default async function ContributePage() {
@@ -127,7 +127,7 @@ export default async function ContributePage() {
         </p>
       </section>
 
-      <ContributionTabs tabs={tabs} />
+      <Tabs tabs={tabs} />
     </main>
   );
 }

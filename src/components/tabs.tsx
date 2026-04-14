@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import styles from "./contribute.module.css";
+import styles from "./tabs.module.css";
 
 type Tab = {
   id: string;
@@ -9,12 +9,12 @@ type Tab = {
   content: React.ReactNode;
 };
 
-export function ContributionTabs({ tabs }: { tabs: Tab[] }) {
+export function Tabs({ tabs }: { tabs: Tab[] }) {
   const [activeTab, setActiveTab] = useState(tabs[0].id);
 
   return (
     <div className={styles.tabsContainer}>
-      <nav className={styles.tabList} aria-label="Contribution types">
+      <nav className={styles.tabList} aria-label="Tabbed navigation">
         {tabs.map((tab) => (
           <button
             key={tab.id}

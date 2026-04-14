@@ -24,6 +24,7 @@ import type {
   PendingPriceUpdateProposal,
 } from "@/lib/types";
 import { AuditLogList } from "./audit-log-list";
+import { Tabs } from "@/components/tabs";
 import styles from "./moderation.module.css";
 
 type ModerationClientProps = {
@@ -532,20 +533,22 @@ export function ModerationClient({
     });
   }
 
-  return (
-    <>
-      {feedback && (
-        <p className={feedback.kind === "error" ? styles.error : styles.success} role="status">
-          {feedback.message}
-        </p>
-      )}
-
-      <div className={styles.dashboardLayout}>
-        <div className={styles.queueColumn}>
+  const moderationTabs = [
+    {
+      id: "submissions",
+      label: `Submissions (${
+        pendingLocations.length +
+        pendingBrands.length +
+        pendingVariants.length +
+        pendingOffers.length +
+        pendingPriceUpdates.length
+      })`,
+      content: (
+        <div className={styles.tabContentStack}>
           {/* Pending Locations */}
           <CollapsibleSection
             id="pending-locations-heading"
-            heading={`Pending Locations (${pendingLocations.length})`}
+            heading={`Locations (${pendingLocations.length})`}
           >
             {pendingLocations.length === 0 ? (
               <p className={styles.notice}>No pending location submissions.</p>
@@ -690,7 +693,7 @@ export function ModerationClient({
           {/* Pending Brands */}
           <CollapsibleSection
             id="pending-brands-heading"
-            heading={`Pending Brands (${pendingBrands.length})`}
+            heading={`Brands (${pendingBrands.length})`}
           >
             {pendingBrands.length === 0 ? (
               <p className={styles.notice}>No pending beer brand submissions.</p>
@@ -736,7 +739,7 @@ export function ModerationClient({
           {/* Pending Variants */}
           <CollapsibleSection
             id="pending-variants-heading"
-            heading={`Pending Variants (${pendingVariants.length})`}
+            heading={`Variants (${pendingVariants.length})`}
           >
             {pendingVariants.length === 0 ? (
               <p className={styles.notice}>No pending beer variant submissions.</p>
@@ -784,7 +787,7 @@ export function ModerationClient({
           {/* Pending Offers */}
           <CollapsibleSection
             id="pending-offers-heading"
-            heading={`Pending Offers (${pendingOffers.length})`}
+            heading={`Offers (${pendingOffers.length})`}
           >
             {pendingOffers.length === 0 ? (
               <p className={styles.notice}>No pending offer submissions.</p>
@@ -886,7 +889,7 @@ export function ModerationClient({
           {/* Pending Price Updates */}
           <CollapsibleSection
             id="pending-price-updates-heading"
-            heading={`Pending Price Updates (${pendingPriceUpdates.length})`}
+            heading={`Price Updates (${pendingPriceUpdates.length})`}
           >
             {pendingPriceUpdates.length === 0 ? (
               <p className={styles.notice}>No pending price update proposals.</p>
@@ -941,7 +944,14 @@ export function ModerationClient({
               </ul>
             )}
           </CollapsibleSection>
-
+        </div>
+      ),
+    },
+    {
+      id: "reviews",
+      label: `Reviews (${newReviews.length + approvedReviews.length})`,
+      content: (
+        <div className={styles.tabContentStack}>
           {/* New Reviews (queue) */}
           <CollapsibleSection
             id="new-reviews-heading"
@@ -1001,7 +1011,14 @@ export function ModerationClient({
               </ul>
             )}
           </CollapsibleSection>
-
+        </div>
+      ),
+    },
+    {
+      id: "reports",
+      label: `Reports (${openReports.length})`,
+      content: (
+        <div className={styles.tabContentStack}>
           {/* Open Reports */}
           <CollapsibleSection
             id="open-reports-heading"
@@ -1090,6 +1107,22 @@ export function ModerationClient({
               </ul>
             )}
           </CollapsibleSection>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      {feedback && (
+        <p className={feedback.kind === "error" ? styles.error : styles.success} role="status">
+          {feedback.message}
+        </p>
+      )}
+
+      <div className={styles.dashboardLayout}>
+        <div className={styles.queueColumn}>
+          <Tabs tabs={moderationTabs} />
         </div>
 
         {/* Audit Log column */}
