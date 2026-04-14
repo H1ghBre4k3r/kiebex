@@ -131,6 +131,18 @@
 
 /* Desktop: hide hamburger, show nav as inline row */
 @media (min-width: 980px) {
+  .header :global(.container) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+  }
+
+  .bar {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .hamburger {
     display: none;
   }
@@ -142,7 +154,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 1rem 0.65rem;
+    padding: 0;
     border-top: none;
   }
 
