@@ -289,20 +289,22 @@ export default async function Home({
                         </p>
                       )}
 
-                      {authUser?.role === "admin" && (
-                        <AdminOfferActions
-                          offerId={offer.id}
-                          currentPriceCents={Math.round(offer.priceEur * 100)}
-                          className={styles.adminActions}
-                        />
-                      )}
-                      {authUser && authUser.role !== "admin" && (
-                        <UserOfferActions
-                          offer={offer}
-                          brands={approvedBrands}
-                          variants={approvedVariants}
-                        />
-                      )}
+                      <div className={styles.actionsContainer}>
+                        {authUser?.role === "admin" && (
+                          <AdminOfferActions
+                            offerId={offer.id}
+                            currentPriceCents={Math.round(offer.priceEur * 100)}
+                            className={styles.adminActions}
+                          />
+                        )}
+                        {authUser && authUser.role !== "admin" && (
+                          <UserOfferActions
+                            offer={offer}
+                            brands={approvedBrands}
+                            variants={approvedVariants}
+                          />
+                        )}
+                      </div>
                     </article>
                   </li>
                 ))}
