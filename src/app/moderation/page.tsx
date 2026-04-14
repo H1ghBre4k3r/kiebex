@@ -2,6 +2,8 @@ import { requireModeratorPageUser } from "@/lib/page-auth";
 import {
   getAllReviewsForModeration,
   getModerationAuditLog,
+  getOpenReports,
+  getResolvedReports,
   getPendingBeerBrandSubmissions,
   getPendingBeerOfferSubmissions,
   getPendingBeerVariantSubmissions,
@@ -22,6 +24,8 @@ export default async function ModerationPage() {
     pendingOffers,
     pendingPriceUpdates,
     allReviews,
+    openReports,
+    resolvedReports,
     auditLog,
   ] = await Promise.all([
     getPendingLocationSubmissions(),
@@ -30,6 +34,8 @@ export default async function ModerationPage() {
     getPendingBeerOfferSubmissions(),
     getPendingPriceUpdateProposals(),
     getAllReviewsForModeration(),
+    getOpenReports(),
+    getResolvedReports(),
     getModerationAuditLog(15),
   ]);
 
@@ -63,6 +69,8 @@ export default async function ModerationPage() {
         pendingPriceUpdates={pendingPriceUpdates}
         newReviews={newReviews}
         approvedReviews={approvedReviews}
+        openReports={openReports}
+        resolvedReports={resolvedReports}
         auditLog={auditLog}
       />
     </main>

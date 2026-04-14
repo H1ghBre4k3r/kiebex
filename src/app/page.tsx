@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
+import { UserOfferActions } from "@/components/offer-user-actions";
 import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
@@ -140,8 +141,13 @@ function buildActiveChips(
   // Sort chip — only when not the default
   const sort = (map.sort ?? [])[0];
   if (sort && sort !== "price_asc") {
+    let label = "Sort: Unknown";
+    if (sort === "price_desc") label = "Sort: Price High to Low";
+    if (sort === "name_asc") label = "Sort: Brand A-Z";
+    if (sort === "name_desc") label = "Sort: Brand Z-A";
+
     chips.push({
-      label: "Sort: Price High to Low",
+      label,
       removeUrl: rawMapToUrl(removeOneValue(map, "sort", sort)),
     });
   }
@@ -200,6 +206,14 @@ export default async function Home({
   const sizes = [...new Set(allOffers.map((offer) => offer.sizeMl))].sort((a, b) => a - b);
   const activeChips = buildActiveChips(rawSearchParams, brands, stylesList, variants, locations);
   const sortDesc = query.sort === "price_desc";
+  const isPriceSorted = !query.sort || query.sort === "price_asc" || sortDesc;
+
+  const approvedBrands = brands
+    .filter((b) => b.status === "approved")
+    .map((b) => ({ id: b.id, name: b.name }));
+  const approvedVariants = variants
+    .filter((v) => v.status === "approved")
+    .map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }));
 
   return (
     <div className={styles.page}>
@@ -273,7 +287,7 @@ export default async function Home({
                         reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
                       />
 
-                      {index === 0 && (
+                      {index === 0 && isPriceSorted && (
                         <p className={styles.cheapest}>
                           {sortDesc
                             ? "Highest price in current result"
@@ -281,13 +295,22 @@ export default async function Home({
                         </p>
                       )}
 
-                      {authUser?.role === "admin" && (
-                        <AdminOfferActions
-                          offerId={offer.id}
-                          currentPriceCents={Math.round(offer.priceEur * 100)}
-                          className={styles.adminActions}
-                        />
-                      )}
+                      <div className={styles.actionsContainer}>
+                        {authUser?.role === "admin" && (
+                          <AdminOfferActions
+                            offerId={offer.id}
+                            currentPriceCents={Math.round(offer.priceEur * 100)}
+                            className={styles.adminActions}
+                          />
+                        )}
+                        {authUser && authUser.role !== "admin" && (
+                          <UserOfferActions
+                            offer={offer}
+                            brands={approvedBrands}
+                            variants={approvedVariants}
+                          />
+                        )}
+                      </div>
                     </article>
                   </li>
                 ))}

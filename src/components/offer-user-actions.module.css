@@ -1,0 +1,101 @@
+.wrapper {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: var(--border-regular);
+}
+
+.toggleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.toggle {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--surface-strong);
+}
+
+.toggleActive {
+  background: var(--surface-strong);
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.form {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.5rem;
+  border: var(--border-regular);
+  padding: 0.65rem;
+  background: #f8f8f8;
+}
+
+.formHint {
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.field {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.input {
+  border: var(--border-regular);
+  padding: 0.25rem 0.4rem;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.button {
+  border: var(--border-regular);
+  background: #fff;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.error {
+  color: #7d1200;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: var(--border-regular);
+  background: #ffe3df;
+  padding: 0.3rem 0.5rem;
+}
+
+.success {
+  color: #0a4a09;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: var(--border-regular);
+  background: #dbf7da;
+  padding: 0.3rem 0.5rem;
+}

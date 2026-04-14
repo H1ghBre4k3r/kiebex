@@ -144,11 +144,16 @@ export function AdminLocationActions({ location }: Props) {
         )}
 
         <div className={styles.adminActions}>
-          <button type="submit" disabled={savePending}>
+          <button
+            type="submit"
+            disabled={savePending}
+            className={`${styles.adminButton} ${styles.saveButton}`}
+          >
             {savePending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
+            className={`${styles.adminButton} ${styles.cancelButton}`}
             disabled={savePending}
             onClick={() => {
               setEditing(false);
@@ -174,6 +179,7 @@ export function AdminLocationActions({ location }: Props) {
         <>
           <button
             type="button"
+            className={`${styles.adminButton} ${styles.deleteButton}`}
             onClick={() => {
               void handleDelete();
             }}
@@ -182,16 +188,25 @@ export function AdminLocationActions({ location }: Props) {
           >
             {deletePending ? "Deleting…" : "Confirm Delete"}
           </button>
-          <button type="button" disabled={deletePending} onClick={() => setConfirmDelete(false)}>
+          <button
+            type="button"
+            className={`${styles.adminButton} ${styles.cancelButton}`}
+            disabled={deletePending}
+            onClick={() => setConfirmDelete(false)}
+          >
             Cancel
           </button>
         </>
       ) : (
         <>
-          <button type="button" onClick={() => setEditing(true)}>
+          <button type="button" className={styles.adminButton} onClick={() => setEditing(true)}>
             Edit Location
           </button>
-          <button type="button" onClick={() => setConfirmDelete(true)}>
+          <button
+            type="button"
+            className={`${styles.adminButton} ${styles.deleteButton}`}
+            onClick={() => setConfirmDelete(true)}
+          >
             Delete Location
           </button>
         </>

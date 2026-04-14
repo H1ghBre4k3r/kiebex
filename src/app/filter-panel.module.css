@@ -154,4 +154,11 @@
     display: block;
     margin-top: 0;
   }
+
+  .panel {
+    position: sticky;
+    top: 7rem;
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
+  }
 }

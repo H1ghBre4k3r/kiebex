@@ -7,8 +7,19 @@
 .panel {
   border: var(--border-heavy);
   background: var(--surface);
-  box-shadow: var(--shadow-block);
   padding: 1rem;
+}
+
+/* Only the main container and the audit column should have the heavy block shadow */
+.page > .panel,
+.auditColumn > .panel {
+  box-shadow: var(--shadow-block);
+}
+
+/* Sub-panels (like collapsibles) shouldn't have their own shadow to avoid "levitating" */
+.queueColumn .panel {
+  box-shadow: none;
+  margin-bottom: 0.5rem;
 }
 
 .panel h1,
@@ -18,12 +29,12 @@
 }
 
 .panel h1 {
-  font-size: clamp(1.7rem, 5vw, 2.8rem);
-  margin-bottom: 0.45rem;
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
 }
 
 .panel h2 {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   margin-bottom: 0.5rem;
 }
 
@@ -31,8 +42,9 @@
 .error,
 .success {
   border: var(--border-regular);
-  padding: 0.65rem;
+  padding: 0.5rem 0.75rem;
   margin-bottom: 0.75rem;
+  font-size: 0.9rem;
 }
 
 .notice {
@@ -49,44 +61,107 @@
   color: #0a4a09;
 }
 
-.grid {
+.dashboardLayout {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .dashboardLayout {
+    grid-template-columns: 1fr 350px;
+  }
+}
+
+.queueColumn {
   display: grid;
   gap: 1rem;
+}
+
+.tabContentStack {
+  display: grid;
+  gap: 1rem;
+}
+
+.auditColumn {
+  position: sticky;
+  top: 1rem;
 }
 
 .list {
   list-style: none;
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .item {
   border: var(--border-regular);
   background: #fff;
-  padding: 0.75rem;
+  padding: 1rem;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  position: relative;
+  /* Grounded shadow: just a small offset for depth without floating */
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.item h3 {
+  font-size: 1.1rem;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .meta {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.4rem;
   font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.meta p {
+  margin: 0;
+}
+
+.meta strong {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eee;
 }
 
 .button {
   border: var(--border-regular);
-  min-height: 2.2rem;
-  padding: 0.35rem 0.75rem;
-  font-weight: 700;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 800;
   text-transform: uppercase;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.button:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 #111;
+}
+
+.button:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 #111;
 }
 
 .approve {
@@ -102,17 +177,19 @@
 }
 
 .delete {
-  background: #fff0cc;
+  background: #fff2c8;
 }
 
 .deleteConfirm {
-  background: #ffcccc;
+  background: var(--accent);
+  color: #fff;
 }
 
 .button:disabled {
-  opacity: 0.7;
+  opacity: 0.5;
   cursor: wait;
 }
+
 
 .editForm {
   display: grid;
@@ -120,12 +197,13 @@
   border: var(--border-regular);
   padding: 0.75rem;
   background: #f8f8f8;
+  margin-top: 0.5rem;
 }
 
 .editLabel {
   display: grid;
   gap: 0.25rem;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -133,23 +211,9 @@
 .editInput {
   border: var(--border-regular);
   padding: 0.35rem 0.5rem;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   width: 100%;
   box-sizing: border-box;
-}
-
-.auditItem {
-  gap: 0.2rem;
-}
-
-.auditMeta {
-  font-size: 0.8rem;
-  color: #555;
-}
-
-.auditContext {
-  font-size: 0.9rem;
-  color: #333;
 }
 
 /* Review status inline labels */
@@ -173,74 +237,89 @@
   font-weight: 700;
 }
 
-/* Audit action labels */
-.audit_approve {
-  color: #0a4a09;
-  font-weight: 700;
-}
-
-.audit_reject {
-  color: #5e0f00;
-  font-weight: 700;
-}
-
-.audit_delete {
-  color: #5e0f00;
-  font-weight: 700;
-}
-
-.audit_edit {
-  color: #00337a;
-  font-weight: 700;
-}
-
 /* Collapsible section toggle */
 .sectionToggle {
   all: unset;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
   cursor: pointer;
   width: 100%;
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
   text-transform: uppercase;
-  margin-bottom: 0;
-  padding-bottom: 0;
+  margin: -1rem;
+  padding: 1rem;
+  transition: background 0.1s ease;
+}
+
+.sectionToggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.sectionToggle[aria-expanded="true"] {
+  border-bottom: var(--border-heavy);
+  background: rgba(0, 0, 0, 0.03);
+  margin-bottom: 1rem;
 }
 
 .sectionToggle:focus-visible {
-  outline: 3px solid var(--color-focus, #005fcc);
-  outline-offset: 2px;
+  outline: 3px dashed var(--accent);
+  outline-offset: -4px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .sectionToggleIndicator {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sectionToggle[aria-expanded="true"] .sectionToggleIndicator {
+  transform: rotate(90deg);
 }
 
 .sectionBody {
-  margin-top: 0.5rem;
+  margin-top: 1rem;
 }
 
 .auditFooter {
   margin-top: 0.75rem;
 }
 
-.pagination {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  align-items: center;
+.reportLink {
+  font-weight: 700;
+  text-decoration: underline;
 }
 
-.paginationDisabled {
+.deletedHint {
   color: var(--ink-muted);
+  font-style: italic;
+  font-weight: 700;
 }
 
-@media (min-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: start;
-  }
+.reportSnapshot {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-left: 4px solid var(--ink);
+  background: var(--surface-alt, #f5f5f5);
+}
+
+.reportSnapshotHeading {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.reportSnapshotId {
+  font-size: 0.8em;
+  color: var(--ink-muted);
+  font-family: monospace;
 }

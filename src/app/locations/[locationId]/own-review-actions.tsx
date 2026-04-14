@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jsonInit, requestApi } from "@/lib/client-api";
 import { formatDate } from "@/lib/display";
+import { REPORT_REASON_LABELS, REPORT_REASONS } from "@/lib/types";
 import type { ReviewWithAuthor } from "@/lib/types";
 import styles from "./page.module.css";
 
@@ -17,6 +18,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
   const router = useRouter();
   const isOwn = authUserId !== null && review.author.id === authUserId;
   const canAct = isOwn || isModerator;
+  const canReport = authUserId !== null && !isOwn && !isModerator;
 
   const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(String(review.rating));
@@ -27,6 +29,14 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
   const [moderatePending, setModeratePending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Report state
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState<string>(REPORT_REASONS[0]);
+  const [reportNote, setReportNote] = useState("");
+  const [reportPending, setReportPending] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   /** For moderators, use moderation endpoint; for own review, use own-review endpoint. */
   const editEndpoint = isModerator
@@ -116,9 +126,42 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setModeratePending(false);
   }
 
+  async function handleReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (reportPending) {
+      return;
+    }
+
+    setReportPending(true);
+    setReportError(null);
+
+    const result = await requestApi<null>(
+      "/api/v1/reports",
+      jsonInit("POST", {
+        body: {
+          contentType: "review",
+          contentId: review.id,
+          reason: reportReason,
+          note: reportNote.trim() || undefined,
+        },
+      }),
+      "Unable to submit report. Please try again.",
+    );
+
+    if (!result.ok) {
+      setReportError(result.message);
+    } else {
+      setReportSuccess(true);
+      setReporting(false);
+    }
+
+    setReportPending(false);
+  }
+
   if (editing) {
     return (
-      <li className={styles.reviewItem}>
+      <li id={`review-${review.id}`} className={styles.reviewItem}>
         <form
           className={styles.reviewForm}
           onSubmit={(e) => {
@@ -189,7 +232,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
   }
 
   return (
-    <li className={styles.reviewItem}>
+    <li id={`review-${review.id}`} className={styles.reviewItem}>
       <p>
         <strong>{review.rating}/5</strong> by {review.author.displayName}
         {isModerator && <span className={styles.reviewStatus}> [{review.status}]</span>}
@@ -206,14 +249,14 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
             </p>
           )}
 
-          {isModerator && (
+          {isModerator && review.status !== "approved" && (
             <>
               <button
                 type="button"
                 onClick={() => {
                   void handleModerate("approved");
                 }}
-                disabled={moderatePending || review.status === "approved"}
+                disabled={moderatePending}
                 aria-label="Approve review"
               >
                 {moderatePending ? "…" : "Approve"}
@@ -223,7 +266,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
                 onClick={() => {
                   void handleModerate("rejected");
                 }}
-                disabled={moderatePending || review.status === "rejected"}
+                disabled={moderatePending}
                 aria-label="Reject review"
               >
                 {moderatePending ? "…" : "Reject"}
@@ -260,6 +303,74 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
                 Delete
               </button>
             </>
+          )}
+        </div>
+      )}
+
+      {canReport && (
+        <div className={styles.reviewActions}>
+          {reportSuccess ? (
+            <p className={styles.success}>Report submitted.</p>
+          ) : reporting ? (
+            <form
+              className={styles.reportForm}
+              onSubmit={(e) => {
+                void handleReport(e);
+              }}
+            >
+              <label htmlFor={`report-reason-${review.id}`}>
+                Reason
+                <select
+                  id={`report-reason-${review.id}`}
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  required
+                >
+                  {REPORT_REASONS.map((r) => (
+                    <option key={r} value={r}>
+                      {REPORT_REASON_LABELS[r]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label htmlFor={`report-note-${review.id}`}>
+                Additional context (optional)
+                <textarea
+                  id={`report-note-${review.id}`}
+                  maxLength={500}
+                  rows={2}
+                  value={reportNote}
+                  onChange={(e) => setReportNote(e.target.value)}
+                />
+              </label>
+              {reportError && (
+                <p className={styles.error} role="alert">
+                  {reportError}
+                </p>
+              )}
+              <div className={styles.reviewActions}>
+                <button type="submit" disabled={reportPending}>
+                  {reportPending ? "Submitting..." : "Submit Report"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReporting(false);
+                    setReportError(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              className={styles.reportButton}
+              onClick={() => setReporting(true)}
+            >
+              Report
+            </button>
           )}
         </div>
       )}

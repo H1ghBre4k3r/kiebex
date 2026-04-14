@@ -17,6 +17,14 @@
   cursor: pointer;
 }
 
+.deleteButton {
+  background: #ffe3df;
+}
+
+.saveButton {
+  background: #dff7d8;
+}
+
 .error {
   color: #7d1200;
   font-weight: 700;

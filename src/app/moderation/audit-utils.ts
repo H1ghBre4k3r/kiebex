@@ -4,6 +4,7 @@ import type {
   ModerationContentType,
   OfferAuditDetails,
   PriceUpdateAuditDetails,
+  ReportAuditDetails,
   ReviewAuditDetails,
   VariantAuditDetails,
 } from "@/lib/types";
@@ -106,6 +107,16 @@ export function formatAuditContext(
     if (d.author) parts.push(`by ${d.author}`);
     if (d.locationName) parts.push(`@ ${d.locationName}`);
     return parts.length > 0 ? parts.join(" ") : null;
+  }
+
+  if (contentType === "report") {
+    const d = details as ReportAuditDetails;
+    const parts: string[] = [];
+    if (d.contentType) parts.push(d.contentType);
+    if (d.reason) parts.push(`reason: ${d.reason}`);
+    if (d.reporter) parts.push(`by ${d.reporter}`);
+    if (d.decision) parts.push(`→ ${d.decision}`);
+    return parts.length > 0 ? parts.join(", ") : null;
   }
 
   return null;

@@ -178,6 +178,8 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations }: 
               {[
                 { value: "price_asc", label: "Price: Low to High" },
                 { value: "price_desc", label: "Price: High to Low" },
+                { value: "name_asc", label: "Brand: A to Z" },
+                { value: "name_desc", label: "Brand: Z to A" },
               ].map(({ value, label }) => (
                 <li key={value} className={styles.radioItem}>
                   <input

@@ -142,7 +142,7 @@ export type LocationReviewSummary = {
   averageRating: number | null;
 };
 
-export type BeerSort = "price_asc" | "price_desc";
+export type BeerSort = "price_asc" | "price_desc" | "name_asc" | "name_desc";
 
 export type BeerQuery = {
   brandId?: string[];
@@ -228,7 +228,63 @@ export type PendingPriceUpdateProposal = PriceUpdateProposal & {
   submitter: ModerationSubmitter | null;
 };
 
-export type ModerationAction = "approve" | "reject" | "delete" | "edit" | "ban" | "unban";
+export type ReportReason = "offensive" | "spam" | "inappropriate" | "other";
+
+export const REPORT_REASONS: ReportReason[] = ["offensive", "spam", "inappropriate", "other"];
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  offensive: "Offensive or abusive",
+  spam: "Spam or advertising",
+  inappropriate: "Inappropriate content",
+  other: "Other",
+};
+
+export type ReportStatus = "open" | "dismissed" | "actioned";
+
+export type ReportContentType = "review";
+
+export type Report = {
+  id: string;
+  reporterId: string | null;
+  contentType: ReportContentType;
+  contentId: string;
+  reason: ReportReason;
+  note: string | null;
+  status: ReportStatus;
+  resolvedById: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  /** Snapshot of the reported content captured at report creation time. */
+  snapshotAuthorId: string | null;
+  snapshotAuthorName: string | null;
+  snapshotRating: number | null;
+  snapshotTitle: string | null;
+  snapshotBody: string | null;
+};
+
+export type OpenReport = Report & {
+  reporter: { id: string; displayName: string } | null;
+  /** For review reports: the locationId so we can build the deep-link URL. */
+  reviewLocationId?: string | null;
+};
+
+export type ResolvedReport = Report & {
+  reporter: { id: string; displayName: string } | null;
+  resolvedBy: { id: string; displayName: string } | null;
+  /** For review reports: the locationId so we can build the deep-link URL. */
+  reviewLocationId?: string | null;
+};
+
+export type ModerationAction =
+  | "approve"
+  | "reject"
+  | "delete"
+  | "edit"
+  | "ban"
+  | "unban"
+  | "dismiss"
+  | "action";
 
 export type ModerationContentType =
   | "location"
@@ -238,7 +294,8 @@ export type ModerationContentType =
   | "offer"
   | "price_update"
   | "review"
-  | "user";
+  | "user"
+  | "report";
 
 // Per-content-type audit detail shapes
 export type BrandAuditDetails = {
@@ -306,6 +363,14 @@ export type UserAuditDetails = {
   role?: string;
 };
 
+export type ReportAuditDetails = {
+  contentType?: string;
+  contentId?: string;
+  reason?: string;
+  reporter?: string;
+  decision?: string;
+};
+
 export type AuditDetailsMap = {
   brand: BrandAuditDetails;
   style: StyleAuditDetails;
@@ -315,6 +380,7 @@ export type AuditDetailsMap = {
   price_update: PriceUpdateAuditDetails;
   review: ReviewAuditDetails;
   user: UserAuditDetails;
+  report: ReportAuditDetails;
 };
 
 export type AuditDetails = AuditDetailsMap[ModerationContentType];

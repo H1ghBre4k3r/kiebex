@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { LOCATION_TYPES, SERVING_TYPES } from "@/lib/types";
+import { LOCATION_TYPES, REPORT_REASONS, SERVING_TYPES } from "@/lib/types";
 
 const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;
 const reviewStatuses = ["approved", "rejected"] as const;
-const sortOrders = ["price_asc", "price_desc"] as const;
+const sortOrders = ["price_asc", "price_desc", "name_asc", "name_desc"] as const;
 
 export const beerQuerySchema = z.object({
   brandId: z.array(z.string().trim().min(1).max(100)).optional(),
@@ -282,4 +282,15 @@ export const resetPasswordBodySchema = z.object({
     .max(128)
     .regex(/[A-Za-z]/, "Password must include at least one letter.")
     .regex(/[0-9]/, "Password must include at least one number."),
+});
+
+export const createReportBodySchema = z.object({
+  contentType: z.enum(["review"] as const),
+  contentId: z.string().trim().min(1).max(100),
+  reason: z.enum(REPORT_REASONS as unknown as [string, ...string[]]),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const resolveReportBodySchema = z.object({
+  decision: z.enum(["dismissed", "actioned"] as const),
 });

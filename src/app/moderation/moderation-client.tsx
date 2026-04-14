@@ -12,9 +12,12 @@ import {
   locationTypeLabel,
   reviewStatusLabel,
 } from "@/lib/display";
+import { REPORT_REASON_LABELS } from "@/lib/types";
 import type {
   ModerationAuditLogEntry,
   ModerationReview,
+  OpenReport,
+  ResolvedReport,
   PendingBeerBrandSubmission,
   PendingBeerOfferSubmission,
   PendingBeerVariantSubmission,
@@ -22,6 +25,7 @@ import type {
   PendingPriceUpdateProposal,
 } from "@/lib/types";
 import { AuditLogList } from "./audit-log-list";
+import { Tabs } from "@/components/tabs";
 import styles from "./moderation.module.css";
 
 type ModerationClientProps = {
@@ -32,6 +36,8 @@ type ModerationClientProps = {
   pendingPriceUpdates: PendingPriceUpdateProposal[];
   newReviews: ModerationReview[];
   approvedReviews: ModerationReview[];
+  openReports: OpenReport[];
+  resolvedReports: ResolvedReport[];
   auditLog: ModerationAuditLogEntry[];
 };
 
@@ -88,8 +94,10 @@ function CollapsibleSection({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className={styles.sectionToggleIndicator}>{open ? "▼" : "▶"}</span>
-        {heading}
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionToggleIndicator}>▶</span>
+          {heading}
+        </div>
       </button>
       {open && <div className={styles.sectionBody}>{children}</div>}
     </section>
@@ -317,10 +325,12 @@ function ReviewItem({
             {reviewStatusLabel(review.status)}
           </span>
         </p>
-        <p>Location: {review.locationName}</p>
+        <p>
+          <strong>Location:</strong> {review.locationName}
+        </p>
         {review.body && <p>{review.body}</p>}
         <p>
-          By {review.author.displayName} on {formatDate(review.createdAt)}
+          <strong>Submitted:</strong> By {review.author.displayName} on {formatDate(review.createdAt)}
         </p>
       </div>
       {isEditing && (
@@ -379,6 +389,8 @@ export function ModerationClient({
   pendingPriceUpdates,
   newReviews,
   approvedReviews,
+  openReports,
+  resolvedReports,
   auditLog,
 }: ModerationClientProps) {
   const router = useRouter();
@@ -528,6 +540,718 @@ export function ModerationClient({
     });
   }
 
+  const moderationTabs = [
+    {
+      id: "submissions",
+      label: `Submissions (${
+        pendingLocations.length +
+        pendingBrands.length +
+        pendingVariants.length +
+        pendingOffers.length +
+        pendingPriceUpdates.length
+      })`,
+      content: (
+        <div className={styles.tabContentStack}>
+          {/* Pending Locations */}
+          <CollapsibleSection
+            id="pending-locations-heading"
+            heading={`Locations (${pendingLocations.length})`}
+          >
+            {pendingLocations.length === 0 ? (
+              <p className={styles.notice}>No pending location submissions.</p>
+            ) : (
+              <ul className={styles.list}>
+                {pendingLocations.map((location) => {
+                  const isEditing = editingLocationId === location.id;
+
+                  return (
+                    <li key={location.id} className={styles.item}>
+                      <h3>{location.name}</h3>
+                      <div className={styles.meta}>
+                        <p>
+                          <strong>Type:</strong> {locationTypeLabel(location.locationType)}
+                        </p>
+                        <p>
+                          <strong>Address:</strong> {location.address} ({location.district})
+                        </p>
+                        <p>
+                          <strong>Submitted:</strong> By {location.submitter?.displayName ?? "Unknown user"} on{" "}
+                          {formatDate(location.createdAt)}
+                        </p>
+                      </div>
+                      {isEditing && (
+                        <div className={styles.editForm}>
+                          <label className={styles.editLabel}>
+                            Name
+                            <input
+                              className={styles.editInput}
+                              type="text"
+                              placeholder={location.name}
+                              value={locationEditFields.name}
+                              onChange={(e) =>
+                                setLocationEditFields((f) => ({ ...f, name: e.target.value }))
+                              }
+                            />
+                          </label>
+                          <label className={styles.editLabel}>
+                            Type
+                            <select
+                              className={styles.editInput}
+                              value={locationEditFields.locationType}
+                              onChange={(e) =>
+                                setLocationEditFields((f) => ({
+                                  ...f,
+                                  locationType: e.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">— unchanged —</option>
+                              {LOCATION_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className={styles.editLabel}>
+                            District
+                            <input
+                              className={styles.editInput}
+                              type="text"
+                              placeholder={location.district}
+                              value={locationEditFields.district}
+                              onChange={(e) =>
+                                setLocationEditFields((f) => ({ ...f, district: e.target.value }))
+                              }
+                            />
+                          </label>
+                          <label className={styles.editLabel}>
+                            Address
+                            <input
+                              className={styles.editInput}
+                              type="text"
+                              placeholder={location.address}
+                              value={locationEditFields.address}
+                              onChange={(e) =>
+                                setLocationEditFields((f) => ({ ...f, address: e.target.value }))
+                              }
+                            />
+                          </label>
+                          <div className={styles.actions}>
+                            <button
+                              type="button"
+                              className={`${styles.button} ${styles.approve}`}
+                              disabled={!!pendingAction}
+                              onClick={() => void editLocation(location.id)}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.button}
+                              onClick={() => setEditingLocationId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div className={styles.actions}>
+                        <ModerateButtons
+                          endpoint={MODERATION_ENDPOINTS.locations}
+                          id={location.id}
+                          queue="location"
+                          disabled={!!pendingAction}
+                          pendingAction={pendingAction}
+                          onModerate={moderate}
+                        />
+                        <button
+                          type="button"
+                          className={`${styles.button} ${styles.edit}`}
+                          disabled={!!pendingAction}
+                          onClick={() => {
+                            setEditingLocationId(isEditing ? null : location.id);
+                            setLocationEditFields({
+                              name: "",
+                              locationType: "",
+                              district: "",
+                              address: "",
+                            });
+                          }}
+                        >
+                          {isEditing ? "Cancel Edit" : "Edit"}
+                        </button>
+                        <DeleteButton
+                          itemKey={`location:${location.id}`}
+                          label="location"
+                          endpoint={MODERATION_ENDPOINTS.locations}
+                          id={location.id}
+                          confirmDelete={confirmDelete}
+                          pendingAction={pendingAction}
+                          onRequestDelete={deleteItem}
+                          onSetConfirmDelete={setConfirmDelete}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Pending Brands */}
+          <CollapsibleSection
+            id="pending-brands-heading"
+            heading={`Brands (${pendingBrands.length})`}
+          >
+            {pendingBrands.length === 0 ? (
+              <p className={styles.notice}>No pending beer brand submissions.</p>
+            ) : (
+              <ul className={styles.list}>
+                {pendingBrands.map((brand) => {
+                  return (
+                    <li key={brand.id} className={styles.item}>
+                      <h3>{brand.name}</h3>
+                      <div className={styles.meta}>
+                        <p>
+                          <strong>Submitted:</strong> By {brand.submitter?.displayName ?? "Unknown user"} on{" "}
+                          {formatDate(brand.createdAt)}
+                        </p>
+                      </div>
+                      <div className={styles.actions}>
+                        <ModerateButtons
+                          endpoint={MODERATION_ENDPOINTS.brands}
+                          id={brand.id}
+                          queue="brand"
+                          disabled={!!pendingAction}
+                          pendingAction={pendingAction}
+                          onModerate={moderate}
+                        />
+                        <DeleteButton
+                          itemKey={`brand:${brand.id}`}
+                          label="brand"
+                          endpoint={MODERATION_ENDPOINTS.brands}
+                          id={brand.id}
+                          confirmDelete={confirmDelete}
+                          pendingAction={pendingAction}
+                          onRequestDelete={deleteItem}
+                          onSetConfirmDelete={setConfirmDelete}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Pending Variants */}
+          <CollapsibleSection
+            id="pending-variants-heading"
+            heading={`Variants (${pendingVariants.length})`}
+          >
+            {pendingVariants.length === 0 ? (
+              <p className={styles.notice}>No pending beer variant submissions.</p>
+            ) : (
+              <ul className={styles.list}>
+                {pendingVariants.map((variant) => {
+                  return (
+                    <li key={variant.id} className={styles.item}>
+                      <h3>{variant.name}</h3>
+                      <div className={styles.meta}>
+                        <p>
+                          <strong>Brand:</strong> {variant.brand?.name ?? "Unknown"}
+                        </p>
+                        <p>
+                          <strong>Style:</strong> {variant.style?.name ?? "Unknown"}
+                        </p>
+                        <p>
+                          <strong>Submitted:</strong> By {variant.submitter?.displayName ?? "Unknown user"} on{" "}
+                          {formatDate(variant.createdAt)}
+                        </p>
+                      </div>
+                      <div className={styles.actions}>
+                        <ModerateButtons
+                          endpoint={MODERATION_ENDPOINTS.variants}
+                          id={variant.id}
+                          queue="variant"
+                          disabled={!!pendingAction}
+                          pendingAction={pendingAction}
+                          onModerate={moderate}
+                        />
+                        <DeleteButton
+                          itemKey={`variant:${variant.id}`}
+                          label="variant"
+                          endpoint={MODERATION_ENDPOINTS.variants}
+                          id={variant.id}
+                          confirmDelete={confirmDelete}
+                          pendingAction={pendingAction}
+                          onRequestDelete={deleteItem}
+                          onSetConfirmDelete={setConfirmDelete}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Pending Offers */}
+          <CollapsibleSection
+            id="pending-offers-heading"
+            heading={`Offers (${pendingOffers.length})`}
+          >
+            {pendingOffers.length === 0 ? (
+              <p className={styles.notice}>No pending offer submissions.</p>
+            ) : (
+              <ul className={styles.list}>
+                {pendingOffers.map((offer) => {
+                  const isEditing = editingOfferId === offer.id;
+
+                  return (
+                    <li key={offer.id} className={styles.item}>
+                      <h3>
+                        {offer.brand} {offer.variant} — {formatEur(offer.priceEur)}
+                      </h3>
+                      <div className={styles.meta}>
+                        <p>
+                          <strong>Size:</strong> {offer.sizeMl} ml — {servingLabel(offer.serving)}
+                        </p>
+                        <p>
+                          <strong>Location:</strong> {offer.location.name} (
+                          {locationTypeLabel(offer.location.locationType)})
+                        </p>
+                        <p>
+                          <strong>Submitted:</strong> By {offer.submitter?.displayName ?? "Unknown user"} on{" "}
+                          {formatDate(offer.createdAt)}
+                        </p>
+                      </div>
+                      {isEditing && (
+                        <div className={styles.editForm}>
+                          <label className={styles.editLabel}>
+                            New Price (EUR)
+                            <input
+                              className={styles.editInput}
+                              type="number"
+                              min="0.01"
+                              max="500"
+                              step="0.01"
+                              placeholder={offer.priceEur.toFixed(2)}
+                              value={offerEditPriceCents}
+                              onChange={(e) => setOfferEditPriceCents(e.target.value)}
+                            />
+                          </label>
+                          <div className={styles.actions}>
+                            <button
+                              type="button"
+                              className={`${styles.button} ${styles.approve}`}
+                              disabled={!!pendingAction}
+                              onClick={() => void editOffer(offer.id)}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.button}
+                              onClick={() => setEditingOfferId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div className={styles.actions}>
+                        <ModerateButtons
+                          endpoint={MODERATION_ENDPOINTS.offers}
+                          id={offer.id}
+                          queue="offer"
+                          disabled={!!pendingAction}
+                          pendingAction={pendingAction}
+                          onModerate={moderate}
+                        />
+                        <button
+                          type="button"
+                          className={`${styles.button} ${styles.edit}`}
+                          disabled={!!pendingAction}
+                          onClick={() => {
+                            setEditingOfferId(isEditing ? null : offer.id);
+                            setOfferEditPriceCents("");
+                          }}
+                        >
+                          {isEditing ? "Cancel Edit" : "Edit Price"}
+                        </button>
+                        <DeleteButton
+                          itemKey={`offer:${offer.id}`}
+                          label="offer"
+                          endpoint={MODERATION_ENDPOINTS.offers}
+                          id={offer.id}
+                          confirmDelete={confirmDelete}
+                          pendingAction={pendingAction}
+                          onRequestDelete={deleteItem}
+                          onSetConfirmDelete={setConfirmDelete}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Pending Price Updates */}
+          <CollapsibleSection
+            id="pending-price-updates-heading"
+            heading={`Price Updates (${pendingPriceUpdates.length})`}
+          >
+            {pendingPriceUpdates.length === 0 ? (
+              <p className={styles.notice}>No pending price update proposals.</p>
+            ) : (
+              <ul className={styles.list}>
+                {pendingPriceUpdates.map((proposal) => {
+                  return (
+                    <li key={proposal.id} className={styles.item}>
+                      <h3>
+                        {proposal.offer.brand} {proposal.offer.variant}
+                      </h3>
+                      <div className={styles.meta}>
+                        <p>
+                          <strong>Update:</strong> From {formatEur(proposal.offer.priceEur)} to{" "}
+                          {formatEur(proposal.proposedPriceEur)}
+                        </p>
+                        <p>
+                          <strong>Size:</strong> {proposal.offer.sizeMl} ml — {servingLabel(proposal.offer.serving)}
+                        </p>
+                        <p>
+                          <strong>Location:</strong> {proposal.offer.location.name} (
+                          {locationTypeLabel(proposal.offer.location.locationType)})
+                        </p>
+                        <p>
+                          <strong>Submitted:</strong> By {proposal.submitter?.displayName ?? "Unknown user"} on{" "}
+                          {formatDate(proposal.createdAt)}
+                        </p>
+                      </div>
+                      <div className={styles.actions}>
+                        <ModerateButtons
+                          endpoint={MODERATION_ENDPOINTS.priceUpdates}
+                          id={proposal.id}
+                          queue="price update"
+                          disabled={!!pendingAction}
+                          pendingAction={pendingAction}
+                          onModerate={moderate}
+                        />
+                        <DeleteButton
+                          itemKey={`price-update:${proposal.id}`}
+                          label="price update"
+                          endpoint={MODERATION_ENDPOINTS.priceUpdates}
+                          id={proposal.id}
+                          confirmDelete={confirmDelete}
+                          pendingAction={pendingAction}
+                          onRequestDelete={deleteItem}
+                          onSetConfirmDelete={setConfirmDelete}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CollapsibleSection>
+        </div>
+      ),
+    },
+    {
+      id: "reviews",
+      label: `Reviews (${newReviews.length + approvedReviews.length})`,
+      content: (
+        <div className={styles.tabContentStack}>
+          {/* New Reviews (queue) */}
+          <CollapsibleSection
+            id="new-reviews-heading"
+            heading={`New Reviews (${newReviews.length})`}
+          >
+            {newReviews.length === 0 ? (
+              <p className={styles.notice}>No new reviews awaiting moderation.</p>
+            ) : (
+              <ul className={styles.list}>
+                {newReviews.map((review) => (
+                  <ReviewItem
+                    key={review.id}
+                    review={review}
+                    showModerationButtons
+                    editingReviewId={editingReviewId}
+                    confirmDelete={confirmDelete}
+                    pendingAction={pendingAction}
+                    reviewEditFields={reviewEditFields}
+                    onSetEditingReviewId={setEditingReviewId}
+                    onSetReviewEditFields={setReviewEditFields}
+                    onSetConfirmDelete={setConfirmDelete}
+                    onModerate={moderate}
+                    onDelete={deleteItem}
+                    onEditReview={editReview}
+                  />
+                ))}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Approved Reviews (reference) */}
+          <CollapsibleSection
+            id="approved-reviews-heading"
+            heading={`Approved Reviews (${approvedReviews.length})`}
+          >
+            {approvedReviews.length === 0 ? (
+              <p className={styles.notice}>No approved reviews yet.</p>
+            ) : (
+              <ul className={styles.list}>
+                {approvedReviews.map((review) => (
+                  <ReviewItem
+                    key={review.id}
+                    review={review}
+                    showModerationButtons={false}
+                    editingReviewId={editingReviewId}
+                    confirmDelete={confirmDelete}
+                    pendingAction={pendingAction}
+                    reviewEditFields={reviewEditFields}
+                    onSetEditingReviewId={setEditingReviewId}
+                    onSetReviewEditFields={setReviewEditFields}
+                    onSetConfirmDelete={setConfirmDelete}
+                    onModerate={moderate}
+                    onDelete={deleteItem}
+                    onEditReview={editReview}
+                  />
+                ))}
+              </ul>
+            )}
+          </CollapsibleSection>
+        </div>
+      ),
+    },
+    {
+      id: "reports",
+      label: `Reports (${openReports.length})`,
+      content: (
+        <div className={styles.tabContentStack}>
+          {/* Open Reports */}
+          <CollapsibleSection
+            id="open-reports-heading"
+            heading={`Open Reports (${openReports.length})`}
+          >
+            {openReports.length === 0 ? (
+              <p className={styles.notice}>No open reports.</p>
+            ) : (
+              <ul className={styles.list}>
+                {openReports.map((report) => {
+                  const resolveKey = `resolve:report:${report.id}`;
+                  const isWorking = pendingAction === resolveKey;
+
+                  return (
+                    <li key={report.id} className={styles.item}>
+                      <h3>{report.contentType} report</h3>
+                      <div className={styles.meta}>
+                        <p>
+                          <strong>Reason:</strong>{" "}
+                          {REPORT_REASON_LABELS[report.reason] ?? report.reason}
+                        </p>
+                        {report.note && (
+                          <p>
+                            <strong>Note:</strong> {report.note}
+                          </p>
+                        )}
+                        <p>
+                          <strong>Reporter:</strong>{" "}
+                          {report.reporter?.displayName ?? "Unknown user"}
+                        </p>
+                        <p>
+                          <strong>Reported at:</strong> {formatDate(report.createdAt)}
+                        </p>
+                        {/* Snapshot of the reported content at report creation time */}
+                        {report.snapshotAuthorId && (
+                          <div className={styles.reportSnapshot}>
+                            <p className={styles.reportSnapshotHeading}>
+                              Reported content (snapshot)
+                            </p>
+                            <p>
+                              <strong>Author:</strong>{" "}
+                              {report.snapshotAuthorName ?? report.snapshotAuthorId}{" "}
+                              <span className={styles.reportSnapshotId}>
+                                ({report.snapshotAuthorId})
+                              </span>
+                            </p>
+                            {report.snapshotRating !== null && (
+                              <p>
+                                <strong>Rating:</strong> {report.snapshotRating} / 5
+                              </p>
+                            )}
+                            {report.snapshotTitle && (
+                              <p>
+                                <strong>Title:</strong> {report.snapshotTitle}
+                              </p>
+                            )}
+                            {report.snapshotBody && (
+                              <p>
+                                <strong>Review:</strong> {report.snapshotBody}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <p>
+                          <strong>Content link:</strong>{" "}
+                          {report.contentType === "review" ? (
+                            report.reviewLocationId ? (
+                              <Link
+                                href={`/locations/${report.reviewLocationId}#review-${report.contentId}`}
+                                className={styles.reportLink}
+                              >
+                                View review →
+                              </Link>
+                            ) : (
+                              <span className={styles.deletedHint}>(Content deleted)</span>
+                            )
+                          ) : (
+                            <span>
+                              {report.contentType} #{report.contentId}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className={styles.actions}>
+                        <button
+                          type="button"
+                          className={`${styles.button} ${styles.approve}`}
+                          disabled={!!pendingAction}
+                          onClick={() => {
+                            void runMutation({
+                              actionKey: resolveKey,
+                              input: `/api/v1/moderation/reports/${report.id}`,
+                              init: jsonInit("PATCH", { body: { decision: "actioned" } }),
+                              fallbackMessage: "Unable to resolve report.",
+                              successMessage: "Report marked as actioned.",
+                            });
+                          }}
+                        >
+                          {isWorking ? "Saving…" : "Mark Actioned"}
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.button} ${styles.reject}`}
+                          disabled={!!pendingAction}
+                          onClick={() => {
+                            void runMutation({
+                              actionKey: resolveKey,
+                              input: `/api/v1/moderation/reports/${report.id}`,
+                              init: jsonInit("PATCH", { body: { decision: "dismissed" } }),
+                              fallbackMessage: "Unable to dismiss report.",
+                              successMessage: "Report dismissed.",
+                            });
+                          }}
+                        >
+                          {isWorking ? "Saving…" : "Dismiss"}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CollapsibleSection>
+
+          {/* Resolved Reports */}
+          <CollapsibleSection
+            id="resolved-reports-heading"
+            heading={`Resolved Reports (${resolvedReports.length})`}
+          >
+            {resolvedReports.length === 0 ? (
+              <p className={styles.notice}>No resolved reports yet.</p>
+            ) : (
+              <ul className={styles.list}>
+                {resolvedReports.map((report) => (
+                  <li key={report.id} className={styles.item}>
+                    <h3>{report.contentType} report</h3>
+                    <div className={styles.meta}>
+                      <p>
+                        <strong>Status:</strong>{" "}
+                        <span
+                          className={
+                            report.status === "actioned"
+                              ? styles.status_approved
+                              : styles.status_rejected
+                          }
+                        >
+                          {report.status.toUpperCase()}
+                        </span>
+                      </p>
+                      <p>
+                        <strong>Reason:</strong>{" "}
+                        {REPORT_REASON_LABELS[report.reason] ?? report.reason}
+                      </p>
+                      <p>
+                        <strong>Resolved by:</strong> {report.resolvedBy?.displayName ?? "Unknown"}{" "}
+                        on {report.resolvedAt ? formatDate(report.resolvedAt) : "Unknown date"}
+                      </p>
+                      <p>
+                        <strong>Reporter:</strong> {report.reporter?.displayName ?? "Unknown user"}
+                      </p>
+                      {/* Snapshot of the reported content at report creation time */}
+                      {report.snapshotAuthorId && (
+                        <div className={styles.reportSnapshot}>
+                          <p className={styles.reportSnapshotHeading}>
+                            Reported content (snapshot)
+                          </p>
+                          <p>
+                            <strong>Author:</strong>{" "}
+                            {report.snapshotAuthorName ?? report.snapshotAuthorId}{" "}
+                            <span className={styles.reportSnapshotId}>
+                              ({report.snapshotAuthorId})
+                            </span>
+                          </p>
+                          {report.snapshotRating !== null && (
+                            <p>
+                              <strong>Rating:</strong> {report.snapshotRating} / 5
+                            </p>
+                          )}
+                          {report.snapshotTitle && (
+                            <p>
+                              <strong>Title:</strong> {report.snapshotTitle}
+                            </p>
+                          )}
+                          {report.snapshotBody && (
+                            <p>
+                              <strong>Review:</strong> {report.snapshotBody}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <p>
+                        <strong>Content:</strong>{" "}
+                        {report.contentType === "review" ? (
+                          report.reviewLocationId ? (
+                            <Link
+                              href={`/locations/${report.reviewLocationId}#review-${report.contentId}`}
+                              className={styles.reportLink}
+                            >
+                              View review →
+                            </Link>
+                          ) : (
+                            <span className={styles.deletedHint}>(Content deleted)</span>
+                          )
+                        ) : (
+                          <span>
+                            {report.contentType} #{report.contentId}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CollapsibleSection>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <>
       {feedback && (
@@ -536,475 +1260,24 @@ export function ModerationClient({
         </p>
       )}
 
-      <div className={styles.grid}>
-        {/* Pending Locations */}
-        <CollapsibleSection
-          id="pending-locations-heading"
-          heading={`Pending Locations (${pendingLocations.length})`}
-        >
-          {pendingLocations.length === 0 ? (
-            <p className={styles.notice}>No pending location submissions.</p>
-          ) : (
-            <ul className={styles.list}>
-              {pendingLocations.map((location) => {
-                const isEditing = editingLocationId === location.id;
+      <div className={styles.dashboardLayout}>
+        <div className={styles.queueColumn}>
+          <Tabs tabs={moderationTabs} />
+        </div>
 
-                return (
-                  <li key={location.id} className={styles.item}>
-                    <h3>{location.name}</h3>
-                    <div className={styles.meta}>
-                      <p>{locationTypeLabel(location.locationType)}</p>
-                      <p>
-                        {location.address} ({location.district})
-                      </p>
-                      <p>
-                        Submitted by {location.submitter?.displayName ?? "Unknown user"} on{" "}
-                        {formatDate(location.createdAt)}
-                      </p>
-                    </div>
-                    {isEditing && (
-                      <div className={styles.editForm}>
-                        <label className={styles.editLabel}>
-                          Name
-                          <input
-                            className={styles.editInput}
-                            type="text"
-                            placeholder={location.name}
-                            value={locationEditFields.name}
-                            onChange={(e) =>
-                              setLocationEditFields((f) => ({ ...f, name: e.target.value }))
-                            }
-                          />
-                        </label>
-                        <label className={styles.editLabel}>
-                          Type
-                          <select
-                            className={styles.editInput}
-                            value={locationEditFields.locationType}
-                            onChange={(e) =>
-                              setLocationEditFields((f) => ({
-                                ...f,
-                                locationType: e.target.value,
-                              }))
-                            }
-                          >
-                            <option value="">— unchanged —</option>
-                            {LOCATION_TYPE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className={styles.editLabel}>
-                          District
-                          <input
-                            className={styles.editInput}
-                            type="text"
-                            placeholder={location.district}
-                            value={locationEditFields.district}
-                            onChange={(e) =>
-                              setLocationEditFields((f) => ({ ...f, district: e.target.value }))
-                            }
-                          />
-                        </label>
-                        <label className={styles.editLabel}>
-                          Address
-                          <input
-                            className={styles.editInput}
-                            type="text"
-                            placeholder={location.address}
-                            value={locationEditFields.address}
-                            onChange={(e) =>
-                              setLocationEditFields((f) => ({ ...f, address: e.target.value }))
-                            }
-                          />
-                        </label>
-                        <div className={styles.actions}>
-                          <button
-                            type="button"
-                            className={`${styles.button} ${styles.approve}`}
-                            disabled={!!pendingAction}
-                            onClick={() => void editLocation(location.id)}
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.button}
-                            onClick={() => setEditingLocationId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className={styles.actions}>
-                      <ModerateButtons
-                        endpoint={MODERATION_ENDPOINTS.locations}
-                        id={location.id}
-                        queue="location"
-                        disabled={!!pendingAction}
-                        pendingAction={pendingAction}
-                        onModerate={moderate}
-                      />
-                      <button
-                        type="button"
-                        className={`${styles.button} ${styles.edit}`}
-                        disabled={!!pendingAction}
-                        onClick={() => {
-                          setEditingLocationId(isEditing ? null : location.id);
-                          setLocationEditFields({
-                            name: "",
-                            locationType: "",
-                            district: "",
-                            address: "",
-                          });
-                        }}
-                      >
-                        {isEditing ? "Cancel Edit" : "Edit"}
-                      </button>
-                      <DeleteButton
-                        itemKey={`location:${location.id}`}
-                        label="location"
-                        endpoint={MODERATION_ENDPOINTS.locations}
-                        id={location.id}
-                        confirmDelete={confirmDelete}
-                        pendingAction={pendingAction}
-                        onRequestDelete={deleteItem}
-                        onSetConfirmDelete={setConfirmDelete}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CollapsibleSection>
-
-        {/* Pending Brands */}
-        <CollapsibleSection
-          id="pending-brands-heading"
-          heading={`Pending Brands (${pendingBrands.length})`}
-        >
-          {pendingBrands.length === 0 ? (
-            <p className={styles.notice}>No pending beer brand submissions.</p>
-          ) : (
-            <ul className={styles.list}>
-              {pendingBrands.map((brand) => {
-                return (
-                  <li key={brand.id} className={styles.item}>
-                    <h3>{brand.name}</h3>
-                    <div className={styles.meta}>
-                      <p>
-                        Submitted by {brand.submitter?.displayName ?? "Unknown user"} on{" "}
-                        {formatDate(brand.createdAt)}
-                      </p>
-                    </div>
-                    <div className={styles.actions}>
-                      <ModerateButtons
-                        endpoint={MODERATION_ENDPOINTS.brands}
-                        id={brand.id}
-                        queue="brand"
-                        disabled={!!pendingAction}
-                        pendingAction={pendingAction}
-                        onModerate={moderate}
-                      />
-                      <DeleteButton
-                        itemKey={`brand:${brand.id}`}
-                        label="brand"
-                        endpoint={MODERATION_ENDPOINTS.brands}
-                        id={brand.id}
-                        confirmDelete={confirmDelete}
-                        pendingAction={pendingAction}
-                        onRequestDelete={deleteItem}
-                        onSetConfirmDelete={setConfirmDelete}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CollapsibleSection>
-
-        {/* Pending Variants */}
-        <CollapsibleSection
-          id="pending-variants-heading"
-          heading={`Pending Variants (${pendingVariants.length})`}
-        >
-          {pendingVariants.length === 0 ? (
-            <p className={styles.notice}>No pending beer variant submissions.</p>
-          ) : (
-            <ul className={styles.list}>
-              {pendingVariants.map((variant) => {
-                return (
-                  <li key={variant.id} className={styles.item}>
-                    <h3>{variant.name}</h3>
-                    <div className={styles.meta}>
-                      <p>Brand: {variant.brand?.name ?? "Unknown"}</p>
-                      <p>Style: {variant.style?.name ?? "Unknown"}</p>
-                      <p>
-                        Submitted by {variant.submitter?.displayName ?? "Unknown user"} on{" "}
-                        {formatDate(variant.createdAt)}
-                      </p>
-                    </div>
-                    <div className={styles.actions}>
-                      <ModerateButtons
-                        endpoint={MODERATION_ENDPOINTS.variants}
-                        id={variant.id}
-                        queue="variant"
-                        disabled={!!pendingAction}
-                        pendingAction={pendingAction}
-                        onModerate={moderate}
-                      />
-                      <DeleteButton
-                        itemKey={`variant:${variant.id}`}
-                        label="variant"
-                        endpoint={MODERATION_ENDPOINTS.variants}
-                        id={variant.id}
-                        confirmDelete={confirmDelete}
-                        pendingAction={pendingAction}
-                        onRequestDelete={deleteItem}
-                        onSetConfirmDelete={setConfirmDelete}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CollapsibleSection>
-
-        {/* Pending Offers */}
-        <CollapsibleSection
-          id="pending-offers-heading"
-          heading={`Pending Offers (${pendingOffers.length})`}
-        >
-          {pendingOffers.length === 0 ? (
-            <p className={styles.notice}>No pending offer submissions.</p>
-          ) : (
-            <ul className={styles.list}>
-              {pendingOffers.map((offer) => {
-                const isEditing = editingOfferId === offer.id;
-
-                return (
-                  <li key={offer.id} className={styles.item}>
-                    <h3>
-                      {offer.brand} {offer.variant} — {formatEur(offer.priceEur)}
-                    </h3>
-                    <div className={styles.meta}>
-                      <p>
-                        {offer.sizeMl} ml — {servingLabel(offer.serving)}
-                      </p>
-                      <p>
-                        Location: {offer.location.name} (
-                        {locationTypeLabel(offer.location.locationType)})
-                      </p>
-                      <p>
-                        Submitted by {offer.submitter?.displayName ?? "Unknown user"} on{" "}
-                        {formatDate(offer.createdAt)}
-                      </p>
-                    </div>
-                    {isEditing && (
-                      <div className={styles.editForm}>
-                        <label className={styles.editLabel}>
-                          New Price (EUR)
-                          <input
-                            className={styles.editInput}
-                            type="number"
-                            min="0.01"
-                            max="500"
-                            step="0.01"
-                            placeholder={offer.priceEur.toFixed(2)}
-                            value={offerEditPriceCents}
-                            onChange={(e) => setOfferEditPriceCents(e.target.value)}
-                          />
-                        </label>
-                        <div className={styles.actions}>
-                          <button
-                            type="button"
-                            className={`${styles.button} ${styles.approve}`}
-                            disabled={!!pendingAction}
-                            onClick={() => void editOffer(offer.id)}
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.button}
-                            onClick={() => setEditingOfferId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className={styles.actions}>
-                      <ModerateButtons
-                        endpoint={MODERATION_ENDPOINTS.offers}
-                        id={offer.id}
-                        queue="offer"
-                        disabled={!!pendingAction}
-                        pendingAction={pendingAction}
-                        onModerate={moderate}
-                      />
-                      <button
-                        type="button"
-                        className={`${styles.button} ${styles.edit}`}
-                        disabled={!!pendingAction}
-                        onClick={() => {
-                          setEditingOfferId(isEditing ? null : offer.id);
-                          setOfferEditPriceCents("");
-                        }}
-                      >
-                        {isEditing ? "Cancel Edit" : "Edit Price"}
-                      </button>
-                      <DeleteButton
-                        itemKey={`offer:${offer.id}`}
-                        label="offer"
-                        endpoint={MODERATION_ENDPOINTS.offers}
-                        id={offer.id}
-                        confirmDelete={confirmDelete}
-                        pendingAction={pendingAction}
-                        onRequestDelete={deleteItem}
-                        onSetConfirmDelete={setConfirmDelete}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CollapsibleSection>
-
-        {/* Pending Price Updates */}
-        <CollapsibleSection
-          id="pending-price-updates-heading"
-          heading={`Pending Price Updates (${pendingPriceUpdates.length})`}
-        >
-          {pendingPriceUpdates.length === 0 ? (
-            <p className={styles.notice}>No pending price update proposals.</p>
-          ) : (
-            <ul className={styles.list}>
-              {pendingPriceUpdates.map((proposal) => {
-                return (
-                  <li key={proposal.id} className={styles.item}>
-                    <h3>
-                      {proposal.offer.brand} {proposal.offer.variant}
-                    </h3>
-                    <div className={styles.meta}>
-                      <p>
-                        From {formatEur(proposal.offer.priceEur)} to{" "}
-                        {formatEur(proposal.proposedPriceEur)}
-                      </p>
-                      <p>
-                        {proposal.offer.sizeMl} ml — {servingLabel(proposal.offer.serving)}
-                      </p>
-                      <p>
-                        Location: {proposal.offer.location.name} (
-                        {locationTypeLabel(proposal.offer.location.locationType)})
-                      </p>
-                      <p>
-                        Submitted by {proposal.submitter?.displayName ?? "Unknown user"} on{" "}
-                        {formatDate(proposal.createdAt)}
-                      </p>
-                    </div>
-                    <div className={styles.actions}>
-                      <ModerateButtons
-                        endpoint={MODERATION_ENDPOINTS.priceUpdates}
-                        id={proposal.id}
-                        queue="price update"
-                        disabled={!!pendingAction}
-                        pendingAction={pendingAction}
-                        onModerate={moderate}
-                      />
-                      <DeleteButton
-                        itemKey={`price-update:${proposal.id}`}
-                        label="price update"
-                        endpoint={MODERATION_ENDPOINTS.priceUpdates}
-                        id={proposal.id}
-                        confirmDelete={confirmDelete}
-                        pendingAction={pendingAction}
-                        onRequestDelete={deleteItem}
-                        onSetConfirmDelete={setConfirmDelete}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CollapsibleSection>
-
-        {/* New Reviews (queue) */}
-        <CollapsibleSection id="new-reviews-heading" heading={`New Reviews (${newReviews.length})`}>
-          {newReviews.length === 0 ? (
-            <p className={styles.notice}>No new reviews awaiting moderation.</p>
-          ) : (
-            <ul className={styles.list}>
-              {newReviews.map((review) => (
-                <ReviewItem
-                  key={review.id}
-                  review={review}
-                  showModerationButtons
-                  editingReviewId={editingReviewId}
-                  confirmDelete={confirmDelete}
-                  pendingAction={pendingAction}
-                  reviewEditFields={reviewEditFields}
-                  onSetEditingReviewId={setEditingReviewId}
-                  onSetReviewEditFields={setReviewEditFields}
-                  onSetConfirmDelete={setConfirmDelete}
-                  onModerate={moderate}
-                  onDelete={deleteItem}
-                  onEditReview={editReview}
-                />
-              ))}
-            </ul>
-          )}
-        </CollapsibleSection>
-
-        {/* Approved Reviews (reference) */}
-        <CollapsibleSection
-          id="approved-reviews-heading"
-          heading={`Approved Reviews (${approvedReviews.length})`}
-        >
-          {approvedReviews.length === 0 ? (
-            <p className={styles.notice}>No approved reviews yet.</p>
-          ) : (
-            <ul className={styles.list}>
-              {approvedReviews.map((review) => (
-                <ReviewItem
-                  key={review.id}
-                  review={review}
-                  showModerationButtons={false}
-                  editingReviewId={editingReviewId}
-                  confirmDelete={confirmDelete}
-                  pendingAction={pendingAction}
-                  reviewEditFields={reviewEditFields}
-                  onSetEditingReviewId={setEditingReviewId}
-                  onSetReviewEditFields={setReviewEditFields}
-                  onSetConfirmDelete={setConfirmDelete}
-                  onModerate={moderate}
-                  onDelete={deleteItem}
-                  onEditReview={editReview}
-                />
-              ))}
-            </ul>
-          )}
-        </CollapsibleSection>
+        {/* Audit Log column */}
+        <aside className={styles.auditColumn}>
+          <section className={styles.panel} aria-labelledby="audit-log-heading">
+            <h2 id="audit-log-heading">Recent Activity</h2>
+            <AuditLogList
+              entries={auditLog}
+              emptyMessage="No activity yet."
+              dateTimeOptions={{ dateStyle: "short", timeStyle: "short" }}
+              footer={<Link href="/moderation/audit-log">Full Audit Log →</Link>}
+            />
+          </section>
+        </aside>
       </div>
-
-      {/* Audit Log — always visible, full width */}
-      <section className={styles.panel} aria-labelledby="audit-log-heading">
-        <h2 id="audit-log-heading">Audit Log (last {auditLog.length})</h2>
-        <AuditLogList
-          entries={auditLog}
-          emptyMessage="No moderation actions recorded yet."
-          dateTimeOptions={{ dateStyle: "short", timeStyle: "short" }}
-          footer={<Link href="/moderation/audit-log">View full audit log →</Link>}
-        />
-      </section>
     </>
   );
 }

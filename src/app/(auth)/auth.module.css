@@ -4,6 +4,8 @@
   display: grid;
   align-content: start;
   gap: 1rem;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .panel {
@@ -11,7 +13,6 @@
   background: var(--surface);
   box-shadow: var(--shadow-block);
   padding: 1rem;
-  max-width: 640px;
 }
 
 .panel h1 {

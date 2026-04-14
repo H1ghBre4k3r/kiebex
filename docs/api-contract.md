@@ -75,7 +75,7 @@ Query parameters (all optional, filter params accept multiple values via repeate
 - `serving` (`tap | bottle | can`, repeatable)
 - `locationType` (`pub | bar | restaurant | supermarket`, repeatable)
 - `locationId` (string, repeatable)
-- `sort` (`price_asc | price_desc`, default `price_asc`, single value)
+- `sort` (`price_asc | price_desc | name_asc | name_desc`, default `price_asc`, single value)
 
 Example:
 

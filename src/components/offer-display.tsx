@@ -21,7 +21,7 @@ export function OfferSummary({
   showLocationLink?: boolean;
 }) {
   return (
-    <>
+    <div>
       <div className={styles.offerHead}>
         <h3 className={styles.offerTitle}>
           {offer.brand} {offer.variant}
@@ -63,7 +63,7 @@ export function OfferSummary({
           </>
         )}
       </dl>
-    </>
+    </div>
   );
 }
 
@@ -78,8 +78,8 @@ export function LocationOfferSummary({
     <div className={styles.offerCard}>
       <OfferSummary offer={offer} showLocationLink={false} />
 
-      <div>
-        <p>Price history ({history.length})</p>
+      <div className={styles.historySection}>
+        <p className={styles.historyTitle}>History ({history.length})</p>
         {history.length > 0 ? (
           <ul className={styles.historyList}>
             {history.map((entry) => (
@@ -92,7 +92,9 @@ export function LocationOfferSummary({
             ))}
           </ul>
         ) : (
-          <p>No tracked price history yet.</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
+            No price history yet.
+          </p>
         )}
       </div>
     </div>

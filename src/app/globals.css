@@ -8,6 +8,7 @@
   --border-regular: 2px solid #111;
   --shadow-block: 8px 8px 0 #111;
   --white: #fff;
+  --container-max-width: 1200px;
 }
 
 html,
@@ -21,15 +22,34 @@ body {
   padding: 0;
 }
 
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
 body {
   color: var(--ink);
-  background:
-    radial-gradient(circle at 25% 0%, #ffeca9 0%, #f3ebd9 45%),
-    linear-gradient(135deg, #f3ebd9 0%, #e7dbc4 100%);
+  background-color: #fdfaf3;
   font-family: var(--font-body), "Courier New", Courier, monospace;
   line-height: 1.35;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle dot grid pattern */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(var(--ink) 1.2px, transparent 1.2px);
+  background-size: 40px 40px;
+  opacity: 0.04;
+  z-index: -1;
+  pointer-events: none;
 }
 
 h1,
