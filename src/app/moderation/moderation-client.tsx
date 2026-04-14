@@ -94,8 +94,10 @@ function CollapsibleSection({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className={styles.sectionToggleIndicator}>{open ? "▼" : "▶"}</span>
-        {heading}
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionToggleIndicator}>▶</span>
+          {heading}
+        </div>
       </button>
       {open && <div className={styles.sectionBody}>{children}</div>}
     </section>
@@ -323,10 +325,12 @@ function ReviewItem({
             {reviewStatusLabel(review.status)}
           </span>
         </p>
-        <p>Location: {review.locationName}</p>
+        <p>
+          <strong>Location:</strong> {review.locationName}
+        </p>
         {review.body && <p>{review.body}</p>}
         <p>
-          By {review.author.displayName} on {formatDate(review.createdAt)}
+          <strong>Submitted:</strong> By {review.author.displayName} on {formatDate(review.createdAt)}
         </p>
       </div>
       {isEditing && (
@@ -564,12 +568,14 @@ export function ModerationClient({
                     <li key={location.id} className={styles.item}>
                       <h3>{location.name}</h3>
                       <div className={styles.meta}>
-                        <p>{locationTypeLabel(location.locationType)}</p>
                         <p>
-                          {location.address} ({location.district})
+                          <strong>Type:</strong> {locationTypeLabel(location.locationType)}
                         </p>
                         <p>
-                          Submitted by {location.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Address:</strong> {location.address} ({location.district})
+                        </p>
+                        <p>
+                          <strong>Submitted:</strong> By {location.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(location.createdAt)}
                         </p>
                       </div>
@@ -708,7 +714,7 @@ export function ModerationClient({
                       <h3>{brand.name}</h3>
                       <div className={styles.meta}>
                         <p>
-                          Submitted by {brand.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By {brand.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(brand.createdAt)}
                         </p>
                       </div>
@@ -753,10 +759,14 @@ export function ModerationClient({
                     <li key={variant.id} className={styles.item}>
                       <h3>{variant.name}</h3>
                       <div className={styles.meta}>
-                        <p>Brand: {variant.brand?.name ?? "Unknown"}</p>
-                        <p>Style: {variant.style?.name ?? "Unknown"}</p>
                         <p>
-                          Submitted by {variant.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Brand:</strong> {variant.brand?.name ?? "Unknown"}
+                        </p>
+                        <p>
+                          <strong>Style:</strong> {variant.style?.name ?? "Unknown"}
+                        </p>
+                        <p>
+                          <strong>Submitted:</strong> By {variant.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(variant.createdAt)}
                         </p>
                       </div>
@@ -806,14 +816,14 @@ export function ModerationClient({
                       </h3>
                       <div className={styles.meta}>
                         <p>
-                          {offer.sizeMl} ml — {servingLabel(offer.serving)}
+                          <strong>Size:</strong> {offer.sizeMl} ml — {servingLabel(offer.serving)}
                         </p>
                         <p>
-                          Location: {offer.location.name} (
+                          <strong>Location:</strong> {offer.location.name} (
                           {locationTypeLabel(offer.location.locationType)})
                         </p>
                         <p>
-                          Submitted by {offer.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By {offer.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(offer.createdAt)}
                         </p>
                       </div>
@@ -906,18 +916,18 @@ export function ModerationClient({
                       </h3>
                       <div className={styles.meta}>
                         <p>
-                          From {formatEur(proposal.offer.priceEur)} to{" "}
+                          <strong>Update:</strong> From {formatEur(proposal.offer.priceEur)} to{" "}
                           {formatEur(proposal.proposedPriceEur)}
                         </p>
                         <p>
-                          {proposal.offer.sizeMl} ml — {servingLabel(proposal.offer.serving)}
+                          <strong>Size:</strong> {proposal.offer.sizeMl} ml — {servingLabel(proposal.offer.serving)}
                         </p>
                         <p>
-                          Location: {proposal.offer.location.name} (
+                          <strong>Location:</strong> {proposal.offer.location.name} (
                           {locationTypeLabel(proposal.offer.location.locationType)})
                         </p>
                         <p>
-                          Submitted by {proposal.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By {proposal.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(proposal.createdAt)}
                         </p>
                       </div>
