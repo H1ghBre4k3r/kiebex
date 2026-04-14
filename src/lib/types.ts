@@ -142,7 +142,7 @@ export type LocationReviewSummary = {
   averageRating: number | null;
 };
 
-export type BeerSort = "price_asc" | "price_desc";
+export type BeerSort = "price_asc" | "price_desc" | "name_asc" | "name_desc";
 
 export type BeerQuery = {
   brandId?: string[];

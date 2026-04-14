@@ -4,7 +4,7 @@ import { LOCATION_TYPES, REPORT_REASONS, SERVING_TYPES } from "@/lib/types";
 const moderationStatuses = ["approved", "rejected"] as const;
 const userRoles = ["user", "moderator", "admin"] as const;
 const reviewStatuses = ["approved", "rejected"] as const;
-const sortOrders = ["price_asc", "price_desc"] as const;
+const sortOrders = ["price_asc", "price_desc", "name_asc", "name_desc"] as const;
 
 export const beerQuerySchema = z.object({
   brandId: z.array(z.string().trim().min(1).max(100)).optional(),

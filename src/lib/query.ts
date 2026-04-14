@@ -433,11 +433,24 @@ function buildBeerOffersWhere(query: BeerQuery) {
   };
 }
 
+function buildBeerOffersOrderBy(query: BeerQuery): Record<string, "asc" | "desc">[] {
+  switch (query.sort) {
+    case "price_desc":
+      return [{ priceCents: "desc" }];
+    case "name_asc":
+      return [{ brand: "asc" }, { variant: "asc" }];
+    case "name_desc":
+      return [{ brand: "desc" }, { variant: "desc" }];
+    default:
+      return [{ priceCents: "asc" }];
+  }
+}
+
 export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWithLocation[]> {
   const offers = await db.beerOffer.findMany({
     where: buildBeerOffersWhere(query),
     include: offerInclude(),
-    orderBy: [{ priceCents: query.sort === "price_desc" ? "desc" : "asc" }],
+    orderBy: buildBeerOffersOrderBy(query),
   });
 
   return offers.map(mapOfferWithLocation);
@@ -454,7 +467,7 @@ export async function getBeerOffersPage(
     db.beerOffer.findMany({
       where,
       include: offerInclude(),
-      orderBy: [{ priceCents: query.sort === "price_desc" ? "desc" : "asc" }],
+      orderBy: buildBeerOffersOrderBy(query),
       skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
       take: BEER_OFFERS_PAGE_SIZE,
     }),
