@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Oswald, Space_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 const headingFont = Oswald({
@@ -29,9 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${headingFont.variable} ${bodyFont.variable}`}>
-      <body>
+      <body style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         <SiteHeader />
-        {children}
+        <div style={{ flex: 1 }}>{children}</div>
+        <SiteFooter />
       </body>
     </html>
   );
