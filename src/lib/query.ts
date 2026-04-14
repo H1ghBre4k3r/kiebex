@@ -19,6 +19,7 @@ import type {
   ModerationStatusDecision,
   OfferPriceHistory,
   OpenReport,
+  ResolvedReport,
   PendingBeerBrandSubmission,
   PendingBeerOfferSubmission,
   PendingBeerVariantSubmission,
@@ -2099,6 +2100,11 @@ function mapReport(r: {
   resolvedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  snapshotAuthorId: string | null;
+  snapshotAuthorName: string | null;
+  snapshotRating: number | null;
+  snapshotTitle: string | null;
+  snapshotBody: string | null;
 }): Report {
   return {
     id: r.id,
@@ -2112,6 +2118,11 @@ function mapReport(r: {
     resolvedAt: r.resolvedAt,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
+    snapshotAuthorId: r.snapshotAuthorId,
+    snapshotAuthorName: r.snapshotAuthorName,
+    snapshotRating: r.snapshotRating,
+    snapshotTitle: r.snapshotTitle,
+    snapshotBody: r.snapshotBody,
   };
 }
 
@@ -2122,6 +2133,35 @@ export async function createReport(input: {
   reason: ReportReason;
   note?: string;
 }): Promise<Report> {
+  // Capture a snapshot of the reported content at the time of reporting so the
+  // context is preserved even if the content or its author is later deleted.
+  let snapshotAuthorId: string | null = null;
+  let snapshotAuthorName: string | null = null;
+  let snapshotRating: number | null = null;
+  let snapshotTitle: string | null = null;
+  let snapshotBody: string | null = null;
+
+  if (input.contentType === "review") {
+    const review = await db.review.findUnique({
+      where: { id: input.contentId },
+      select: {
+        userId: true,
+        rating: true,
+        title: true,
+        body: true,
+        user: { select: { displayName: true } },
+      },
+    });
+
+    if (review) {
+      snapshotAuthorId = review.userId;
+      snapshotAuthorName = review.user.displayName;
+      snapshotRating = review.rating;
+      snapshotTitle = review.title ?? null;
+      snapshotBody = review.body ?? null;
+    }
+  }
+
   const created = await db.report.create({
     data: {
       reporterId: input.reporterId,
@@ -2130,6 +2170,11 @@ export async function createReport(input: {
       reason: input.reason,
       note: input.note ?? null,
       status: "open",
+      snapshotAuthorId,
+      snapshotAuthorName,
+      snapshotRating,
+      snapshotTitle,
+      snapshotBody,
     },
   });
 
@@ -2197,7 +2242,9 @@ export async function getResolvedReports(): Promise<ResolvedReport[]> {
   return reports.map((r) => ({
     ...mapReport(r),
     reporter: r.reporter ? { id: r.reporter.id, displayName: r.reporter.displayName } : null,
-    resolvedBy: r.resolvedBy ? { id: r.resolvedBy.id, displayName: r.resolvedBy.displayName } : null,
+    resolvedBy: r.resolvedBy
+      ? { id: r.resolvedBy.id, displayName: r.resolvedBy.displayName }
+      : null,
     reviewLocationId:
       r.contentType === "review" ? (reviewLocationMap.get(r.contentId) ?? null) : undefined,
   }));

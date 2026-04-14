@@ -255,6 +255,12 @@ export type Report = {
   resolvedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Snapshot of the reported content captured at report creation time. */
+  snapshotAuthorId: string | null;
+  snapshotAuthorName: string | null;
+  snapshotRating: number | null;
+  snapshotTitle: string | null;
+  snapshotBody: string | null;
 };
 
 export type OpenReport = Report & {

@@ -17,6 +17,7 @@ import type {
   ModerationAuditLogEntry,
   ModerationReview,
   OpenReport,
+  ResolvedReport,
   PendingBeerBrandSubmission,
   PendingBeerOfferSubmission,
   PendingBeerVariantSubmission,
@@ -1048,11 +1049,42 @@ export function ModerationClient({
                           </p>
                         )}
                         <p>
-                          <strong>Reporter:</strong> {report.reporter?.displayName ?? "Unknown user"}
+                          <strong>Reporter:</strong>{" "}
+                          {report.reporter?.displayName ?? "Unknown user"}
                         </p>
                         <p>
                           <strong>Reported at:</strong> {formatDate(report.createdAt)}
                         </p>
+                        {/* Snapshot of the reported content at report creation time */}
+                        {report.snapshotAuthorId && (
+                          <div className={styles.reportSnapshot}>
+                            <p className={styles.reportSnapshotHeading}>
+                              Reported content (snapshot)
+                            </p>
+                            <p>
+                              <strong>Author:</strong>{" "}
+                              {report.snapshotAuthorName ?? report.snapshotAuthorId}{" "}
+                              <span className={styles.reportSnapshotId}>
+                                ({report.snapshotAuthorId})
+                              </span>
+                            </p>
+                            {report.snapshotRating !== null && (
+                              <p>
+                                <strong>Rating:</strong> {report.snapshotRating} / 5
+                              </p>
+                            )}
+                            {report.snapshotTitle && (
+                              <p>
+                                <strong>Title:</strong> {report.snapshotTitle}
+                              </p>
+                            )}
+                            {report.snapshotBody && (
+                              <p>
+                                <strong>Review:</strong> {report.snapshotBody}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <p>
                           <strong>Content link:</strong>{" "}
                           {report.contentType === "review" ? (
@@ -1072,7 +1104,6 @@ export function ModerationClient({
                             </span>
                           )}
                         </p>
-
                       </div>
                       <div className={styles.actions}>
                         <button
@@ -1132,7 +1163,9 @@ export function ModerationClient({
                         <strong>Status:</strong>{" "}
                         <span
                           className={
-                            report.status === "actioned" ? styles.status_approved : styles.status_rejected
+                            report.status === "actioned"
+                              ? styles.status_approved
+                              : styles.status_rejected
                           }
                         >
                           {report.status.toUpperCase()}
@@ -1143,13 +1176,42 @@ export function ModerationClient({
                         {REPORT_REASON_LABELS[report.reason] ?? report.reason}
                       </p>
                       <p>
-                        <strong>Resolved by:</strong>{" "}
-                        {report.resolvedBy?.displayName ?? "Unknown"} on{" "}
-                        {report.resolvedAt ? formatDate(report.resolvedAt) : "Unknown date"}
+                        <strong>Resolved by:</strong> {report.resolvedBy?.displayName ?? "Unknown"}{" "}
+                        on {report.resolvedAt ? formatDate(report.resolvedAt) : "Unknown date"}
                       </p>
                       <p>
                         <strong>Reporter:</strong> {report.reporter?.displayName ?? "Unknown user"}
                       </p>
+                      {/* Snapshot of the reported content at report creation time */}
+                      {report.snapshotAuthorId && (
+                        <div className={styles.reportSnapshot}>
+                          <p className={styles.reportSnapshotHeading}>
+                            Reported content (snapshot)
+                          </p>
+                          <p>
+                            <strong>Author:</strong>{" "}
+                            {report.snapshotAuthorName ?? report.snapshotAuthorId}{" "}
+                            <span className={styles.reportSnapshotId}>
+                              ({report.snapshotAuthorId})
+                            </span>
+                          </p>
+                          {report.snapshotRating !== null && (
+                            <p>
+                              <strong>Rating:</strong> {report.snapshotRating} / 5
+                            </p>
+                          )}
+                          {report.snapshotTitle && (
+                            <p>
+                              <strong>Title:</strong> {report.snapshotTitle}
+                            </p>
+                          )}
+                          {report.snapshotBody && (
+                            <p>
+                              <strong>Review:</strong> {report.snapshotBody}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <p>
                         <strong>Content:</strong>{" "}
                         {report.contentType === "review" ? (

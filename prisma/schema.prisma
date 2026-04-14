@@ -291,6 +291,14 @@ model Report {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  // Snapshot of the reported content captured at report creation time.
+  // Preserved even if the original content or author is later deleted.
+  snapshotAuthorId   String?
+  snapshotAuthorName String? // denormalised display name
+  snapshotRating     Int?
+  snapshotTitle      String?
+  snapshotBody       String?
+
   reporter   User? @relation("ReportCreatedBy", fields: [reporterId], references: [id], onDelete: SetNull)
   resolvedBy User? @relation("ReportResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
 
