@@ -170,7 +170,6 @@ jobs:
           echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
           echo "PR_NUMBER=${{ github.event.number }}" >> $GITHUB_ENV
           echo "IMAGE_TAG=pr-${{ github.event.number }}-${{ github.sha }}" >> $GITHUB_ENV
-          echo "ADMIN_EMAIL=${{ secrets.REVIEW_ADMIN_EMAIL }}" >> $GITHUB_ENV
         env:
           OWNER: "${{ github.repository_owner }}"
 
@@ -212,6 +211,8 @@ jobs:
           echo "ADMIN_PASSWORD=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
       - name: Generate manifests
+        env:
+          ADMIN_EMAIL: ${{ vars.REVIEW_ADMIN_EMAIL }}
         run: |
           DEST=$(mktemp -d)
           for f in manifests/review-app/*.yml; do
@@ -255,7 +256,7 @@ jobs:
           | **Commit** | `${{ github.sha }}` |
 
           Database seeded with sample locations, beers, offers, and reviews.
-          Admin login: `${{ env.ADMIN_EMAIL }}` — password was set on first deploy (see `app-secret.yml` on the deploy branch).
+          Admin login: `${{ vars.REVIEW_ADMIN_EMAIL }}` — password was set on first deploy (see `app-secret.yml` on the deploy branch).
 
           > ArgoCD syncs automatically. The app will be reachable once the `migrate` init container completes.'
           gh pr comment ${{ github.event.number }} --edit-last --body "$BODY" 2>/dev/null || \
