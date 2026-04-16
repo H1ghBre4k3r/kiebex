@@ -81,6 +81,7 @@ jobs:
         run: npm run test:e2e
 
   image:
+    if: github.event_name == 'push'
     permissions:
       contents: read
       packages: write
@@ -89,10 +90,149 @@ jobs:
       - lint-typecheck-unit
     uses: ./.github/workflows/image.yml
     secrets: inherit
-  
+
   deploy:
+    if: github.event_name == 'push'
     permissions:
       contents: write
     needs: image
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
+
+  review-app-image:
+    name: Build & Push Review App Image
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - lint-typecheck-unit
+      - integration-and-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: "${{ github.repository_owner }}"
+
+      - name: Build and push app image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64/v8
+          context: .
+          target: runner
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/kiebex:pr-${{ github.event.number }}-${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/kiebex:pr-${{ github.event.number }}
+
+      - name: Build and push migrate image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64/v8
+          context: .
+          target: migrator
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/kiebex-migrate:pr-${{ github.event.number }}-${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/kiebex-migrate:pr-${{ github.event.number }}
+
+  review-app-deploy:
+    name: Deploy Review App
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: write
+      deployments: write
+    needs: review-app-image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set environment variables
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+          echo "PR_NUMBER=${{ github.event.number }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=pr-${{ github.event.number }}-${{ github.sha }}" >> $GITHUB_ENV
+          echo "ADMIN_EMAIL=${{ secrets.REVIEW_ADMIN_EMAIL }}" >> $GITHUB_ENV
+        env:
+          OWNER: "${{ github.repository_owner }}"
+
+      - name: Create GitHub Deployment
+        id: create-deployment
+        run: |
+          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
+            --method POST \
+            -f ref="${{ github.sha }}" \
+            -f environment="review/pr-${{ github.event.number }}" \
+            -f description="Review app for PR #${{ github.event.number }}" \
+            -F auto_merge=false \
+            --jq '.id')
+          echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          gh api repos/${{ github.repository }}/deployments/${DEPLOYMENT_ID}/statuses \
+            --method POST \
+            -f state=pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate secrets
+        run: |
+          echo "POSTGRES_PASSWORD=$(openssl rand -hex 32)" >> $GITHUB_ENV
+          echo "ADMIN_PASSWORD=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+      - name: Generate manifests
+        run: |
+          DEST=$(mktemp -d)
+          for f in manifests/review-app/*.yml; do
+            envsubst '$PR_NUMBER $POSTGRES_PASSWORD $ADMIN_PASSWORD $ADMIN_EMAIL $OWNER_LC $IMAGE_TAG' \
+              < "$f" > "$DEST/$(basename $f)"
+          done
+          echo "MANIFEST_DIR=$DEST" >> $GITHUB_ENV
+
+      - name: Push manifests to deploy branch
+        run: |
+          git config user.email "gitops@pesca.dev"
+          git config user.name "PescaDev GitOps Bot"
+          git fetch origin deploy 2>/dev/null || true
+          git switch -C deploy origin/deploy 2>/dev/null || git switch --orphan deploy
+          mkdir -p review-apps/pr-${{ github.event.number }}
+          cp "$MANIFEST_DIR"/*.yml review-apps/pr-${{ github.event.number }}/
+          git add review-apps/pr-${{ github.event.number }}/
+          git diff --cached --quiet || \
+            git commit --no-verify --signoff \
+              -m "Deploy review app for pr-${{ github.event.number }} @ ${{ github.sha }}"
+          git push origin deploy --force
+
+      - name: Mark deployment success
+        if: success()
+        run: |
+          gh api repos/${{ github.repository }}/deployments/${{ steps.create-deployment.outputs.deployment_id }}/statuses \
+            --method POST \
+            -f state=success \
+            -f environment_url="https://pr-${{ github.event.number }}.review.kiel.beer"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mark deployment failure
+        if: failure() && steps.create-deployment.outputs.deployment_id != ''
+        run: |
+          gh api repos/${{ github.repository }}/deployments/${{ steps.create-deployment.outputs.deployment_id }}/statuses \
+            --method POST \
+            -f state=failure
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

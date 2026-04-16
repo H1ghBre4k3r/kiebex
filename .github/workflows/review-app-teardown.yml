@@ -1,0 +1,44 @@
+name: Review App Teardown
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  teardown:
+    name: Tear Down Review App
+    permissions:
+      contents: write
+      deployments: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure git
+        run: |
+          git config user.email "gitops@pesca.dev"
+          git config user.name "PescaDev GitOps Bot"
+
+      - name: Remove from deploy branch
+        run: |
+          git fetch origin deploy
+          git switch -C deploy origin/deploy
+          if [ -d "review-apps/pr-${{ github.event.number }}" ]; then
+            git rm -rf "review-apps/pr-${{ github.event.number }}/"
+            git commit --no-verify --signoff \
+              -m "Teardown review app for pr-${{ github.event.number }}"
+            git push origin deploy --force
+          fi
+
+      - name: Mark GitHub Deployment inactive
+        run: |
+          DEPLOYMENT_ID=$(gh api "repos/${{ github.repository }}/deployments" \
+            --jq "[.[] | select(.environment == \"review/pr-${{ github.event.number }}\")] | first | .id")
+          if [ -n "$DEPLOYMENT_ID" ] && [ "$DEPLOYMENT_ID" != "null" ]; then
+            gh api "repos/${{ github.repository }}/deployments/${DEPLOYMENT_ID}/statuses" \
+              --method POST \
+              -f state=inactive
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
