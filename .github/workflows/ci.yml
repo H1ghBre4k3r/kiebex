@@ -196,27 +196,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate secrets
-        run: |
-          git fetch origin deploy 2>/dev/null || true
-          SECRET_FILE="review-apps/pr-${{ github.event.number }}/postgres-secret.yml"
-          if git cat-file -e "origin/deploy:${SECRET_FILE}" 2>/dev/null; then
-            POSTGRES_PASSWORD=$(git show "origin/deploy:${SECRET_FILE}" \
-              | awk '/POSTGRES_PASSWORD:/ { print $2 }')
-            echo "Reusing existing POSTGRES_PASSWORD for pr-${{ github.event.number }}"
-          else
-            POSTGRES_PASSWORD=$(openssl rand -hex 32)
-          fi
-          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> $GITHUB_ENV
-          echo "ADMIN_PASSWORD=$(openssl rand -hex 32)" >> $GITHUB_ENV
-
       - name: Generate manifests
-        env:
-          ADMIN_EMAIL: ${{ vars.REVIEW_ADMIN_EMAIL }}
         run: |
           DEST=$(mktemp -d)
           for f in manifests/review-app/*.yml; do
-            envsubst '$PR_NUMBER $POSTGRES_PASSWORD $ADMIN_PASSWORD $ADMIN_EMAIL $OWNER_LC $IMAGE_TAG' \
+            envsubst '$PR_NUMBER $OWNER_LC $IMAGE_TAG' \
               < "$f" > "$DEST/$(basename $f)"
           done
           echo "MANIFEST_DIR=$DEST" >> $GITHUB_ENV
@@ -254,9 +238,10 @@ jobs:
           | **URL** | https://pr-${{ github.event.number }}.review.kiel.beer *(VPN required)* |
           | **Image** | `pr-${{ github.event.number }}-${{ github.sha }}` |
           | **Commit** | `${{ github.sha }}` |
+          | **Admin email** | `admin@review.kiel.beer` |
+          | **Admin password** | `review` |
 
           Database seeded with sample locations, beers, offers, and reviews.
-          Admin login: `${{ vars.REVIEW_ADMIN_EMAIL }}` — password was set on first deploy (see `app-secret.yml` on the deploy branch).
 
           > ArgoCD syncs automatically. The app will be reachable once the `migrate` init container completes.'
           gh pr comment ${{ github.event.number }} --edit-last --body "$BODY" 2>/dev/null || \
