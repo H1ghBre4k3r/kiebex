@@ -159,6 +159,7 @@ jobs:
     permissions:
       contents: write
       deployments: write
+      pull-requests: write
     needs: review-app-image
     runs-on: ubuntu-latest
     steps:
@@ -239,6 +240,26 @@ jobs:
           gh api repos/${{ github.repository }}/deployments/${{ steps.create-deployment.outputs.deployment_id }}/statuses \
             --method POST \
             -f state=success
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR
+        if: success()
+        run: |
+          BODY='## Review App Deployed
+
+          | | |
+          |---|---|
+          | **URL** | https://pr-${{ github.event.number }}.review.kiel.beer *(VPN required)* |
+          | **Image** | `pr-${{ github.event.number }}-${{ github.sha }}` |
+          | **Commit** | `${{ github.sha }}` |
+
+          Database seeded with sample locations, beers, offers, and reviews.
+          Admin login: `${{ env.ADMIN_EMAIL }}` — password was set on first deploy (see `app-secret.yml` on the deploy branch).
+
+          > ArgoCD syncs automatically. The app will be reachable once the `migrate` init container completes.'
+          gh pr comment ${{ github.event.number }} --edit-last --body "$BODY" 2>/dev/null || \
+            gh pr comment ${{ github.event.number }} --body "$BODY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
