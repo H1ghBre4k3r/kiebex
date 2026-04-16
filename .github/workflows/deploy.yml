@@ -23,7 +23,7 @@ jobs:
           cp -r manifests/ /tmp/manifests/
           git fetch origin deploy 2>/dev/null || true
           git switch -C deploy origin/deploy 2>/dev/null || git switch -C deploy
-          cp -r /tmp/manifests/ manifests/
+          cp -r /tmp/manifests/* manifests/
       - name: Update Version In Checked-Out Code
         run: |
           sed -i "s|image: ghcr.io/.*/kiebex-migrate:.*|image: ghcr.io/${{ env.OWNER_LC }}/kiebex-migrate:${{ github.sha }}|" ${GITHUB_WORKSPACE}/manifests/deployment.yml
