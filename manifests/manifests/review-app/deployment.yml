@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kiebex
-  namespace: kiebex
+  namespace: kiebex-pr-${PR_NUMBER}
   labels:
     app: kiebex
   annotations:
@@ -19,13 +19,14 @@ spec:
     spec:
       initContainers:
         - name: migrate
-          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:d07685aad47b18900d200b1d7351282b2f7e8656
+          image: ghcr.io/${OWNER_LC}/kiebex-migrate:${IMAGE_TAG}
           imagePullPolicy: Always
           command:
             - /bin/sh
             - -c
             - |
               node node_modules/prisma/build/index.js migrate deploy &&
+              node node_modules/.bin/tsx prisma/seed.ts &&
               node prisma/seed-admin.mjs
           envFrom:
             - secretRef:
@@ -39,7 +40,7 @@ spec:
               memory: 256Mi
       containers:
         - name: kiebex
-          image: ghcr.io/h1ghbre4k3r/kiebex:d07685aad47b18900d200b1d7351282b2f7e8656
+          image: ghcr.io/${OWNER_LC}/kiebex:${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
