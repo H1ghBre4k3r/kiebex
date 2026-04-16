@@ -198,7 +198,16 @@ jobs:
 
       - name: Generate secrets
         run: |
-          echo "POSTGRES_PASSWORD=$(openssl rand -hex 32)" >> $GITHUB_ENV
+          git fetch origin deploy 2>/dev/null || true
+          SECRET_FILE="review-apps/pr-${{ github.event.number }}/postgres-secret.yml"
+          if git cat-file -e "origin/deploy:${SECRET_FILE}" 2>/dev/null; then
+            POSTGRES_PASSWORD=$(git show "origin/deploy:${SECRET_FILE}" \
+              | awk '/POSTGRES_PASSWORD:/ { print $2 }')
+            echo "Reusing existing POSTGRES_PASSWORD for pr-${{ github.event.number }}"
+          else
+            POSTGRES_PASSWORD=$(openssl rand -hex 32)
+          fi
+          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> $GITHUB_ENV
           echo "ADMIN_PASSWORD=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
       - name: Generate manifests

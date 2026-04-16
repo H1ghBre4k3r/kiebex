@@ -26,6 +26,7 @@ spec:
             - -c
             - |
               node node_modules/prisma/build/index.js migrate deploy &&
+              node node_modules/.bin/tsx prisma/seed.ts &&
               node prisma/seed-admin.mjs
           envFrom:
             - secretRef:
