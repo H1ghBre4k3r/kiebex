@@ -11,9 +11,15 @@ jobs:
     permissions:
       contents: write
       deployments: write
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set lower case owner name
+        run: echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: "${{ github.repository_owner }}"
 
       - name: Configure git
         run: |
@@ -42,3 +48,27 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete PR images from GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER_TYPE=$(gh api "repos/${{ github.repository }}" --jq '.owner.type')
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            PKG_BASE="orgs/${OWNER_LC}/packages/container"
+          else
+            PKG_BASE="users/${OWNER_LC}/packages/container"
+          fi
+
+          PR_PREFIX="pr-${{ github.event.number }}"
+
+          for pkg in kiebex kiebex-migrate; do
+            VERSIONS=$(gh api "${PKG_BASE}/${pkg}/versions?per_page=100" 2>/dev/null || echo "[]")
+            IDS=$(echo "$VERSIONS" | jq -r \
+              --arg prefix "${PR_PREFIX}" \
+              '[.[] | select(.metadata.container.tags | map(startswith($prefix + "-") or . == $prefix) | any)] | .[].id')
+            for id in $IDS; do
+              echo "Deleting ${pkg} version ${id} (${PR_PREFIX})"
+              gh api "${PKG_BASE}/${pkg}/versions/${id}" --method DELETE || true
+            done
+          done

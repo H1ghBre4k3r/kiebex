@@ -12,6 +12,10 @@ jobs:
     name: Build & Publish Docker Image
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - uses: actions/checkout@v6
 
@@ -56,3 +60,63 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:${{ github.sha }}
+
+      - name: Prune old production images
+        if: ${{ github.ref_name == 'main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER_TYPE=$(gh api "repos/${{ github.repository }}" --jq '.owner.type')
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            PKG_BASE="orgs/${OWNER_LC}/packages/container"
+          else
+            PKG_BASE="users/${OWNER_LC}/packages/container"
+          fi
+
+          for pkg in "${IMAGE}" "${IMAGE}-migrate"; do
+            # Collect all versions via pagination so >100-version repos are handled.
+            ALL_VERSIONS="[]"
+            PAGE=1
+            while true; do
+              if ! BATCH=$(gh api "${PKG_BASE}/${pkg}/versions?per_page=100&page=${PAGE}"); then
+                echo "Warning: failed to fetch versions page ${PAGE} for ${pkg}" >&2
+                break
+              fi
+              COUNT=$(echo "$BATCH" | jq 'length')
+              ALL_VERSIONS=$(echo "$ALL_VERSIONS" | jq --argjson batch "$BATCH" '. + $batch')
+              [ "$COUNT" -lt 100 ] && break
+              PAGE=$((PAGE + 1))
+            done
+
+            # Keep the 10 newest *tagged* versions (manifest lists only).
+            # Untagged versions are platform-specific child manifests produced by
+            # multi-arch builds; mixing them into the count would corrupt the budget
+            # and could leave a kept manifest list with deleted children.
+            TAGGED_DELETE_IDS=$(echo "$ALL_VERSIONS" | jq -r '
+              [ .[] | select(.metadata.container.tags | length > 0) ]
+              | sort_by(.created_at) | reverse | .[10:] | .[].id')
+
+            # Cutoff = created_at of the 11th-newest tagged version (first to be deleted).
+            # Child manifests are always pushed before their parent manifest list, so
+            # children belonging to deleted parents will predate this timestamp while
+            # children of the 10 kept parents will postdate it.
+            CUTOFF=$(echo "$ALL_VERSIONS" | jq -r '
+              [ .[] | select(.metadata.container.tags | length > 0) ]
+              | sort_by(.created_at) | reverse
+              | if length > 10 then .[10].created_at else "" end')
+
+            UNTAGGED_DELETE_IDS=""
+            if [ -n "$CUTOFF" ]; then
+              UNTAGGED_DELETE_IDS=$(echo "$ALL_VERSIONS" | jq -r --arg cutoff "$CUTOFF" '
+                [ .[] | select(.metadata.container.tags | length == 0)
+                       | select(.created_at <= $cutoff) ]
+                | .[].id')
+            fi
+
+            for id in $TAGGED_DELETE_IDS $UNTAGGED_DELETE_IDS; do
+              echo "Pruning ${pkg} version ${id}"
+              if ! gh api "${PKG_BASE}/${pkg}/versions/${id}" --method DELETE; then
+                echo "Warning: failed to delete ${pkg} version ${id}" >&2
+              fi
+            done
+          done
