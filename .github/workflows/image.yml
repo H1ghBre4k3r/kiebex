@@ -56,3 +56,25 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:${{ github.sha }}
+
+      - name: Prune old production images
+        if: ${{ github.ref_name == 'main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER_TYPE=$(gh api "repos/${{ github.repository }}" --jq '.owner.type')
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            PKG_BASE="orgs/${OWNER_LC}/packages/container"
+          else
+            PKG_BASE="users/${OWNER_LC}/packages/container"
+          fi
+
+          for pkg in kiebex kiebex-migrate; do
+            VERSIONS=$(gh api "${PKG_BASE}/${pkg}/versions?per_page=100" 2>/dev/null || echo "[]")
+            DELETE_IDS=$(echo "$VERSIONS" | jq -r '
+              sort_by(.created_at) | reverse | .[10:] | .[].id')
+            for id in $DELETE_IDS; do
+              echo "Pruning ${pkg} version ${id}"
+              gh api "${PKG_BASE}/${pkg}/versions/${id}" --method DELETE || true
+            done
+          done
