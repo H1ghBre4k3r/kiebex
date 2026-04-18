@@ -14,7 +14,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
-          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:fde36e042b3f93895a44d4c8f44d0b6590714375
+          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:8d8dcc850c07758429bf89f2888acf2b9ed16e56
           imagePullPolicy: Always
           command:
             - /bin/sh
@@ -28,7 +28,7 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 64Mi
+              memory: 128Mi
             limits:
               cpu: 200m
               memory: 256Mi
