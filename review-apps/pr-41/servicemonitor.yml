@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kiebex
+  namespace: kiebex-pr-41
+  labels:
+    app: kiebex
+    release: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    matchLabels:
+      app: kiebex
+  namespaceSelector:
+    matchNames:
+      - kiebex-pr-41
+  endpoints:
+    - port: web
+      path: /api/v1/metrics
+      interval: 30s
+      scrapeTimeout: 10s

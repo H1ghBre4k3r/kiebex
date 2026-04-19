@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiebex-service
+  namespace: kiebex-pr-41
+  labels:
+    app: kiebex
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app: kiebex
+  ports:
+    - protocol: TCP
+      name: web
+      port: 80
+      targetPort: 3000
