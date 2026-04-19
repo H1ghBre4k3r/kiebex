@@ -5,7 +5,7 @@ metadata:
   namespace: kiebex
   labels:
     app: kiebex
-    release: monitoring 
+    release: monitoring
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:

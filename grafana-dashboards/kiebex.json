@@ -460,7 +460,14 @@
       "type": "graph",
       "xaxis": { "buckets": null, "mode": "time", "name": null, "show": true, "values": [] },
       "yaxes": [
-        { "format": "percent", "label": null, "logBase": 1, "max": "100", "min": "0", "show": true },
+        {
+          "format": "percent",
+          "label": null,
+          "logBase": 1,
+          "max": "100",
+          "min": "0",
+          "show": true
+        },
         { "format": "short", "label": null, "logBase": 1, "max": null, "min": null, "show": false }
       ],
       "yaxis": { "align": false, "alignLevel": null }
@@ -1011,7 +1018,14 @@
       "type": "graph",
       "xaxis": { "buckets": null, "mode": "time", "name": null, "show": true, "values": [] },
       "yaxes": [
-        { "format": "short", "label": "CPU (cores)", "logBase": 1, "max": null, "min": "0", "show": true },
+        {
+          "format": "short",
+          "label": "CPU (cores)",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
         { "format": "short", "label": null, "logBase": 1, "max": null, "min": null, "show": false }
       ],
       "yaxis": { "align": false, "alignLevel": null }

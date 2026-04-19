@@ -10,6 +10,8 @@ import {
 } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
 import type { AuthUser } from "@/lib/types";
+import { runWithContext, getRequestContext } from "@/lib/request-context";
+import { logger } from "@/lib/logger";
 
 type ProtectedHandler = (user: AuthUser) => Promise<Response>;
 
@@ -110,13 +112,39 @@ export function withMetrics<T extends unknown[], R extends Response | Promise<Re
   return async (...args: T): Promise<Response> => {
     const startTime = performance.now();
 
-    const response = await handler(...args);
+    const requestId = crypto.randomUUID();
+
+    // Run the handler inside a new async context so downstream code can access
+    // requestId and userId via getRequestContext().
+    const response = await runWithContext({ requestId }, async () => {
+      // Handler may return a Response or a Promise<Response>
+      return await handler(...args);
+    });
 
     const duration = (performance.now() - startTime) / 1000;
 
     const { recordHttpRequest } = await import("@/lib/metrics");
     recordHttpRequest(method, route, response.status, duration);
 
-    return response;
+    // Emit an access log line with structured fields.
+    const ctx = getRequestContext();
+    logger.info("http", {
+      requestId,
+      method,
+      route,
+      status: response.status,
+      durationMs: Math.round(duration * 1000),
+      userId: ctx?.userId,
+    });
+
+    // Clone the response so we can add X-Request-ID header for clients.
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set("X-Request-ID", requestId);
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
   };
 }
