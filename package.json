@@ -37,7 +37,7 @@
     "@playwright/test": "^1.59.1",
     "@swc/jest": "^0.2.39",
     "@types/jest": "^30.0.0",
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
