@@ -1,15 +1,15 @@
 import { updateDisplayName, updatePassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { updateProfileBodySchema } from "@/lib/validation";
 
-export async function GET(): Promise<Response> {
+async function getProfile(): Promise<Response> {
   return withApiAuth(async (user) => {
     return jsonOk({ user });
   });
 }
 
-export async function PATCH(request: Request): Promise<Response> {
+async function patchProfile(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, updateProfileBodySchema);
 
@@ -36,3 +36,6 @@ export async function PATCH(request: Request): Promise<Response> {
     return jsonOk({ user: updatedUser });
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/auth/profile", getProfile);
+export const PATCH = withMetrics("PATCH", "/api/v1/auth/profile", patchProfile);

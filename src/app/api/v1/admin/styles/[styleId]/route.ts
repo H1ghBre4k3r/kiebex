@@ -1,11 +1,11 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { deleteAdminStyle, editAdminStyle, logModerationAction } from "@/lib/query";
-import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import type { BeerStyle } from "@/lib/types";
 import { editAdminStyleBodySchema } from "@/lib/validation";
 
-export async function PUT(
+async function putHandler(
   request: Request,
   context: { params: Promise<{ styleId: string }> },
 ): Promise<Response> {
@@ -47,7 +47,7 @@ export async function PUT(
   });
 }
 
-export async function DELETE(
+async function deleteHandler(
   _request: Request,
   context: { params: Promise<{ styleId: string }> },
 ): Promise<Response> {
@@ -86,3 +86,6 @@ export async function DELETE(
     return jsonOk({ deleted: true });
   });
 }
+
+export const PUT = withMetrics("PUT", "/api/v1/admin/styles/:id", putHandler);
+export const DELETE = withMetrics("DELETE", "/api/v1/admin/styles/:id", deleteHandler);

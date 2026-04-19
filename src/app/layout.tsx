@@ -32,7 +32,9 @@ export default function RootLayout({
     <html lang="en" className={`${headingFont.variable} ${bodyFont.variable}`}>
       <body style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         <SiteHeader />
-        <div style={{ flex: 1 }} className="container">{children}</div>
+        <div style={{ flex: 1 }} className="container">
+          {children}
+        </div>
         <SiteFooter />
       </body>
     </html>

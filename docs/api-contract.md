@@ -55,7 +55,7 @@ Example response:
 {
   "status": "ok",
   "data": {
-    "service": "kiel-beer-index",
+    "service": "kiebex",
     "status": "healthy",
     "timestamp": "2026-04-08T18:21:20.123Z"
   }

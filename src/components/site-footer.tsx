@@ -22,7 +22,10 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className={styles.bottom}>
-        <p>&copy; {new Date().getFullYear()} Kiel Beer Index. No rights reserved. It&apos;s a project.</p>
+        <p>
+          &copy; {new Date().getFullYear()} Kiel Beer Index. No rights reserved. It&apos;s a
+          project.
+        </p>
       </div>
     </footer>
   );

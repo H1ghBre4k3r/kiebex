@@ -1,10 +1,15 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createReview, getLocationReviewPermission, getLocationReviews } from "@/lib/query";
-import { jsonQueryValidationError, parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import {
+  jsonQueryValidationError,
+  parseJsonBody,
+  withApiAuth,
+  withMetrics,
+} from "@/lib/route-handlers";
 import { createReviewBodySchema, parseReviewQueryParams } from "@/lib/validation";
 
-export async function GET(request: Request): Promise<Response> {
+async function getReviews(request: Request): Promise<Response> {
   const parsed = parseReviewQueryParams(new URL(request.url).searchParams);
 
   if (!parsed.success) {
@@ -29,7 +34,7 @@ export async function GET(request: Request): Promise<Response> {
   });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function postReview(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, createReviewBodySchema);
 
@@ -74,3 +79,6 @@ export async function POST(request: Request): Promise<Response> {
     }
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/reviews", getReviews);
+export const POST = withMetrics("POST", "/api/v1/reviews", postReview);

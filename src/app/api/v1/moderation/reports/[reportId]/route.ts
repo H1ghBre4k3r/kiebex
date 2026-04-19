@@ -1,9 +1,9 @@
 import { jsonOk, jsonError } from "@/lib/http";
-import { withApiModerator, parseJsonBody } from "@/lib/route-handlers";
+import { withApiModerator, parseJsonBody, withMetrics } from "@/lib/route-handlers";
 import { resolveReport, getReportById, logModerationAction } from "@/lib/query";
 import { resolveReportBodySchema } from "@/lib/validation";
 
-export async function PATCH(
+async function patchHandler(
   request: Request,
   { params }: { params: Promise<{ reportId: string }> },
 ): Promise<Response> {
@@ -47,3 +47,5 @@ export async function PATCH(
     return jsonOk({ report: resolved });
   });
 }
+
+export const PATCH = withMetrics("PATCH", "/api/v1/moderation/reports/:id", patchHandler);

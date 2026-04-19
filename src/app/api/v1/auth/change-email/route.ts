@@ -1,11 +1,11 @@
 import { requestEmailChange } from "@/lib/auth";
 import { sendEmailChangeVerificationEmail } from "@/lib/email";
 import { jsonError, jsonOk } from "@/lib/http";
-import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { buildVerificationUrl } from "@/lib/verification";
 import { changeEmailBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function changeEmailHandler(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, changeEmailBodySchema);
 
@@ -47,3 +47,5 @@ export async function POST(request: Request): Promise<Response> {
     return jsonOk({ message: "Verification email sent to your new address." });
   });
 }
+
+export const POST = withMetrics("POST", "/api/v1/auth/change-email", changeEmailHandler);

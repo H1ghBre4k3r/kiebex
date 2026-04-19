@@ -27,6 +27,7 @@ Kiel Beer Index is a comprehensive full-stack application for tracking and compa
 ## Data Model
 
 The application uses a structured domain model to maintain data integrity:
+
 - **Location**: Venues in Kiel (Pubs, Bars, Supermarkets, etc.).
 - **BeerBrand**: Beer producers (e.g., Flensburger, Lille).
 - **BeerStyle**: Types of beer (e.g., Pils, Helles, IPA).
@@ -58,11 +59,13 @@ The application uses a structured domain model to maintain data integrity:
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (v20 or later)
 - PostgreSQL database
 - SMTP server (for email verification)
 
 ### Setup
+
 1. Clone the repository and install dependencies:
    ```bash
    npm install
@@ -79,7 +82,9 @@ The application uses a structured domain model to maintain data integrity:
    ```
 
 ### Development
+
 Run the development server:
+
 ```bash
 npm run dev
 ```
@@ -106,10 +111,13 @@ npm run dev
 ## Deployment
 
 ### Containerization
+
 The project is optimized for containerized environments using Next.js **standalone** output. A multi-stage `Dockerfile` is provided for building small, secure images.
 
 ### Kubernetes
+
 Deployment manifests are located in `manifests/`, supporting:
+
 - **ArgoCD** sync-wave orchestration.
 - **Init Containers** for automatic database migrations.
 - **Sealed Secrets** for secure credential management.

@@ -1,11 +1,11 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { deleteReview, updateReview } from "@/lib/query";
-import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { updateReviewBodySchema } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ reviewId: string }> };
 
-export async function PATCH(request: Request, { params }: RouteContext): Promise<Response> {
+async function patchHandler(request: Request, { params }: RouteContext): Promise<Response> {
   return withApiAuth(async (user) => {
     const { reviewId } = await params;
     const parsed = await parseJsonBody(request, updateReviewBodySchema);
@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: RouteContext): Promise
   });
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext): Promise<Response> {
+async function deleteHandler(_request: Request, { params }: RouteContext): Promise<Response> {
   return withApiAuth(async (user) => {
     const { reviewId } = await params;
 
@@ -45,3 +45,6 @@ export async function DELETE(_request: Request, { params }: RouteContext): Promi
     return jsonOk({ message: "Review deleted." });
   });
 }
+
+export const PATCH = withMetrics("PATCH", "/api/v1/reviews/:id", patchHandler);
+export const DELETE = withMetrics("DELETE", "/api/v1/reviews/:id", deleteHandler);

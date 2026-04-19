@@ -6,9 +6,9 @@ import {
   getPendingLocationSubmissions,
   getPendingPriceUpdateProposals,
 } from "@/lib/query";
-import { withApiModerator } from "@/lib/route-handlers";
+import { withApiModerator, withMetrics } from "@/lib/route-handlers";
 
-export async function GET(): Promise<Response> {
+async function getHandler(): Promise<Response> {
   return withApiModerator(async () => {
     const [pendingLocations, pendingBrands, pendingVariants, pendingOffers, pendingPriceUpdates] =
       await Promise.all([
@@ -35,3 +35,5 @@ export async function GET(): Promise<Response> {
     });
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/moderation/submissions", getHandler);

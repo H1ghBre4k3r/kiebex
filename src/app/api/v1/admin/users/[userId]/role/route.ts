@@ -1,9 +1,9 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { updateUserRoleByAdmin } from "@/lib/query";
-import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { userRoleUpdateSchema } from "@/lib/validation";
 
-export async function PATCH(
+async function patchHandler(
   request: Request,
   context: { params: Promise<{ userId: string }> },
 ): Promise<Response> {
@@ -32,3 +32,5 @@ export async function PATCH(
     return jsonOk({ user: result.user });
   });
 }
+
+export const PATCH = withMetrics("PATCH", "/api/v1/admin/users/:id/role", patchHandler);

@@ -22,8 +22,6 @@ type ParsedJsonBody<T> =
 
 function toErrorDetails(error: z.ZodError): { path?: string; message: string }[] {
   return error.issues.map((issue) => ({
-    // path is omitted (not "") when the issue is at the root of the schema (e.g. .refine()).
-    // Clients should check for path === undefined rather than path === "".
     path: issue.path.length > 0 ? issue.path.join(".") : undefined,
     message: issue.message,
   }));
@@ -103,3 +101,22 @@ export const withApiModerator = createProtectedRoute(
   "Moderator permissions required.",
 );
 export const withApiAdmin = createProtectedRoute(requireAdminUser, "Admin permissions required.");
+
+export function withMetrics<T extends unknown[], R extends Response | Promise<Response>>(
+  method: string,
+  route: string,
+  handler: (...args: T) => R,
+): (...args: T) => Promise<Response> {
+  return async (...args: T): Promise<Response> => {
+    const startTime = performance.now();
+
+    const response = await handler(...args);
+
+    const duration = (performance.now() - startTime) / 1000;
+
+    const { recordHttpRequest } = await import("@/lib/metrics");
+    recordHttpRequest(method, route, response.status, duration);
+
+    return response;
+  };
+}

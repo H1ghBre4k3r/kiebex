@@ -1,9 +1,9 @@
 import { authenticateUser, createSession } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { parseJsonBody } from "@/lib/route-handlers";
+import { parseJsonBody, withMetrics } from "@/lib/route-handlers";
 import { loginBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function loginHandler(request: Request): Promise<Response> {
   const parsed = await parseJsonBody(request, loginBodySchema);
 
   if (!parsed.ok) {
@@ -32,3 +32,5 @@ export async function POST(request: Request): Promise<Response> {
 
   return jsonOk({ user: result.user });
 }
+
+export const POST = withMetrics("POST", "/api/v1/auth/login", loginHandler);

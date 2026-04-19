@@ -330,7 +330,8 @@ function ReviewItem({
         </p>
         {review.body && <p>{review.body}</p>}
         <p>
-          <strong>Submitted:</strong> By {review.author.displayName} on {formatDate(review.createdAt)}
+          <strong>Submitted:</strong> By {review.author.displayName} on{" "}
+          {formatDate(review.createdAt)}
         </p>
       </div>
       {isEditing && (
@@ -575,7 +576,8 @@ export function ModerationClient({
                           <strong>Address:</strong> {location.address} ({location.district})
                         </p>
                         <p>
-                          <strong>Submitted:</strong> By {location.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By{" "}
+                          {location.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(location.createdAt)}
                         </p>
                       </div>
@@ -714,7 +716,8 @@ export function ModerationClient({
                       <h3>{brand.name}</h3>
                       <div className={styles.meta}>
                         <p>
-                          <strong>Submitted:</strong> By {brand.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By{" "}
+                          {brand.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(brand.createdAt)}
                         </p>
                       </div>
@@ -766,7 +769,8 @@ export function ModerationClient({
                           <strong>Style:</strong> {variant.style?.name ?? "Unknown"}
                         </p>
                         <p>
-                          <strong>Submitted:</strong> By {variant.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By{" "}
+                          {variant.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(variant.createdAt)}
                         </p>
                       </div>
@@ -823,7 +827,8 @@ export function ModerationClient({
                           {locationTypeLabel(offer.location.locationType)})
                         </p>
                         <p>
-                          <strong>Submitted:</strong> By {offer.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By{" "}
+                          {offer.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(offer.createdAt)}
                         </p>
                       </div>
@@ -920,14 +925,16 @@ export function ModerationClient({
                           {formatEur(proposal.proposedPriceEur)}
                         </p>
                         <p>
-                          <strong>Size:</strong> {proposal.offer.sizeMl} ml — {servingLabel(proposal.offer.serving)}
+                          <strong>Size:</strong> {proposal.offer.sizeMl} ml —{" "}
+                          {servingLabel(proposal.offer.serving)}
                         </p>
                         <p>
                           <strong>Location:</strong> {proposal.offer.location.name} (
                           {locationTypeLabel(proposal.offer.location.locationType)})
                         </p>
                         <p>
-                          <strong>Submitted:</strong> By {proposal.submitter?.displayName ?? "Unknown user"} on{" "}
+                          <strong>Submitted:</strong> By{" "}
+                          {proposal.submitter?.displayName ?? "Unknown user"} on{" "}
                           {formatDate(proposal.createdAt)}
                         </p>
                       </div>

@@ -1,10 +1,10 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createBeerVariant, getBeerVariants, getBrandContributionPermission } from "@/lib/query";
-import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { createBeerVariantBodySchema } from "@/lib/validation";
 
-export async function GET(request: Request): Promise<Response> {
+async function getVariants(request: Request): Promise<Response> {
   const brandId = new URL(request.url).searchParams.get("brandId") ?? undefined;
   const variants = await getBeerVariants({
     brandId,
@@ -17,7 +17,7 @@ export async function GET(request: Request): Promise<Response> {
   });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function postVariant(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, createBeerVariantBodySchema);
 
@@ -70,3 +70,6 @@ export async function POST(request: Request): Promise<Response> {
     }
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/beer-variants", getVariants);
+export const POST = withMetrics("POST", "/api/v1/beer-variants", postVariant);

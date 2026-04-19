@@ -1,10 +1,10 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createAdminStyle, logModerationAction } from "@/lib/query";
-import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { createAdminStyleBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function postHandler(request: Request): Promise<Response> {
   return withApiAdmin(async (admin) => {
     const parsed = await parseJsonBody(request, createAdminStyleBodySchema);
 
@@ -40,3 +40,5 @@ export async function POST(request: Request): Promise<Response> {
     return jsonOk({ style }, { status: 201 });
   });
 }
+
+export const POST = withMetrics("POST", "/api/v1/admin/styles", postHandler);

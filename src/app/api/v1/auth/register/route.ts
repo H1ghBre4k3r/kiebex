@@ -1,11 +1,11 @@
 import { createEmailVerificationToken, registerUser } from "@/lib/auth";
 import { sendVerificationEmail } from "@/lib/email";
 import { jsonError, jsonOk } from "@/lib/http";
-import { parseJsonBody } from "@/lib/route-handlers";
+import { parseJsonBody, withMetrics } from "@/lib/route-handlers";
 import { buildVerificationUrl } from "@/lib/verification";
 import { registerBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function registerHandler(request: Request): Promise<Response> {
   const parsed = await parseJsonBody(request, registerBodySchema);
 
   if (!parsed.ok) {
@@ -41,3 +41,5 @@ export async function POST(request: Request): Promise<Response> {
     { status: 201 },
   );
 }
+
+export const POST = withMetrics("POST", "/api/v1/auth/register", registerHandler);

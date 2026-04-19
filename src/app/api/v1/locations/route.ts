@@ -1,10 +1,10 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createLocation } from "@/lib/query";
-import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { createLocationBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function postLocation(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, createLocationBodySchema);
 
@@ -29,3 +29,5 @@ export async function POST(request: Request): Promise<Response> {
     }
   });
 }
+
+export const POST = withMetrics("POST", "/api/v1/locations", postLocation);

@@ -1,10 +1,10 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createBeerBrand, getBeerBrands } from "@/lib/query";
-import { parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { createBeerBrandBodySchema } from "@/lib/validation";
 
-export async function GET(): Promise<Response> {
+async function getBrands(): Promise<Response> {
   const brands = await getBeerBrands();
   return jsonOk({
     count: brands.length,
@@ -12,7 +12,7 @@ export async function GET(): Promise<Response> {
   });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function postBrand(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, createBeerBrandBodySchema);
 
@@ -37,3 +37,6 @@ export async function POST(request: Request): Promise<Response> {
     }
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/beer-brands", getBrands);
+export const POST = withMetrics("POST", "/api/v1/beer-brands", postBrand);
