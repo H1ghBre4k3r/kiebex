@@ -21,8 +21,8 @@ describe("GET /api/v1/metrics", () => {
     const response = await GET();
     const body = await response.text();
 
-    expect(body).toContain("http_request_duration_seconds");
-    expect(body).toContain("http_requests_total");
+    expect(body).toContain("kiebex_http_request_duration_seconds");
+    expect(body).toContain("kiebex_http_requests_total");
   });
 
   it("returns no-cache header", async () => {
