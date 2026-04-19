@@ -1,9 +1,9 @@
 import { jsonOk } from "@/lib/http";
 import { createLocation, logModerationAction } from "@/lib/query";
-import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { createAdminLocationBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function postHandler(request: Request): Promise<Response> {
   return withApiAdmin(async (admin) => {
     const parsed = await parseJsonBody(request, createAdminLocationBodySchema);
 
@@ -37,3 +37,5 @@ export async function POST(request: Request): Promise<Response> {
     return jsonOk({ location }, { status: 201 });
   });
 }
+
+export const POST = withMetrics("POST", "/api/v1/admin/locations", postHandler);

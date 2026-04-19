@@ -2,10 +2,10 @@ import { createEmailVerificationToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email";
 import { jsonError, jsonOk } from "@/lib/http";
-import { withApiAdmin } from "@/lib/route-handlers";
+import { withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { buildVerificationUrl } from "@/lib/verification";
 
-export async function POST(
+async function postHandler(
   request: Request,
   context: { params: Promise<{ userId: string }> },
 ): Promise<Response> {
@@ -32,3 +32,5 @@ export async function POST(
     return jsonOk({ message: "Verification email sent." });
   });
 }
+
+export const POST = withMetrics("POST", "/api/v1/admin/users/:id/resend-verification", postHandler);

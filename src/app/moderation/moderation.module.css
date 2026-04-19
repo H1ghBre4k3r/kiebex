@@ -151,7 +151,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .button:hover:not(:disabled) {
@@ -189,7 +191,6 @@
   opacity: 0.5;
   cursor: wait;
 }
-
 
 .editForm {
   display: grid;

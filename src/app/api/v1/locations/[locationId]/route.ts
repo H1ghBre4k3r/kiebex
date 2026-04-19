@@ -5,8 +5,9 @@ import {
   getOfferPriceHistory,
 } from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
+import { withMetrics } from "@/lib/route-handlers";
 
-export async function GET(
+async function getLocation(
   _request: Request,
   context: { params: Promise<{ locationId: string }> },
 ): Promise<Response> {
@@ -34,3 +35,5 @@ export async function GET(
     reviewCount: reviews.length,
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/locations/:id", getLocation);

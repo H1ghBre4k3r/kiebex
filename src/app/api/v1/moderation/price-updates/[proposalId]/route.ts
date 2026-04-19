@@ -4,10 +4,10 @@ import {
   logModerationAction,
   moderatePriceUpdateProposal,
 } from "@/lib/query";
-import { parseJsonBody, withApiModerator } from "@/lib/route-handlers";
+import { parseJsonBody, withApiModerator, withMetrics } from "@/lib/route-handlers";
 import { moderationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
+async function patchHandler(
   request: Request,
   context: { params: Promise<{ proposalId: string }> },
 ): Promise<Response> {
@@ -75,7 +75,7 @@ export async function PATCH(
   });
 }
 
-export async function DELETE(
+async function deleteHandler(
   _request: Request,
   context: { params: Promise<{ proposalId: string }> },
 ): Promise<Response> {
@@ -109,3 +109,6 @@ export async function DELETE(
     return jsonOk({ deleted: true });
   });
 }
+
+export const PATCH = withMetrics("PATCH", "/api/v1/moderation/price-updates/:id", patchHandler);
+export const DELETE = withMetrics("DELETE", "/api/v1/moderation/price-updates/:id", deleteHandler);

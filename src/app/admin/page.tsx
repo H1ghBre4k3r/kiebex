@@ -55,6 +55,11 @@ export default async function AdminPage() {
             <p>Create or delete approved offers in the catalog.</p>
             <Link href="/admin/offers">Go to Offers →</Link>
           </li>
+          <li className={styles.item}>
+            <h3>Review Apps</h3>
+            <p>Overview of active ephemeral deployments for open pull requests.</p>
+            <Link href="/admin/review-apps">Go to Review Apps →</Link>
+          </li>
         </ul>
       </section>
     </main>

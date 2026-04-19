@@ -1,10 +1,11 @@
 import { jsonOk } from "@/lib/http";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { withMetrics } from "@/lib/route-handlers";
 
 type CheckStatus = "ok" | "error";
 
-export async function GET(): Promise<Response> {
+async function healthHandler(): Promise<Response> {
   const timestamp = new Date().toISOString();
 
   let database: CheckStatus = "ok";
@@ -29,3 +30,5 @@ export async function GET(): Promise<Response> {
     { status: healthy ? 200 : 503 },
   );
 }
+
+export const GET = withMetrics("GET", "/api/v1/health", healthHandler);

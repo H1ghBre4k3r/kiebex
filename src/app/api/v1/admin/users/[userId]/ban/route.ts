@@ -1,8 +1,8 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { banUserByAdmin, logModerationAction } from "@/lib/query";
-import { withApiAdmin } from "@/lib/route-handlers";
+import { withApiAdmin, withMetrics } from "@/lib/route-handlers";
 
-export async function POST(
+async function postHandler(
   _request: Request,
   context: { params: Promise<{ userId: string }> },
 ): Promise<Response> {
@@ -40,3 +40,5 @@ export async function POST(
     return jsonOk({ user: result.user });
   });
 }
+
+export const POST = withMetrics("POST", "/api/v1/admin/users/:id/ban", postHandler);

@@ -1,8 +1,10 @@
 import { jsonOk } from "@/lib/http";
-import { withApiAuth } from "@/lib/route-handlers";
+import { withApiAuth, withMetrics } from "@/lib/route-handlers";
 
-export async function GET(): Promise<Response> {
+async function getMe(): Promise<Response> {
   return withApiAuth(async (user) => {
     return jsonOk({ user });
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/auth/me", getMe);

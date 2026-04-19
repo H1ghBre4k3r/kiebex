@@ -107,7 +107,11 @@ export function AdminOfferActions({ offerId, currentPriceCents, onDeleted, class
               className={styles.input}
             />
           </label>
-          <button type="submit" disabled={savePending} className={`${styles.button} ${styles.saveButton}`}>
+          <button
+            type="submit"
+            disabled={savePending}
+            className={`${styles.button} ${styles.saveButton}`}
+          >
             {savePending ? "Saving…" : "Save"}
           </button>
           <button

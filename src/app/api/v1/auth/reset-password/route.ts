@@ -1,9 +1,9 @@
 import { resetPassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { parseJsonBody } from "@/lib/route-handlers";
+import { parseJsonBody, withMetrics } from "@/lib/route-handlers";
 import { resetPasswordBodySchema } from "@/lib/validation";
 
-export async function POST(request: Request): Promise<Response> {
+async function resetPasswordHandler(request: Request): Promise<Response> {
   const parsed = await parseJsonBody(request, resetPasswordBodySchema);
 
   if (!parsed.ok) {
@@ -26,3 +26,5 @@ export async function POST(request: Request): Promise<Response> {
 
   return jsonOk({ reset: true });
 }
+
+export const POST = withMetrics("POST", "/api/v1/auth/reset-password", resetPasswordHandler);

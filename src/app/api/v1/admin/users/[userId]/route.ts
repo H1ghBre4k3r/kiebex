@@ -1,8 +1,8 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { deleteUserByAdmin, logModerationAction } from "@/lib/query";
-import { withApiAdmin } from "@/lib/route-handlers";
+import { withApiAdmin, withMetrics } from "@/lib/route-handlers";
 
-export async function DELETE(
+async function deleteHandler(
   _request: Request,
   context: { params: Promise<{ userId: string }> },
 ): Promise<Response> {
@@ -44,3 +44,5 @@ export async function DELETE(
     return jsonOk({ deleted: true });
   });
 }
+
+export const DELETE = withMetrics("DELETE", "/api/v1/admin/users/:id", deleteHandler);

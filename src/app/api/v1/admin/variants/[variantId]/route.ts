@@ -1,9 +1,9 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { deleteModerationVariant, editAdminVariant, logModerationAction } from "@/lib/query";
-import { parseJsonBody, withApiAdmin } from "@/lib/route-handlers";
+import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { editAdminVariantBodySchema } from "@/lib/validation";
 
-export async function PUT(
+async function putHandler(
   request: Request,
   context: { params: Promise<{ variantId: string }> },
 ): Promise<Response> {
@@ -40,7 +40,7 @@ export async function PUT(
   });
 }
 
-export async function DELETE(
+async function deleteHandler(
   _request: Request,
   context: { params: Promise<{ variantId: string }> },
 ): Promise<Response> {
@@ -64,3 +64,6 @@ export async function DELETE(
     return jsonOk({ deleted: true });
   });
 }
+
+export const PUT = withMetrics("PUT", "/api/v1/admin/variants/:id", putHandler);
+export const DELETE = withMetrics("DELETE", "/api/v1/admin/variants/:id", deleteHandler);

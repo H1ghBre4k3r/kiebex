@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kiebex
+  namespace: kiebex
+  labels:
+    app: kiebex
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: kiebex
+  namespaceSelector:
+    matchNames:
+      - kiebex
+  endpoints:
+    - port: web
+      path: /api/v1/metrics
+      interval: 30s
+      scrapeTimeout: 10s

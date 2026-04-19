@@ -1,5 +1,6 @@
 import { createSession, verifyEmailToken } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
+import { withMetrics } from "@/lib/route-handlers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -7,14 +8,7 @@ const verifyEmailBodySchema = z.object({
   token: z.string().min(1).max(128),
 });
 
-/**
- * GET /api/v1/auth/verify-email?token=...
- *
- * Used by email verification links. Verifies the token, creates a session
- * (sets the cookie), and redirects. Cookie writes are only permitted in
- * Route Handlers and Server Actions, not in Server Component renders.
- */
-export async function GET(request: Request): Promise<Response> {
+async function getVerifyEmail(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token") ?? "";
 
@@ -29,10 +23,7 @@ export async function GET(request: Request): Promise<Response> {
   redirect("/");
 }
 
-export async function POST(request: Request): Promise<Response> {
-  // Parse the body manually to keep the error opaque — we do not want to
-  // leak schema field names or Zod validation details from this security-
-  // sensitive endpoint.
+async function postVerifyEmail(request: Request): Promise<Response> {
   let body: unknown;
   try {
     body = await request.json();
@@ -67,3 +58,6 @@ export async function POST(request: Request): Promise<Response> {
 
   return jsonOk({ message: "Email verified. You are now signed in." });
 }
+
+export const GET = withMetrics("GET", "/api/v1/auth/verify-email", getVerifyEmail);
+export const POST = withMetrics("POST", "/api/v1/auth/verify-email", postVerifyEmail);

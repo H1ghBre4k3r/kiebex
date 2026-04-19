@@ -7,10 +7,15 @@ import {
 } from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
-import { jsonQueryValidationError, parseJsonBody, withApiAuth } from "@/lib/route-handlers";
+import {
+  jsonQueryValidationError,
+  parseJsonBody,
+  withApiAuth,
+  withMetrics,
+} from "@/lib/route-handlers";
 import { createBeerOfferBodySchema, parseBeerQueryParams } from "@/lib/validation";
 
-export async function GET(request: Request): Promise<Response> {
+async function getBeers(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const parsed = parseBeerQueryParams(url.searchParams);
 
@@ -31,7 +36,7 @@ export async function GET(request: Request): Promise<Response> {
   });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function postBeer(request: Request): Promise<Response> {
   return withApiAuth(async (user) => {
     const parsed = await parseJsonBody(request, createBeerOfferBodySchema);
 
@@ -139,3 +144,6 @@ export async function POST(request: Request): Promise<Response> {
     }
   });
 }
+
+export const GET = withMetrics("GET", "/api/v1/beers", getBeers);
+export const POST = withMetrics("POST", "/api/v1/beers", postBeer);

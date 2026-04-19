@@ -6,10 +6,10 @@ import {
   logModerationAction,
   moderateReviewDecision,
 } from "@/lib/query";
-import { parseJsonBody, withApiModerator } from "@/lib/route-handlers";
+import { parseJsonBody, withApiModerator, withMetrics } from "@/lib/route-handlers";
 import { editModerationReviewBodySchema, reviewModerationDecisionSchema } from "@/lib/validation";
 
-export async function PATCH(
+async function patchHandler(
   request: Request,
   context: { params: Promise<{ reviewId: string }> },
 ): Promise<Response> {
@@ -60,7 +60,7 @@ export async function PATCH(
   });
 }
 
-export async function PUT(
+async function putHandler(
   request: Request,
   context: { params: Promise<{ reviewId: string }> },
 ): Promise<Response> {
@@ -99,7 +99,7 @@ export async function PUT(
   });
 }
 
-export async function DELETE(
+async function deleteHandler(
   _request: Request,
   context: { params: Promise<{ reviewId: string }> },
 ): Promise<Response> {
@@ -128,3 +128,7 @@ export async function DELETE(
     return jsonOk({ deleted: true });
   });
 }
+
+export const PATCH = withMetrics("PATCH", "/api/v1/moderation/reviews/:id", patchHandler);
+export const PUT = withMetrics("PUT", "/api/v1/moderation/reviews/:id", putHandler);
+export const DELETE = withMetrics("DELETE", "/api/v1/moderation/reviews/:id", deleteHandler);
