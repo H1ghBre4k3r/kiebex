@@ -5,7 +5,9 @@ metadata:
   namespace: kiebex
   labels:
     app: kiebex
-    release: prometheus
+    release: monitoring 
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   selector:
     matchLabels:
