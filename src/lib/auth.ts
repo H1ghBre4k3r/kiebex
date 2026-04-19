@@ -6,6 +6,8 @@ import { cookies } from "next/headers";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { AuthUser } from "@/lib/types";
+import { logger } from "@/lib/logger";
+import { getRequestContext, setUserId } from "@/lib/request-context";
 
 const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE_NAME = "kbi_session";
@@ -105,6 +107,14 @@ export async function registerUser(input: {
       select: authUserSelect,
     });
 
+    // Log registration event
+    try {
+      const ctx = getRequestContext();
+      logger.info("auth.register", { userId: user.id, requestId: ctx?.requestId });
+    } catch {
+      /* ignore logging failures */
+    }
+
     return {
       ok: true,
       user,
@@ -145,21 +155,71 @@ export async function authenticateUser(input: {
   });
 
   if (!user?.passwordHash) {
+    // No account with that email (do not reveal)
+    try {
+      const ctx = getRequestContext();
+      logger.warn("auth.login.failure", { reason: "wrong_password", requestId: ctx?.requestId });
+    } catch {
+      /* ignore */
+    }
+
     return { ok: false, reason: "INVALID_CREDENTIALS" };
   }
 
   const validPassword = await verifyPassword(input.password, user.passwordHash);
 
   if (!validPassword) {
+    try {
+      const ctx = getRequestContext();
+      logger.warn("auth.login.failure", {
+        reason: "wrong_password",
+        userId: user.id,
+        requestId: ctx?.requestId,
+      });
+    } catch {
+      /* ignore */
+    }
+
     return { ok: false, reason: "INVALID_CREDENTIALS" };
   }
 
   if (!user.emailVerified) {
+    try {
+      const ctx = getRequestContext();
+      logger.warn("auth.login.failure", {
+        reason: "unverified",
+        userId: user.id,
+        requestId: ctx?.requestId,
+      });
+    } catch {
+      /* ignore */
+    }
+
     return { ok: false, reason: "EMAIL_NOT_VERIFIED" };
   }
 
   if (user.isBanned) {
+    try {
+      const ctx = getRequestContext();
+      logger.warn("auth.login.failure", {
+        reason: "banned",
+        userId: user.id,
+        requestId: ctx?.requestId,
+      });
+    } catch {
+      /* ignore */
+    }
+
     return { ok: false, reason: "ACCOUNT_BANNED" };
+  }
+
+  // Successful authentication — record userId in context for downstream logs
+  try {
+    setUserId(user.id);
+    const ctx = getRequestContext();
+    logger.info("auth.login", { userId: user.id, requestId: ctx?.requestId });
+  } catch {
+    /* ignore logging failures */
   }
 
   return {
@@ -241,6 +301,14 @@ export async function verifyEmailToken(rawToken: string): Promise<VerifyEmailRes
 
   await db.emailVerificationToken.deleteMany({ where: { tokenHash } });
 
+  // Log email verification
+  try {
+    const ctx = getRequestContext();
+    logger.info("auth.email_verified", { userId: record.userId, requestId: ctx?.requestId });
+  } catch {
+    /* ignore */
+  }
+
   return { ok: true, userId: record.userId };
 }
 
@@ -271,11 +339,22 @@ export async function clearCurrentSession(): Promise<void> {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (token) {
-    await db.session.deleteMany({
-      where: {
-        tokenHash: hashSessionToken(token),
-      },
+    // Attempt to find the session to extract userId for logging before deletion.
+    const session = await db.session.findUnique({
+      where: { tokenHash: hashSessionToken(token) },
+      select: { userId: true },
     });
+
+    try {
+      const ctx = getRequestContext();
+      if (session?.userId) {
+        logger.info("auth.logout", { userId: session.userId, requestId: ctx?.requestId });
+      }
+    } catch {
+      /* ignore */
+    }
+
+    await db.session.deleteMany({ where: { tokenHash: hashSessionToken(token) } });
   }
 
   cookieStore.delete(SESSION_COOKIE_NAME);
@@ -467,6 +546,13 @@ export async function requestPasswordReset(email: string): Promise<RequestPasswo
 
   const token = await createPasswordResetToken(user.id);
 
+  try {
+    const ctx = getRequestContext();
+    logger.info("auth.password_reset.requested", { userId: user.id, requestId: ctx?.requestId });
+  } catch {
+    /* ignore */
+  }
+
   return { ok: true, userId: user.id, token };
 }
 
@@ -505,6 +591,16 @@ export async function resetPassword(
       passwordResetTokens: { deleteMany: {} },
     },
   });
+
+  try {
+    const ctx = getRequestContext();
+    logger.info("auth.password_reset.completed", {
+      userId: record.userId,
+      requestId: ctx?.requestId,
+    });
+  } catch {
+    /* ignore */
+  }
 
   return { ok: true };
 }
