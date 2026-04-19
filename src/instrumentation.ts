@@ -1,4 +1,15 @@
 import type { Instrumentation } from "next";
+import * as Sentry from "@sentry/nextjs";
+
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      tracesSampleRate: 0.1,
+      enableLogs: true,
+    });
+  }
+}
 
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
   const { logger } = await import("@/lib/logger");
@@ -13,4 +24,6 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
     routePath: context.routePath,
     routeType: context.routeType,
   });
+
+  Sentry.captureRequestError(error, request, context);
 };

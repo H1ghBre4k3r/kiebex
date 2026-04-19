@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 type LogLevel = "info" | "warn" | "error";
 
 type LogMeta = Record<string, unknown>;
@@ -11,10 +13,12 @@ const LEVEL_PREFIX: Record<LogLevel, string> = {
 function write(level: LogLevel, message: string, meta?: LogMeta): void {
   const isDev = process.env.NODE_ENV !== "production";
 
+  const prefix = LEVEL_PREFIX[level];
+  const metaStr = meta ? " " + JSON.stringify(meta) : "";
+  const entry = `${message}${metaStr}`;
+
   if (isDev) {
-    const prefix = LEVEL_PREFIX[level];
-    const metaStr = meta ? " " + JSON.stringify(meta) : "";
-    const line = `${prefix} ${message}${metaStr}`;
+    const line = `${prefix} ${entry}`;
     if (level === "error") {
       console.error(line);
     } else {
@@ -33,6 +37,8 @@ function write(level: LogLevel, message: string, meta?: LogMeta): void {
       console.log(entry);
     }
   }
+
+  Sentry.logger[level](entry, meta);
 }
 
 export const logger = {
