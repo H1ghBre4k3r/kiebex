@@ -3,7 +3,7 @@ import client from "prom-client";
 const register = new client.Registry();
 
 register.setDefaultLabels({
-  app: "kiel-beer-index",
+  app: "kiebex",
 });
 
 client.collectDefaultMetrics({ register });

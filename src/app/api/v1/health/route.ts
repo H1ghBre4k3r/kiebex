@@ -22,7 +22,7 @@ async function healthHandler(): Promise<Response> {
 
   return jsonOk(
     {
-      service: "kiel-beer-index",
+      service: "kiebex",
       status: healthy ? "healthy" : "degraded",
       checks: { database },
       timestamp,

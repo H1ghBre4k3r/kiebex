@@ -21,7 +21,7 @@ describe("GET /api/v1/health", () => {
 
     expect(response.status).toBe(200);
     expect(body.status).toBe("ok");
-    expect(body.data.service).toBe("kiel-beer-index");
+    expect(body.data.service).toBe("kiebex");
     expect(body.data.status).toBe("healthy");
     expect(new Date(body.data.timestamp).toString()).not.toBe("Invalid Date");
   });

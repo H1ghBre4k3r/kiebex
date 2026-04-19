@@ -48,7 +48,7 @@ export async function sendVerificationEmail(to: string, verificationUrl: string)
   });
 
   await transport.sendMail({
-    from: process.env.SMTP_FROM ?? "noreply@kiel-beer-index.de",
+    from: process.env.SMTP_FROM ?? "noreply@kiel.beer",
     to,
     subject,
     text,
@@ -102,7 +102,7 @@ export async function sendEmailChangeVerificationEmail(
   });
 
   await transport.sendMail({
-    from: process.env.SMTP_FROM ?? "noreply@kiel-beer-index.de",
+    from: process.env.SMTP_FROM ?? "noreply@kiel.beer",
     to,
     subject,
     text,
@@ -153,7 +153,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   });
 
   await transport.sendMail({
-    from: process.env.SMTP_FROM ?? "noreply@kiel-beer-index.de",
+    from: process.env.SMTP_FROM ?? "noreply@kiel.beer",
     to,
     subject,
     text,

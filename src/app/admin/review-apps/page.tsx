@@ -20,12 +20,12 @@ async function fetchReviewApps(): Promise<{ apps: ReviewApp[]; error: string | n
 
   try {
     const res = await fetch(
-      "https://api.github.com/repos/H1ghBre4k3r/kiel-beer-index/deployments?per_page=100",
+      "https://api.github.com/repos/H1ghBre4k3r/kiebex/deployments?per_page=100",
       {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github+json",
-          "User-Agent": "kiel-beer-index",
+          "User-Agent": "kiebex",
         },
         next: { revalidate: 60 },
       },
@@ -59,7 +59,7 @@ async function fetchReviewApps(): Promise<{ apps: ReviewApp[]; error: string | n
               headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: "application/vnd.github+json",
-                "User-Agent": "kiel-beer-index",
+                "User-Agent": "kiebex",
               },
             });
 
@@ -77,7 +77,7 @@ async function fetchReviewApps(): Promise<{ apps: ReviewApp[]; error: string | n
           return {
             prNumber,
             url: `https://pr-${prNumber}.review.kiel.beer`,
-            prUrl: `https://github.com/H1ghBre4k3r/kiel-beer-index/pull/${prNumber}`,
+            prUrl: `https://github.com/H1ghBre4k3r/kiebex/pull/${prNumber}`,
             status,
             createdAt: d.created_at,
             sha: d.sha?.substring(0, 7) ?? null,

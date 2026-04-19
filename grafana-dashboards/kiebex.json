@@ -54,7 +54,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(http_requests_total{app=\"kiel-beer-index\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{app=\"kiebex\"}[5m]))",
           "legendFormat": "Total Requests/s",
           "refId": "A"
         }
@@ -106,7 +106,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(http_requests_total{app=\"kiel-beer-index\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{app=\"kiel-beer-index\"}[5m])) * 100",
+          "expr": "sum(rate(http_requests_total{app=\"kiebex\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{app=\"kiebex\"}[5m])) * 100",
           "legendFormat": "Error Rate %",
           "refId": "A"
         }
@@ -174,7 +174,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=\"kiel-beer-index\"}[5m])) by (le, route))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=\"kiebex\"}[5m])) by (le, route))",
           "legendFormat": "p50 - {{route}}",
           "refId": "A"
         },
@@ -183,7 +183,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"kiel-beer-index\"}[5m])) by (le, route))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"kiebex\"}[5m])) by (le, route))",
           "legendFormat": "p95 - {{route}}",
           "refId": "B"
         },
@@ -192,7 +192,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"kiel-beer-index\"}[5m])) by (le, route))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"kiebex\"}[5m])) by (le, route))",
           "legendFormat": "p99 - {{route}}",
           "refId": "C"
         }
@@ -257,7 +257,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(http_requests_total{app=\"kiel-beer-index\"}[5m])) by (route)",
+          "expr": "sum(rate(http_requests_total{app=\"kiebex\"}[5m])) by (route)",
           "legendFormat": "{{route}}",
           "refId": "A"
         }
@@ -305,7 +305,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "process_resident_memory_bytes{app=\"kiel-beer-index\"}",
+          "expr": "process_resident_memory_bytes{app=\"kiebex\"}",
           "legendFormat": "RSS",
           "refId": "A"
         },
@@ -314,7 +314,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "process_heap_bytes{app=\"kiel-beer-index\"}",
+          "expr": "process_heap_bytes{app=\"kiebex\"}",
           "legendFormat": "Heap",
           "refId": "B"
         }
@@ -379,7 +379,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(process_cpu_seconds_total{app=\"kiel-beer-index\"}[5m]) * 100",
+          "expr": "rate(process_cpu_seconds_total{app=\"kiebex\"}[5m]) * 100",
           "legendFormat": "CPU %",
           "refId": "A"
         }
@@ -457,7 +457,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "increase(http_requests_total{app=\"kiel-beer-index\"}[1m])",
+          "expr": "increase(http_requests_total{app=\"kiebex\"}[1m])",
           "legendFormat": "{{status_code}}",
           "refId": "A"
         }
@@ -469,7 +469,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["kiel-beer-index", "red-metrics"],
+  "tags": ["kiebex", "red-metrics"],
   "templating": {
     "list": [
       {
@@ -499,7 +499,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "Kiel Beer Index - RED Metrics",
-  "uid": "kiel-beer-index-red",
+  "uid": "kiebex-red",
   "version": 1,
   "weekStart": ""
 }

@@ -14,7 +14,7 @@ describe("GET /api/v1/metrics", () => {
     expect(body).toContain("# HELP");
     expect(body).toContain("# TYPE");
     expect(body).toContain("nodejs_");
-    expect(body).toContain('app="kiel-beer-index"');
+    expect(body).toContain('app="kiebex"');
   });
 
   it("includes custom HTTP metrics", async () => {
