@@ -33,6 +33,13 @@ export const E2E_REPORTER_EMAIL = "e2e-reporter@example.com";
 export const E2E_REPORTER_PASSWORD = "TestPass123!";
 export const E2E_REPORTER_DISPLAY_NAME = "E2E Reporter";
 
+export const E2E_REGISTER_FLOW_EMAIL = "e2e-registration-flow@example.com";
+export const E2E_REGISTER_FLOW_DISPLAY_NAME = "E2E Registration Flow";
+export const E2E_REGISTER_FLOW_PASSWORD = "RegisterPass123";
+export const E2E_REGISTER_FLOW_NEW_PASSWORD = "RegisterPass456";
+
+export const E2E_DYNAMIC_USER_EMAILS = [E2E_REGISTER_FLOW_EMAIL] as const;
+
 export const E2E_USER_IDS = [
   E2E_AUTH_USER_ID,
   E2E_UNVERIFIED_USER_ID,
@@ -55,6 +62,7 @@ async function cleanupE2EData(pool: pg.Pool): Promise<void> {
   ]);
   await pool.query(`DELETE FROM "BeerBrand" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
   await pool.query(`DELETE FROM "Location" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
+  await pool.query(`DELETE FROM "User" WHERE email = ANY($1::text[])`, [E2E_DYNAMIC_USER_EMAILS]);
   await pool.query(`DELETE FROM "User" WHERE id = ANY($1::text[])`, [E2E_USER_IDS]);
 }
 
