@@ -28,10 +28,22 @@ export const E2E_MODERATOR_EMAIL = "e2e-moderator@example.com";
 export const E2E_MODERATOR_PASSWORD = "TestPass123!";
 export const E2E_MODERATOR_DISPLAY_NAME = "E2E Moderator";
 
+export const E2E_ADMIN_USER_ID = "e2e-admin-test-user";
+export const E2E_ADMIN_EMAIL = "e2e-admin@example.com";
+export const E2E_ADMIN_PASSWORD = "TestPass123!";
+export const E2E_ADMIN_DISPLAY_NAME = "E2E Admin";
+
+export const E2E_ADMIN_MANAGED_USER_ID = "e2e-admin-managed-user";
+export const E2E_ADMIN_MANAGED_EMAIL = "e2e-admin-managed@example.com";
+export const E2E_ADMIN_MANAGED_PASSWORD = "TestPass123!";
+export const E2E_ADMIN_MANAGED_DISPLAY_NAME = "E2E Managed User";
+
 export const E2E_REPORTER_USER_ID = "e2e-reporter-test-user";
 export const E2E_REPORTER_EMAIL = "e2e-reporter@example.com";
 export const E2E_REPORTER_PASSWORD = "TestPass123!";
 export const E2E_REPORTER_DISPLAY_NAME = "E2E Reporter";
+
+export const E2E_ADMIN_ENTITY_PREFIX = "E2E Admin Smoke";
 
 export const E2E_REGISTER_FLOW_EMAIL = "e2e-registration-flow@example.com";
 export const E2E_REGISTER_FLOW_DISPLAY_NAME = "E2E Registration Flow";
@@ -44,10 +56,14 @@ export const E2E_USER_IDS = [
   E2E_AUTH_USER_ID,
   E2E_UNVERIFIED_USER_ID,
   E2E_MODERATOR_USER_ID,
+  E2E_ADMIN_USER_ID,
+  E2E_ADMIN_MANAGED_USER_ID,
   E2E_REPORTER_USER_ID,
 ] as const;
 
 async function cleanupE2EData(pool: pg.Pool): Promise<void> {
+  const adminSmokeLike = `${E2E_ADMIN_ENTITY_PREFIX}%`;
+
   await pool.query(`DELETE FROM "Report" WHERE "reporterId" = ANY($1::text[])`, [E2E_USER_IDS]);
   await pool.query(`DELETE FROM "ModerationAuditLog" WHERE "moderatorId" = ANY($1::text[])`, [
     E2E_USER_IDS,
@@ -57,11 +73,15 @@ async function cleanupE2EData(pool: pg.Pool): Promise<void> {
     E2E_USER_IDS,
   ]);
   await pool.query(`DELETE FROM "BeerOffer" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
+  await pool.query(`DELETE FROM "BeerVariant" WHERE name LIKE $1`, [adminSmokeLike]);
   await pool.query(`DELETE FROM "BeerVariant" WHERE "createdById" = ANY($1::text[])`, [
     E2E_USER_IDS,
   ]);
+  await pool.query(`DELETE FROM "BeerBrand" WHERE name LIKE $1`, [adminSmokeLike]);
   await pool.query(`DELETE FROM "BeerBrand" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
+  await pool.query(`DELETE FROM "Location" WHERE name LIKE $1`, [adminSmokeLike]);
   await pool.query(`DELETE FROM "Location" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
+  await pool.query(`DELETE FROM "BeerStyle" WHERE name LIKE $1`, [adminSmokeLike]);
   await pool.query(`DELETE FROM "User" WHERE email = ANY($1::text[])`, [E2E_DYNAMIC_USER_EMAILS]);
   await pool.query(`DELETE FROM "User" WHERE id = ANY($1::text[])`, [E2E_USER_IDS]);
 }
@@ -87,6 +107,8 @@ export default async function globalSetup(): Promise<void> {
     const verifiedHash = await hashPassword(E2E_AUTH_PASSWORD);
     const unverifiedHash = await hashPassword(E2E_UNVERIFIED_PASSWORD);
     const moderatorHash = await hashPassword(E2E_MODERATOR_PASSWORD);
+    const adminHash = await hashPassword(E2E_ADMIN_PASSWORD);
+    const managedUserHash = await hashPassword(E2E_ADMIN_MANAGED_PASSWORD);
     const reporterHash = await hashPassword(E2E_REPORTER_PASSWORD);
 
     // Verified user — can sign in immediately.
@@ -107,6 +129,23 @@ export default async function globalSetup(): Promise<void> {
       `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, 'moderator', $4, true, false, NOW(), NOW())`,
       [E2E_MODERATOR_USER_ID, E2E_MODERATOR_EMAIL, E2E_MODERATOR_DISPLAY_NAME, moderatorHash],
+    );
+
+    await pool.query(
+      `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, 'admin', $4, true, false, NOW(), NOW())`,
+      [E2E_ADMIN_USER_ID, E2E_ADMIN_EMAIL, E2E_ADMIN_DISPLAY_NAME, adminHash],
+    );
+
+    await pool.query(
+      `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, 'user', $4, false, false, NOW(), NOW())`,
+      [
+        E2E_ADMIN_MANAGED_USER_ID,
+        E2E_ADMIN_MANAGED_EMAIL,
+        E2E_ADMIN_MANAGED_DISPLAY_NAME,
+        managedUserHash,
+      ],
     );
 
     await pool.query(

@@ -4,7 +4,7 @@
 
 import "dotenv/config";
 import pg from "pg";
-import { E2E_DYNAMIC_USER_EMAILS, E2E_USER_IDS } from "./global-setup";
+import { E2E_ADMIN_ENTITY_PREFIX, E2E_DYNAMIC_USER_EMAILS, E2E_USER_IDS } from "./global-setup";
 
 export default async function globalTeardown(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
@@ -16,6 +16,8 @@ export default async function globalTeardown(): Promise<void> {
   const pool = new pg.Pool({ connectionString });
 
   try {
+    const adminSmokeLike = `${E2E_ADMIN_ENTITY_PREFIX}%`;
+
     await pool.query(`DELETE FROM "Report" WHERE "reporterId" = ANY($1::text[])`, [E2E_USER_IDS]);
     await pool.query(`DELETE FROM "ModerationAuditLog" WHERE "moderatorId" = ANY($1::text[])`, [
       E2E_USER_IDS,
@@ -27,15 +29,19 @@ export default async function globalTeardown(): Promise<void> {
     await pool.query(`DELETE FROM "BeerOffer" WHERE "createdById" = ANY($1::text[])`, [
       E2E_USER_IDS,
     ]);
+    await pool.query(`DELETE FROM "BeerVariant" WHERE name LIKE $1`, [adminSmokeLike]);
     await pool.query(`DELETE FROM "BeerVariant" WHERE "createdById" = ANY($1::text[])`, [
       E2E_USER_IDS,
     ]);
+    await pool.query(`DELETE FROM "BeerBrand" WHERE name LIKE $1`, [adminSmokeLike]);
     await pool.query(`DELETE FROM "BeerBrand" WHERE "createdById" = ANY($1::text[])`, [
       E2E_USER_IDS,
     ]);
+    await pool.query(`DELETE FROM "Location" WHERE name LIKE $1`, [adminSmokeLike]);
     await pool.query(`DELETE FROM "Location" WHERE "createdById" = ANY($1::text[])`, [
       E2E_USER_IDS,
     ]);
+    await pool.query(`DELETE FROM "BeerStyle" WHERE name LIKE $1`, [adminSmokeLike]);
     await pool.query(`DELETE FROM "User" WHERE email = ANY($1::text[])`, [E2E_DYNAMIC_USER_EMAILS]);
     await pool.query(`DELETE FROM "User" WHERE id = ANY($1::text[])`, [E2E_USER_IDS]);
   } finally {
