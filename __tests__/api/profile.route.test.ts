@@ -8,14 +8,16 @@ type AuthUser = {
 };
 
 const mockedRequireAuthUser = jest.fn<() => Promise<AuthUser>>();
-const mockedUpdateDisplayName = jest.fn<(userId: string, displayName: string) => Promise<AuthUser>>();
-const mockedUpdatePassword = jest.fn<
-  (
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-  ) => Promise<{ ok: true } | { ok: false; code: "WRONG_PASSWORD" }>
->();
+const mockedUpdateDisplayName =
+  jest.fn<(userId: string, displayName: string) => Promise<AuthUser>>();
+const mockedUpdatePassword =
+  jest.fn<
+    (
+      userId: string,
+      currentPassword: string,
+      newPassword: string,
+    ) => Promise<{ ok: true } | { ok: false; code: "WRONG_PASSWORD" }>
+  >();
 
 jest.mock("@/lib/auth", () => {
   class UnauthorizedError extends Error {
@@ -131,11 +133,7 @@ describe("PATCH /api/v1/auth/profile", () => {
 
     expect(response.status).toBe(200);
     expect(body.status).toBe("ok");
-    expect(mockedUpdatePassword).toHaveBeenCalledWith(
-      "user-1",
-      "OldPass123!",
-      "NewPass456!",
-    );
+    expect(mockedUpdatePassword).toHaveBeenCalledWith("user-1", "OldPass123!", "NewPass456!");
     expect(mockedUpdateDisplayName).not.toHaveBeenCalled();
   });
 

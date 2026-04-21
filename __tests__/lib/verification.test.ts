@@ -16,9 +16,7 @@ describe("buildVerificationUrl", () => {
 
   it("builds a verification URL using APP_URL", () => {
     const url = buildVerificationUrl(makeRequest("https://ignored.com"), "tok123");
-    expect(url).toBe(
-      "https://kiel-beer.example.com/api/v1/auth/verify-email?token=tok123",
-    );
+    expect(url).toBe("https://kiel-beer.example.com/api/v1/auth/verify-email?token=tok123");
   });
 
   it("falls back to the request origin when APP_URL is not set", () => {

@@ -18,7 +18,14 @@ type Props = {
   searchParams: Record<string, SearchValue>;
 };
 
-export function FilterPanel({ brands, variants, stylesList, sizes, locations, searchParams }: Props) {
+export function FilterPanel({
+  brands,
+  variants,
+  stylesList,
+  sizes,
+  locations,
+  searchParams,
+}: Props) {
   const map = toRawMap(searchParams);
 
   const selectedBrands = map.brandId ?? [];
@@ -80,7 +87,9 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations, se
       <details className={styles.disclosure} open>
         <summary className={styles.toggle}>
           <span>Filter Offers{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ""}</span>
-          <span aria-hidden="true" className={styles.toggleIcon}>&#9660;</span>
+          <span aria-hidden="true" className={styles.toggleIcon}>
+            &#9660;
+          </span>
         </summary>
 
         <div className={styles.body}>
@@ -96,7 +105,9 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations, se
           <div className={styles.groups}>
             {/* ── Sort ── */}
             <div className={styles.group}>
-              <p className={styles.groupLabel} id="sort-group-label">Sort By</p>
+              <p className={styles.groupLabel} id="sort-group-label">
+                Sort By
+              </p>
               {/*
                * Native <form method="GET"> + <input type="radio"> restores correct keyboard
                * semantics (arrow-key navigation, spacebar selection) that <a role="radio">
@@ -104,18 +115,11 @@ export function FilterPanel({ brands, variants, stylesList, sizes, locations, se
                * replaces only the sort param.  An inline script auto-submits on change so
                * JS users get immediate navigation; the <noscript> button covers the no-JS path.
                */}
-              <form
-                id="sort-form"
-                method="GET"
-                action="/"
-                aria-labelledby="sort-group-label"
-              >
+              <form id="sort-form" method="GET" action="/" aria-labelledby="sort-group-label">
                 {Object.entries(map)
                   .filter(([k]) => k !== "sort" && k !== "page")
                   .flatMap(([k, vs]) =>
-                    vs.map((v, i) => (
-                      <input key={`${k}-${i}`} type="hidden" name={k} value={v} />
-                    )),
+                    vs.map((v, i) => <input key={`${k}-${i}`} type="hidden" name={k} value={v} />),
                   )}
                 <ul className={styles.radioList} role="group" aria-labelledby="sort-group-label">
                   {[

@@ -152,7 +152,8 @@ test("authenticated user can create, edit, and report a review that a moderator 
 
   await page.goto("/");
   const firstLocationLink = page.locator('[aria-labelledby="results-heading"] li a').first();
-  const locationPath = new URL((await firstLocationLink.getAttribute("href")) ?? "/", page.url()).pathname;
+  const locationPath = new URL((await firstLocationLink.getAttribute("href")) ?? "/", page.url())
+    .pathname;
 
   await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
 

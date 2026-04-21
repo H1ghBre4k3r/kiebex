@@ -78,14 +78,14 @@ test("admin management pages support core smoke actions across styles, brands, v
 
   let managedUserRow = page.locator("li").filter({ hasText: E2E_ADMIN_MANAGED_EMAIL }).first();
   await expect(managedUserRow).toBeVisible();
-  await managedUserRow.locator('button[aria-expanded]').click();
+  await managedUserRow.locator("button[aria-expanded]").click();
   await managedUserRow.getByRole("button", { name: "Verify Email" }).click();
   await expect(page.getByText("User email verified.")).toBeVisible();
 
   await page.fill("#search-users", E2E_ADMIN_MANAGED_EMAIL);
   managedUserRow = page.locator("li").filter({ hasText: E2E_ADMIN_MANAGED_EMAIL }).first();
   await expect(managedUserRow).toContainText("verified");
-  await managedUserRow.locator('button[aria-expanded]').click();
+  await managedUserRow.locator("button[aria-expanded]").click();
   await managedUserRow.locator(`select[id^="role-"]`).selectOption("moderator");
   await managedUserRow.getByRole("button", { name: "Save Role" }).click();
   await expect(page.getByText("User role updated.")).toBeVisible();
