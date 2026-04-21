@@ -6,7 +6,7 @@ test("public directory supports filtering, sorting, clearing, and pagination", a
   await expect(page.getByRole("heading", { level: 1, name: "Kiel Beer Index" })).toBeVisible();
 
   // Sort: click the "Price: High to Low" radio and verify URL + checked state
-  await page.getByRole("radio", { name: "Price: High to Low" }).click();
+  await page.locator('label[for="sort-price_desc"]').click();
   await expect(page).toHaveURL(/sort=price_desc/);
   await expect(page.getByRole("radio", { name: "Price: High to Low" })).toBeChecked();
   await expect(page.getByText("Highest price in current result")).toBeVisible();
@@ -45,7 +45,7 @@ test.describe("JS-disabled directory filtering", () => {
 
     // Sort: select radio then submit the form (no JS → auto-submit script doesn't run,
     // so the <noscript> "Apply sort" button must be clicked explicitly).
-    await page.getByRole("radio", { name: "Price: High to Low" }).click();
+    await page.locator('label[for="sort-price_desc"]').click();
     await page.getByRole("button", { name: /apply sort/i }).click();
     await expect(page).toHaveURL(/sort=price_desc/);
     await expect(page.getByRole("radio", { name: "Price: High to Low" })).toBeChecked();

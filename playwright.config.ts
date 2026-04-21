@@ -10,7 +10,7 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://127.0.0.1:3100",
     trace: "on-first-retry",
   },
   projects: [
@@ -20,9 +20,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npm run start -- -p 3000",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    command:
+      'npm run build && mkdir -p ".next/standalone/.next" && cp -R ".next/static" ".next/standalone/.next/" && PORT=3100 node ".next/standalone/server.js"',
+    url: "http://127.0.0.1:3100",
+    reuseExistingServer: false,
     timeout: 180000,
   },
 });
