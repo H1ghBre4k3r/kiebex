@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { db } from "@/lib/db";
 import {
+  createAdminStyle,
   createBeerOffer,
   createLocation,
   createOfferOrPriceUpdateProposal,
@@ -9,6 +10,9 @@ import {
   getLocationById,
   getOfferPriceHistoryBatch,
   logModerationAction,
+  moderateBeerOfferSubmission,
+  moderateLocationSubmission,
+  moderatePriceUpdateProposal,
 } from "@/lib/query";
 import {
   buildBeerBrand,
@@ -367,6 +371,180 @@ async function testLogModerationActionPersistsEntry(): Promise<void> {
   });
 }
 
+async function testModerateBeerOfferApprovalCreatesHistoryEntry(): Promise<void> {
+  await runIntegrationTest("moderate-offer-approval-history", async ({ namespace }) => {
+    const style = buildBeerStyle(namespace, "mod style");
+    const brand = buildBeerBrand(namespace, "mod brand");
+    const variant = buildBeerVariant(namespace, "mod variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "mod location");
+    const offer = buildBeerOffer(namespace, "mod offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      priceCents: 390,
+      status: "pending",
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: offer });
+
+    const result = await moderateBeerOfferSubmission(offer.id, "approved");
+
+    assert(result.outcome === "updated", "Expected moderation to succeed.");
+
+    const history = await db.offerPriceHistory.findMany({
+      where: { beerOfferId: offer.id },
+    });
+
+    assert(history.length === 1, "Expected exactly one price history entry after approval.");
+    assert(
+      history[0]?.priceCents === 390,
+      "Expected price history entry to snapshot the offer's priceCents.",
+    );
+  });
+}
+
+async function testModeratePriceUpdateApprovalUpdatesOfferAndCreatesHistory(): Promise<void> {
+  await runIntegrationTest("moderate-price-update-approval", async ({ namespace }) => {
+    const style = buildBeerStyle(namespace, "pup style");
+    const brand = buildBeerBrand(namespace, "pup brand");
+    const variant = buildBeerVariant(namespace, "pup variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "pup location");
+    const offer = buildBeerOffer(namespace, "pup offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      priceCents: 450,
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: offer });
+
+    // Seed an initial price history entry (simulating prior approval)
+    await db.offerPriceHistory.create({
+      data: { beerOfferId: offer.id, priceCents: 450 },
+    });
+
+    const proposal = await db.priceUpdateProposal.create({
+      data: {
+        beerOfferId: offer.id,
+        proposedPriceCents: 510,
+        status: "pending",
+      },
+    });
+
+    const result = await moderatePriceUpdateProposal(proposal.id, "approved");
+
+    assert(result.outcome === "updated", "Expected price update moderation to succeed.");
+    if (result.outcome !== "updated") {
+      return;
+    }
+
+    assert(
+      result.offer.priceEur === 5.1,
+      "Expected offer price to be updated to the proposed price.",
+    );
+
+    const history = await db.offerPriceHistory.findMany({
+      where: { beerOfferId: offer.id },
+      orderBy: { effectiveAt: "asc" },
+    });
+
+    assert(history.length === 2, "Expected two price history entries after approval.");
+    assert(
+      history[1]?.priceCents === 510,
+      "Expected the new history entry to record the approved proposed price.",
+    );
+    assert(
+      history[1]?.priceUpdateProposalId === proposal.id,
+      "Expected history entry to link back to the proposal.",
+    );
+  });
+}
+
+async function testRejectedLocationCascadesPendingOffers(): Promise<void> {
+  await runIntegrationTest("rejected-location-cascades-offers", async ({ namespace }) => {
+    const style = buildBeerStyle(namespace, "cas style");
+    const brand = buildBeerBrand(namespace, "cas brand");
+    const variant = buildBeerVariant(namespace, "cas variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "cas location", { status: "pending" });
+    const pendingOffer = buildBeerOffer(namespace, "cas pending offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      status: "pending",
+    });
+    const approvedOffer = buildBeerOffer(namespace, "cas approved offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      serving: "bottle",
+      status: "approved",
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: pendingOffer });
+    await db.beerOffer.create({ data: approvedOffer });
+
+    const result = await moderateLocationSubmission(location.id, "rejected");
+
+    assert(result !== null, "Expected moderation to return the updated location.");
+
+    const rejectedPendingOffer = await db.beerOffer.findUnique({
+      where: { id: pendingOffer.id },
+    });
+    const untouchedApprovedOffer = await db.beerOffer.findUnique({
+      where: { id: approvedOffer.id },
+    });
+
+    assert(
+      rejectedPendingOffer?.status === "rejected",
+      "Expected pending offer to be cascaded to rejected.",
+    );
+    assert(
+      untouchedApprovedOffer?.status === "approved",
+      "Expected already-approved offer to remain unchanged.",
+    );
+  });
+}
+
+async function testDuplicateStyleNameBlocksCreation(): Promise<void> {
+  await runIntegrationTest("duplicate-style-name-blocks", async ({ namespace }) => {
+    const styleName = namespace.name("duplicate style");
+
+    const first = await createAdminStyle(styleName);
+
+    assert(first !== null, "Expected first style creation to succeed.");
+    assert(first?.name === styleName, "Expected created style to have the requested name.");
+
+    const second = await createAdminStyle(styleName);
+
+    assert(second === null, "Expected duplicate style name to be blocked.");
+  });
+}
+
 async function run(): Promise<void> {
   const checks: Array<{ name: string; fn: () => Promise<void> }> = [
     { name: "getLocationById only exposes approved", fn: testGetLocationByIdApproval },
@@ -387,6 +565,22 @@ async function run(): Promise<void> {
     {
       name: "logModerationAction persists audit entries",
       fn: testLogModerationActionPersistsEntry,
+    },
+    {
+      name: "moderateBeerOfferSubmission approve creates price history",
+      fn: testModerateBeerOfferApprovalCreatesHistoryEntry,
+    },
+    {
+      name: "moderatePriceUpdateProposal approve updates offer price and creates history",
+      fn: testModeratePriceUpdateApprovalUpdatesOfferAndCreatesHistory,
+    },
+    {
+      name: "rejected location cascades rejection to pending offers",
+      fn: testRejectedLocationCascadesPendingOffers,
+    },
+    {
+      name: "duplicate style name blocks createAdminStyle",
+      fn: testDuplicateStyleNameBlocksCreation,
     },
   ];
 
