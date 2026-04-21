@@ -210,7 +210,7 @@ details[open] .body {
 }
 
 /* Filled dot when selected */
-.radioItem[aria-checked="true"] .radioIndicator {
+.radioItem.selected .radioIndicator {
   background: var(--ink);
   box-shadow: inset 0 0 0 3px var(--surface);
 }
@@ -218,6 +218,38 @@ details[open] .body {
 /* Stronger text weight for selected state */
 .selected {
   font-weight: 700;
+}
+
+/* Visually hidden but accessible — used to hide the native radio input while
+   keeping it in the accessibility tree for keyboard/AT interaction. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Submit button shown only via <noscript> (no-JS fallback for the sort form). */
+.sortSubmit {
+  display: block;
+  margin-top: 0.5rem;
+  border: var(--border-regular);
+  background: var(--ink);
+  color: #fff;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sortSubmit:hover {
+  opacity: 0.85;
 }
 
 /* Desktop: always show the body, hide the mobile toggle */
