@@ -5,9 +5,21 @@
   padding: 1rem;
 }
 
-/* Mobile toggle button — hidden on desktop */
+/* Strip default <details> / <summary> browser chrome */
+.disclosure {
+  display: block;
+}
+
+.disclosure > summary {
+  list-style: none;
+}
+
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Mobile summary / toggle — hidden on desktop */
 .toggle {
-  all: unset;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,7 +29,7 @@
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
-  box-sizing: border-box;
+  user-select: none;
   line-height: 1.2;
 }
 
@@ -26,12 +38,16 @@
   outline-offset: 3px;
 }
 
-/* Collapsible body */
+.toggleIcon {
+  font-size: 0.9rem;
+}
+
+/* Collapsible body — hidden on mobile until <details> is open */
 .body {
   display: none;
 }
 
-.bodyOpen {
+details[open] .body {
   display: block;
   margin-top: 0.75rem;
 }
@@ -84,6 +100,8 @@
   padding-bottom: 0.25rem;
 }
 
+/* ── Shared link-item base ── */
+
 .checkList {
   display: grid;
   gap: 0.25rem;
@@ -98,23 +116,60 @@
   background: #fff;
 }
 
+/* Checkbox-style link */
 .checkItem {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   font-size: 0.9rem;
+  text-decoration: none;
+  color: var(--ink);
   cursor: pointer;
   user-select: none;
+  padding: 0.1rem 0;
 }
 
-.checkInput {
-  accent-color: var(--ink);
+.checkItem:hover {
+  text-decoration: underline;
+}
+
+.checkItem:focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+/* Faux checkbox square */
+.checkIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   width: 1rem;
   height: 1rem;
-  flex-shrink: 0;
-  cursor: pointer;
+  border: 2px solid var(--ink);
+  background: #fff;
+  position: relative;
 }
 
+/* Checkmark via pseudo-element when selected */
+.checkItem[aria-checked="true"] .checkIndicator {
+  background: var(--ink);
+}
+
+.checkItem[aria-checked="true"] .checkIndicator::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: -1px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* Radio-style link */
 .radioList {
   display: grid;
   gap: 0.25rem;
@@ -126,32 +181,58 @@
   align-items: center;
   gap: 0.45rem;
   font-size: 0.9rem;
+  text-decoration: none;
+  color: var(--ink);
   cursor: pointer;
   user-select: none;
+  padding: 0.1rem 0;
 }
 
-.radioInput {
-  accent-color: var(--ink);
+.radioItem:hover {
+  text-decoration: underline;
+}
+
+.radioItem:focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+/* Faux radio circle */
+.radioIndicator {
+  display: inline-block;
+  flex-shrink: 0;
   width: 1rem;
   height: 1rem;
-  flex-shrink: 0;
-  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: #fff;
+  box-sizing: border-box;
 }
 
-.pending {
-  opacity: 0.6;
-  pointer-events: none;
+/* Filled dot when selected */
+.radioItem[aria-checked="true"] .radioIndicator {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 3px var(--surface);
 }
 
-/* Desktop: always show body, hide toggle button */
+/* Stronger text weight for selected state */
+.selected {
+  font-weight: 700;
+}
+
+/* Desktop: always show the body, hide the mobile toggle */
 @media (min-width: 980px) {
   .toggle {
     display: none;
   }
 
-  .body,
-  .bodyOpen {
+  .body {
     display: block;
+    margin-top: 0;
+  }
+
+  /* Override the details[open] rule — body is always visible on desktop */
+  details[open] .body {
     margin-top: 0;
   }
 

@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
 import { UserOfferActions } from "@/components/offer-user-actions";
@@ -17,43 +16,16 @@ import {
 } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";
+import {
+  type SearchValue,
+  type RawMap,
+  toRawMap,
+  rawMapToUrl,
+  removeOneValue,
+  buildPaginationUrl,
+} from "@/lib/beer-directory-url";
 import { FilterPanel } from "./filter-panel";
 import styles from "./page.module.css";
-
-type SearchValue = string | string[] | undefined;
-
-type RawMap = Record<string, string[]>;
-
-function toRawMap(raw: Record<string, SearchValue>): RawMap {
-  const map: RawMap = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (Array.isArray(value)) {
-      const compact = value.filter(Boolean);
-      if (compact.length > 0) map[key] = compact;
-    } else if (value) {
-      map[key] = [value];
-    }
-  }
-  return map;
-}
-
-function rawMapToUrl(map: RawMap): string {
-  const params = new URLSearchParams();
-  for (const [key, values] of Object.entries(map)) {
-    for (const value of values) {
-      params.append(key, value);
-    }
-  }
-  const qs = params.toString();
-  return qs ? `/?${qs}` : "/";
-}
-
-function removeOneValue(map: RawMap, key: string, value: string): RawMap {
-  const next = { ...map };
-  next[key] = (next[key] ?? []).filter((v) => v !== value);
-  if (next[key].length === 0) delete next[key];
-  return next;
-}
 
 type ActiveChip = { label: string; removeUrl: string };
 
@@ -86,7 +58,7 @@ function buildActiveChips(
     }
   }
   for (const [name, ids] of variantChipGroups.entries()) {
-    let nextMap = map;
+    let nextMap: RawMap = map;
     for (const id of ids) {
       nextMap = removeOneValue(nextMap, "variantId", id);
     }
@@ -155,21 +127,6 @@ function buildActiveChips(
   return chips;
 }
 
-function buildPageUrl(raw: Record<string, SearchValue>, targetPage: number): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(raw)) {
-    if (key === "page") continue;
-    if (Array.isArray(value)) {
-      for (const v of value) params.append(key, v);
-    } else if (value) {
-      params.append(key, value);
-    }
-  }
-  if (targetPage > 1) params.set("page", String(targetPage));
-  const qs = params.toString();
-  return qs ? `/?${qs}` : "/";
-}
-
 export default async function Home({
   searchParams,
 }: {
@@ -227,21 +184,14 @@ export default async function Home({
       </header>
 
       <main className={styles.main}>
-        <Suspense
-          fallback={
-            <section className={styles.panel} aria-labelledby="filter-heading">
-              <h2 id="filter-heading">Filter Offers</h2>
-            </section>
-          }
-        >
-          <FilterPanel
-            brands={brands.map((b) => ({ id: b.id, name: b.name }))}
-            variants={variants.map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }))}
-            stylesList={stylesList.map((s) => ({ id: s.id, name: s.name }))}
-            sizes={sizes}
-            locations={locations.map((l) => ({ id: l.id, name: l.name }))}
-          />
-        </Suspense>
+        <FilterPanel
+          brands={brands.map((b) => ({ id: b.id, name: b.name }))}
+          variants={variants.map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }))}
+          stylesList={stylesList.map((s) => ({ id: s.id, name: s.name }))}
+          sizes={sizes}
+          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+          searchParams={rawSearchParams}
+        />
 
         <section className={styles.panel} aria-labelledby="results-heading">
           <h2 id="results-heading">Offers ({total})</h2>
@@ -320,7 +270,7 @@ export default async function Home({
                 <nav className={styles.pagination} aria-label="Offer pages">
                   {page > 1 ? (
                     <Link
-                      href={buildPageUrl(rawSearchParams, page - 1)}
+                      href={buildPaginationUrl(rawSearchParams, page - 1)}
                       className={styles.pageLink}
                     >
                       &larr; Prev
@@ -333,7 +283,7 @@ export default async function Home({
                   </span>
                   {page < totalPages ? (
                     <Link
-                      href={buildPageUrl(rawSearchParams, page + 1)}
+                      href={buildPaginationUrl(rawSearchParams, page + 1)}
                       className={styles.pageLink}
                     >
                       Next &rarr;
