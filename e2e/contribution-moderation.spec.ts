@@ -2,8 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   E2E_AUTH_EMAIL,
   E2E_AUTH_PASSWORD,
+  E2E_AUTH_DISPLAY_NAME,
   E2E_MODERATOR_EMAIL,
   E2E_MODERATOR_PASSWORD,
+  E2E_MODERATOR_DISPLAY_NAME,
+  E2E_REPORTER_EMAIL,
+  E2E_REPORTER_PASSWORD,
+  E2E_REPORTER_DISPLAY_NAME,
 } from "./global-setup";
 
 const TEST_SIZE_ML = "777";
@@ -133,4 +138,107 @@ test("contributor can submit a location and later use it as an approved offer ta
   });
 
   await expect(approvedLocationOption).toHaveCount(1);
+});
+
+test("authenticated user can create, edit, and report a review that a moderator resolves", async ({
+  page,
+}, testInfo) => {
+  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const initialTitle = `E2E Review ${suffix}`;
+  const initialBody = `Initial review body ${suffix}`;
+  const updatedTitle = `Updated E2E Review ${suffix}`;
+  const updatedBody = `Updated review body ${suffix}`;
+  const reportNote = `Review report note ${suffix}`;
+
+  await page.goto("/");
+  const firstLocationLink = page.locator('[aria-labelledby="results-heading"] li a').first();
+  const locationPath = new URL((await firstLocationLink.getAttribute("href")) ?? "/", page.url()).pathname;
+
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto(locationPath);
+  await expect(page.getByRole("heading", { level: 2, name: /Reviews/ })).toBeVisible();
+
+  await page.selectOption("#review-rating", "4");
+  await page.fill("#review-title", initialTitle);
+  await page.fill("#review-body", initialBody);
+  await page.getByRole("button", { name: "Submit Review" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Review submitted.");
+
+  const ownReviewItem = page
+    .locator('li[id^="review-"]')
+    .filter({ hasText: initialTitle })
+    .filter({ hasText: E2E_AUTH_DISPLAY_NAME })
+    .first();
+
+  await expect(ownReviewItem).toBeVisible();
+  const ownReviewId = await ownReviewItem.getAttribute("id");
+  await ownReviewItem.getByRole("button", { name: "Edit" }).click();
+
+  const editableReviewItem = page.locator(`#${ownReviewId}`);
+  await editableReviewItem.locator('select[id^="edit-rating-"]').selectOption("2");
+  await editableReviewItem.locator('input[id^="edit-title-"]').fill(updatedTitle);
+  await editableReviewItem.locator('textarea[id^="edit-body-"]').fill(updatedBody);
+  await editableReviewItem.getByRole("button", { name: "Save" }).click();
+
+  const updatedReviewItem = page
+    .locator('li[id^="review-"]')
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: E2E_AUTH_DISPLAY_NAME })
+    .first();
+
+  await expect(updatedReviewItem).toBeVisible();
+  await expect(updatedReviewItem).toContainText("2/5");
+
+  await signOut(page);
+  await signIn(page, E2E_REPORTER_EMAIL, E2E_REPORTER_PASSWORD);
+
+  await page.goto(locationPath);
+
+  const reportableReviewItem = page
+    .locator('li[id^="review-"]')
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: E2E_AUTH_DISPLAY_NAME })
+    .first();
+
+  await expect(reportableReviewItem).toBeVisible();
+  await reportableReviewItem.getByRole("button", { name: "Report" }).click();
+  await reportableReviewItem.locator('select[id^="report-reason-"]').selectOption("offensive");
+  await reportableReviewItem.locator('textarea[id^="report-note-"]').fill(reportNote);
+  await reportableReviewItem.getByRole("button", { name: "Submit Report" }).click();
+  await expect(reportableReviewItem).toContainText("Report submitted.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await page.getByRole("tab", { name: /Reports \(/ }).click();
+  await page.getByRole("button", { name: /Open Reports \(/ }).click();
+
+  const openReportItem = page
+    .locator("li")
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: reportNote })
+    .filter({ hasText: E2E_REPORTER_DISPLAY_NAME })
+    .first();
+
+  await expect(openReportItem).toBeVisible();
+  await openReportItem.getByRole("button", { name: "Mark Actioned" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("Report marked as actioned.");
+
+  await page.getByRole("button", { name: /Resolved Reports \(/ }).click();
+
+  const resolvedReportItem = page
+    .locator("li")
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: "ACTIONED" })
+    .filter({ hasText: E2E_MODERATOR_DISPLAY_NAME })
+    .first();
+
+  await expect(resolvedReportItem).toBeVisible();
 });

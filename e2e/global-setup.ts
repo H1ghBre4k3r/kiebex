@@ -28,10 +28,16 @@ export const E2E_MODERATOR_EMAIL = "e2e-moderator@example.com";
 export const E2E_MODERATOR_PASSWORD = "TestPass123!";
 export const E2E_MODERATOR_DISPLAY_NAME = "E2E Moderator";
 
+export const E2E_REPORTER_USER_ID = "e2e-reporter-test-user";
+export const E2E_REPORTER_EMAIL = "e2e-reporter@example.com";
+export const E2E_REPORTER_PASSWORD = "TestPass123!";
+export const E2E_REPORTER_DISPLAY_NAME = "E2E Reporter";
+
 export const E2E_USER_IDS = [
   E2E_AUTH_USER_ID,
   E2E_UNVERIFIED_USER_ID,
   E2E_MODERATOR_USER_ID,
+  E2E_REPORTER_USER_ID,
 ] as const;
 
 async function cleanupE2EData(pool: pg.Pool): Promise<void> {
@@ -73,6 +79,7 @@ export default async function globalSetup(): Promise<void> {
     const verifiedHash = await hashPassword(E2E_AUTH_PASSWORD);
     const unverifiedHash = await hashPassword(E2E_UNVERIFIED_PASSWORD);
     const moderatorHash = await hashPassword(E2E_MODERATOR_PASSWORD);
+    const reporterHash = await hashPassword(E2E_REPORTER_PASSWORD);
 
     // Verified user — can sign in immediately.
     await pool.query(
@@ -92,6 +99,12 @@ export default async function globalSetup(): Promise<void> {
       `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, 'moderator', $4, true, false, NOW(), NOW())`,
       [E2E_MODERATOR_USER_ID, E2E_MODERATOR_EMAIL, E2E_MODERATOR_DISPLAY_NAME, moderatorHash],
+    );
+
+    await pool.query(
+      `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, 'user', $4, true, false, NOW(), NOW())`,
+      [E2E_REPORTER_USER_ID, E2E_REPORTER_EMAIL, E2E_REPORTER_DISPLAY_NAME, reporterHash],
     );
   } finally {
     await pool.end();
