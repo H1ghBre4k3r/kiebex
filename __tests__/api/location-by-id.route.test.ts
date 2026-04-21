@@ -16,13 +16,14 @@ const mockedGetLocationById = jest.fn<
 >();
 const mockedGetLocationOffers = jest.fn<(locationId: string) => Promise<unknown[]>>();
 const mockedGetLocationReviews = jest.fn<(locationId: string) => Promise<unknown[]>>();
-const mockedGetOfferPriceHistory = jest.fn<(offerId: string) => Promise<unknown[]>>();
+const mockedGetOfferPriceHistoryBatch =
+  jest.fn<(offerIds: string[]) => Promise<Map<string, unknown[]>>>();
 
 jest.mock("@/lib/query", () => ({
   getLocationById: mockedGetLocationById,
   getLocationOffers: mockedGetLocationOffers,
   getLocationReviews: mockedGetLocationReviews,
-  getOfferPriceHistory: mockedGetOfferPriceHistory,
+  getOfferPriceHistoryBatch: mockedGetOfferPriceHistoryBatch,
 }));
 
 describe("GET /api/v1/locations/[locationId]", () => {
@@ -96,16 +97,23 @@ describe("GET /api/v1/locations/[locationId]", () => {
         },
       },
     ]);
-    mockedGetOfferPriceHistory.mockResolvedValueOnce([
-      {
-        id: "history-1",
-        beerOfferId: "offer-1",
-        priceEur: 4.5,
-        effectiveAt: new Date("2024-01-01T00:00:00.000Z"),
-        priceUpdateProposalId: null,
-        createdAt: new Date("2024-01-01T00:00:00.000Z"),
-      },
-    ]);
+    mockedGetOfferPriceHistoryBatch.mockResolvedValueOnce(
+      new Map([
+        [
+          "offer-1",
+          [
+            {
+              id: "history-1",
+              beerOfferId: "offer-1",
+              priceEur: 4.5,
+              effectiveAt: new Date("2024-01-01T00:00:00.000Z"),
+              priceUpdateProposalId: null,
+              createdAt: new Date("2024-01-01T00:00:00.000Z"),
+            },
+          ],
+        ],
+      ]),
+    );
 
     const { GET } = await import("@/app/api/v1/locations/[locationId]/route");
     const response = await GET(new Request("http://localhost/api/v1/locations/loc-1"), {
@@ -127,6 +135,6 @@ describe("GET /api/v1/locations/[locationId]", () => {
     expect(body.data.count).toBe(1);
     expect(body.data.reviewCount).toBe(1);
     expect(body.data.offers[0]?.priceHistory[0]?.id).toBe("history-1");
-    expect(mockedGetOfferPriceHistory).toHaveBeenCalledWith("offer-1");
+    expect(mockedGetOfferPriceHistoryBatch).toHaveBeenCalledWith(["offer-1"]);
   });
 });

@@ -3,6 +3,15 @@ import type { Config } from "jest";
 const config: Config = {
   clearMocks: true,
   coverageProvider: "v8",
+  coverageReporters: ["text", "json-summary", "lcov"],
+  coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 60,
+      lines: 60,
+      statements: 60,
+    },
+  },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",

@@ -6,9 +6,9 @@ import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
 import {
   getBeerBrands,
-  getBeerOffers,
   getBeerOffersPage,
   BEER_OFFERS_PAGE_SIZE,
+  getDistinctApprovedOfferSizes,
   getBeerStyles,
   getLocationReviewSummaries,
   getBeerVariants,
@@ -142,16 +142,15 @@ export default async function Home({
     parseInt(String(Array.isArray(rawPage) ? rawPage[0] : (rawPage ?? "1")), 10) || 1,
   );
 
-  const [pageResult, allOffers, locations, authUser, brands, stylesList, variants] =
-    await Promise.all([
-      getBeerOffersPage(query, page),
-      getBeerOffers(),
-      getLocations(),
-      getCurrentAuthUser(),
-      getBeerBrands(),
-      getBeerStyles(),
-      getBeerVariants(),
-    ]);
+  const [pageResult, sizes, locations, authUser, brands, stylesList, variants] = await Promise.all([
+    getBeerOffersPage(query, page),
+    getDistinctApprovedOfferSizes(),
+    getLocations(),
+    getCurrentAuthUser(),
+    getBeerBrands(),
+    getBeerStyles(),
+    getBeerVariants(),
+  ]);
 
   const { offers, total } = pageResult;
   const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);
@@ -160,7 +159,6 @@ export default async function Home({
     ...new Set(offers.map((offer) => offer.location.id)),
   ]);
 
-  const sizes = [...new Set(allOffers.map((offer) => offer.sizeMl))].sort((a, b) => a - b);
   const activeChips = buildActiveChips(rawSearchParams, brands, stylesList, variants, locations);
   const sortDesc = query.sort === "price_desc";
   const isPriceSorted = !query.sort || query.sort === "price_asc" || sortDesc;

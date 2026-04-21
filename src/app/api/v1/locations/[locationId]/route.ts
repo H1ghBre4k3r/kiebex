@@ -2,7 +2,7 @@ import {
   getLocationById,
   getLocationOffers,
   getLocationReviews,
-  getOfferPriceHistory,
+  getOfferPriceHistoryBatch,
 } from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
 import { withMetrics } from "@/lib/route-handlers";
@@ -20,12 +20,11 @@ async function getLocation(
 
   const offers = await getLocationOffers(locationId);
   const reviews = await getLocationReviews(locationId);
-  const offersWithHistory = await Promise.all(
-    offers.map(async (offer) => ({
-      ...offer,
-      priceHistory: await getOfferPriceHistory(offer.id),
-    })),
-  );
+  const historyByOfferId = await getOfferPriceHistoryBatch(offers.map((offer) => offer.id));
+  const offersWithHistory = offers.map((offer) => ({
+    ...offer,
+    priceHistory: historyByOfferId.get(offer.id) ?? [],
+  }));
 
   return jsonOk({
     location,

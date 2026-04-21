@@ -8,7 +8,7 @@ import {
   getLocationById,
   getLocationOffers,
   getLocationReviews,
-  getOfferPriceHistory,
+  getOfferPriceHistoryBatch,
 } from "@/lib/query";
 import { AdminLocationActions } from "./admin-location-actions";
 import { OwnReviewActions } from "./own-review-actions";
@@ -32,14 +32,7 @@ export default async function LocationPage({
     getLocationReviews(locationId),
     getCurrentAuthUser(),
   ]);
-  const historyMap = new Map<string, Awaited<ReturnType<typeof getOfferPriceHistory>>>();
-
-  await Promise.all(
-    offers.map(async (offer) => {
-      const history = await getOfferPriceHistory(offer.id);
-      historyMap.set(offer.id, history);
-    }),
-  );
+  const historyByOfferId = await getOfferPriceHistoryBatch(offers.map((offer) => offer.id));
 
   const isModerator = authUser?.role === "moderator" || authUser?.role === "admin";
   const isAdmin = authUser?.role === "admin";
@@ -67,7 +60,7 @@ export default async function LocationPage({
         ) : (
           <ul className={styles.list}>
             {offers.map((offer) => {
-              const history = historyMap.get(offer.id) ?? [];
+              const history = historyByOfferId.get(offer.id) ?? [];
 
               return (
                 <li key={offer.id} className={styles.item}>
