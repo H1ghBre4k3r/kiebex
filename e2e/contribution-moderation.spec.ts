@@ -36,7 +36,8 @@ test("contributor can submit an offer and moderator can approve it into the publ
   await page.goto("/contribute");
   await expect(page.getByRole("heading", { name: "Contribute" })).toBeVisible();
 
-  const brandName = (await page.locator("#offer-brand-id option:checked").textContent())?.trim() ?? "";
+  const brandName =
+    (await page.locator("#offer-brand-id option:checked").textContent())?.trim() ?? "";
   const variantLabel =
     (await page.locator("#offer-variant-id option:checked").textContent())?.trim() ?? "";
   const variantName = variantLabel.split(" (")[0] ?? "";
@@ -80,4 +81,56 @@ test("contributor can submit an offer and moderator can approve it into the publ
     .first();
 
   await expect(publicOfferItem).toBeVisible();
+});
+
+test("contributor can submit a location and later use it as an approved offer target", async ({
+  page,
+}, testInfo) => {
+  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const locationName = `E2E Harbor Pub ${suffix}`;
+  const district = `Test District ${suffix}`;
+  const address = `${suffix} Teststrasse 42`;
+
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await page.getByRole("tab", { name: "New Location" }).click();
+
+  await page.fill("#location-name", locationName);
+  await page.selectOption("#location-type", "pub");
+  await page.fill("#location-district", district);
+  await page.fill("#location-address", address);
+  await page.getByRole("button", { name: "Submit Location" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Location submitted for moderation.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await expect(page.getByRole("heading", { name: "Moderation Queue" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Locations \(/ }).click();
+
+  const pendingLocationItem = page
+    .locator("li")
+    .filter({ hasText: locationName })
+    .filter({ hasText: address })
+    .filter({ hasText: district })
+    .first();
+
+  await expect(pendingLocationItem).toBeVisible();
+  await pendingLocationItem.getByRole("button", { name: "Approve" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("location approved.");
+
+  await signOut(page);
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+
+  const approvedLocationOption = page.locator("#offer-location-id option", {
+    hasText: `${locationName} - Pub (Approved)`,
+  });
+
+  await expect(approvedLocationOption).toHaveCount(1);
 });
