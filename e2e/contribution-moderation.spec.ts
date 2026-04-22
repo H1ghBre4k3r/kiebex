@@ -127,6 +127,47 @@ test("contributor can submit a location and later use it as an approved offer ta
   await expect(approvedLocationOption).toHaveCount(1);
 });
 
+test("authenticated user can submit a brand and variant and use the pending variant in the offer form", async ({
+  page,
+}, testInfo) => {
+  const suffix = createE2ETestSuffix(testInfo);
+  const brandName = `E2E Brand ${suffix}`;
+  const variantName = `E2E Variant ${suffix}`;
+
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await expect(page.getByRole("heading", { name: "Contribute" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "New Brand" }).click();
+  await page.fill("#brand-name", brandName);
+  await page.getByRole("button", { name: "Submit Brand" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Beer brand submitted for moderation.");
+
+  await page.getByRole("tab", { name: "New Variant" }).click();
+  await expect(
+    page.locator("#variant-brand-id option", { hasText: `${brandName} (Pending)` }),
+  ).toHaveCount(1);
+
+  const selectedStyleLabel =
+    (await page.locator("#variant-style-id option:checked").textContent())?.trim() ?? "";
+
+  await page.fill("#variant-name", variantName);
+  await page.selectOption("#variant-brand-id", { label: `${brandName} (Pending)` });
+  await page.getByRole("button", { name: "Submit Variant" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Beer variant submitted for moderation.");
+
+  await page.getByRole("tab", { name: "Submit Offer" }).click();
+  await page.selectOption("#offer-brand-id", { label: brandName });
+  await expect(
+    page
+      .locator("#offer-variant-id option")
+      .filter({ hasText: `${variantName} (${selectedStyleLabel}, Pending)` }),
+  ).toHaveCount(1);
+});
+
 test("authenticated user can create, edit, and report a review that a moderator resolves", async ({
   page,
 }, testInfo) => {
