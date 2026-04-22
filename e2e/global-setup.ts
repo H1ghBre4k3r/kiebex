@@ -51,7 +51,16 @@ export const E2E_REGISTER_FLOW_DISPLAY_NAME = "E2E Registration Flow";
 export const E2E_REGISTER_FLOW_PASSWORD = "RegisterPass123";
 export const E2E_REGISTER_FLOW_NEW_PASSWORD = "RegisterPass456";
 
-export const E2E_DYNAMIC_USER_EMAILS = [E2E_REGISTER_FLOW_EMAIL] as const;
+export const E2E_CHANGE_EMAIL_USER_ID = "e2e-change-email-test-user";
+export const E2E_CHANGE_EMAIL_EMAIL = "e2e-change-email@example.com";
+export const E2E_CHANGE_EMAIL_NEW_EMAIL = "e2e-change-email-next@example.com";
+export const E2E_CHANGE_EMAIL_PASSWORD = "TestPass123!";
+export const E2E_CHANGE_EMAIL_DISPLAY_NAME = "E2E Change Email";
+
+export const E2E_DYNAMIC_USER_EMAILS = [
+  E2E_REGISTER_FLOW_EMAIL,
+  E2E_CHANGE_EMAIL_NEW_EMAIL,
+] as const;
 
 export const E2E_USER_IDS = [
   E2E_AUTH_USER_ID,
@@ -60,6 +69,7 @@ export const E2E_USER_IDS = [
   E2E_ADMIN_USER_ID,
   E2E_ADMIN_MANAGED_USER_ID,
   E2E_REPORTER_USER_ID,
+  E2E_CHANGE_EMAIL_USER_ID,
 ] as const;
 
 function npmCommand(): string {
@@ -115,6 +125,7 @@ export default async function globalSetup(): Promise<void> {
     const adminHash = await hashPassword(E2E_ADMIN_PASSWORD);
     const managedUserHash = await hashPassword(E2E_ADMIN_MANAGED_PASSWORD);
     const reporterHash = await hashPassword(E2E_REPORTER_PASSWORD);
+    const changeEmailHash = await hashPassword(E2E_CHANGE_EMAIL_PASSWORD);
 
     // Verified user — can sign in immediately.
     await pool.query(
@@ -157,6 +168,17 @@ export default async function globalSetup(): Promise<void> {
       `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, 'user', $4, true, false, NOW(), NOW())`,
       [E2E_REPORTER_USER_ID, E2E_REPORTER_EMAIL, E2E_REPORTER_DISPLAY_NAME, reporterHash],
+    );
+
+    await pool.query(
+      `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, 'user', $4, true, false, NOW(), NOW())`,
+      [
+        E2E_CHANGE_EMAIL_USER_ID,
+        E2E_CHANGE_EMAIL_EMAIL,
+        E2E_CHANGE_EMAIL_DISPLAY_NAME,
+        changeEmailHash,
+      ],
     );
   } finally {
     await pool.end();

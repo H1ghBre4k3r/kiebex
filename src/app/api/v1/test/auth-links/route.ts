@@ -1,12 +1,10 @@
 import { z } from "zod";
-import { createEmailVerificationToken, requestPasswordReset } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 import { withMetrics } from "@/lib/route-handlers";
-import { buildPasswordResetUrl, buildVerificationUrl } from "@/lib/verification";
+import { getLatestCapturedTestEmail } from "@/lib/test-email";
 
 const authLinkBodySchema = z.object({
-  kind: z.enum(["verification", "password_reset"]),
+  kind: z.enum(["verification", "change_email_verification", "password_reset"]),
   email: z.string().trim().email().max(255),
 });
 
@@ -29,27 +27,26 @@ async function createAuthLinkHandler(request: Request): Promise<Response> {
     return jsonError(400, "INVALID_BODY", "A valid request body is required.");
   }
 
-  if (parsed.data.kind === "verification") {
-    const user = await db.user.findUnique({
-      where: { email: parsed.data.email },
-      select: { id: true },
-    });
+  const email = getLatestCapturedTestEmail({
+    kind: parsed.data.kind,
+    to: parsed.data.email,
+  });
 
-    if (!user) {
-      return jsonError(404, "USER_NOT_FOUND", "No user found for the supplied email address.");
-    }
-
-    const token = await createEmailVerificationToken(user.id);
-    return jsonOk({ url: buildVerificationUrl(request, token) });
+  if (!email) {
+    return jsonError(404, "AUTH_EMAIL_NOT_FOUND", "No captured auth email found.");
   }
 
-  const result = await requestPasswordReset(parsed.data.email);
-
-  if (!result.ok) {
-    return jsonError(404, "USER_NOT_FOUND", "No user found for the supplied email address.");
-  }
-
-  return jsonOk({ url: buildPasswordResetUrl(request, result.token) });
+  return jsonOk({
+    url: email.actionUrl,
+    email: {
+      kind: email.kind,
+      to: email.to,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      createdAt: email.createdAt.toISOString(),
+    },
+  });
 }
 
 export const POST = withMetrics("POST", "/api/v1/test/auth-links", createAuthLinkHandler);
