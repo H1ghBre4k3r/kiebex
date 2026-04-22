@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { deleteReview, updateReview } from "@/lib/query";
 import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
 import { updateReviewBodySchema } from "@/lib/validation";
@@ -41,6 +42,8 @@ async function deleteHandler(_request: Request, { params }: RouteContext): Promi
         "Review not found or you do not have permission to delete it.",
       );
     }
+
+    invalidatePendingQueueCountCache();
 
     return jsonOk({ message: "Review deleted." });
   });

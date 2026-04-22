@@ -1,4 +1,5 @@
 import { jsonOk, jsonError } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { withApiModerator, parseJsonBody, withMetrics } from "@/lib/route-handlers";
 import { resolveReport, getReportById, logModerationAction } from "@/lib/query";
 import { resolveReportBodySchema } from "@/lib/validation";
@@ -43,6 +44,8 @@ async function patchHandler(
         decision,
       },
     });
+
+    invalidatePendingQueueCountCache();
 
     return jsonOk({ report: resolved });
   });

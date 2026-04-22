@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import {
   deleteModerationBrand,
@@ -39,6 +40,7 @@ async function patchHandler(
       details: { name: brand.name },
     });
 
+    invalidatePendingQueueCountCache();
     invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ brand });
@@ -66,6 +68,7 @@ async function deleteHandler(
       details: { name: result.name },
     });
 
+    invalidatePendingQueueCountCache();
     invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ deleted: true });

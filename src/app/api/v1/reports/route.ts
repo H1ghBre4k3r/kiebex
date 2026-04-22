@@ -1,4 +1,5 @@
 import { jsonOk, jsonError } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { withApiAuth, parseJsonBody, withMetrics } from "@/lib/route-handlers";
 import { createReport, hasUserReportedContent } from "@/lib/query";
 import { createReportBodySchema } from "@/lib/validation";
@@ -28,6 +29,8 @@ async function postReport(request: Request): Promise<Response> {
       reason: reason as ReportReason,
       note,
     });
+
+    invalidatePendingQueueCountCache();
 
     return jsonOk({ report }, { status: 201 });
   });

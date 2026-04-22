@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import {
   deleteModerationPriceUpdateProposal,
   logModerationAction,
@@ -68,6 +69,8 @@ async function patchHandler(
       },
     });
 
+    invalidatePendingQueueCountCache();
+
     return jsonOk({
       proposal: result.proposal,
       offer: result.offer,
@@ -105,6 +108,8 @@ async function deleteHandler(
         currentPriceEur: result.currentPriceEur,
       },
     });
+
+    invalidatePendingQueueCountCache();
 
     return jsonOk({ deleted: true });
   });

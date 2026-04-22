@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import {
   deleteModerationLocation,
@@ -45,6 +46,7 @@ async function patchHandler(
       },
     });
 
+    invalidatePendingQueueCountCache();
     invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ location });
@@ -98,6 +100,7 @@ async function putHandler(
       details: logDetails,
     });
 
+    invalidatePendingQueueCountCache();
     invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ location: result.location });
@@ -130,6 +133,7 @@ async function deleteHandler(
       },
     });
 
+    invalidatePendingQueueCountCache();
     invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ deleted: true });

@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createBeerVariant, getBeerVariants, getBrandContributionPermission } from "@/lib/query";
 import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
@@ -47,6 +48,8 @@ async function postVariant(request: Request): Promise<Response> {
         createdById: user.id,
         status: "pending",
       });
+
+      invalidatePendingQueueCountCache();
 
       return jsonOk({ variant }, { status: 201 });
     } catch (error) {
