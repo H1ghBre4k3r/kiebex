@@ -168,3 +168,42 @@ export function buildBeerOffer(
     ...overrides,
   };
 }
+
+export function buildCatalogFixture(
+  namespace: TestNamespace,
+  label: string,
+  overrides: Partial<{
+    style: Parameters<typeof buildBeerStyle>[2];
+    brand: Parameters<typeof buildBeerBrand>[2];
+    variant: Parameters<typeof buildBeerVariant>[2];
+    location: Parameters<typeof buildLocation>[2];
+    offer: false | Parameters<typeof buildBeerOffer>[2];
+  }> = {},
+) {
+  const style = buildBeerStyle(namespace, `${label} style`, overrides.style);
+  const brand = buildBeerBrand(namespace, `${label} brand`, overrides.brand);
+  const variant = buildBeerVariant(namespace, `${label} variant`, {
+    brandId: brand.id,
+    styleId: style.id,
+    ...overrides.variant,
+  });
+  const location = buildLocation(namespace, `${label} location`, overrides.location);
+  const offer =
+    overrides.offer === false
+      ? undefined
+      : buildBeerOffer(namespace, `${label} offer`, {
+          brand: brand.name,
+          variant: variant.name,
+          variantId: variant.id,
+          locationId: location.id,
+          ...overrides.offer,
+        });
+
+  return {
+    style,
+    brand,
+    variant,
+    location,
+    offer,
+  };
+}

@@ -30,6 +30,15 @@ describe("isPrismaErrorCode", () => {
     expect(isPrismaErrorCode(makeKnownError("P2002"), "P2002")).toBe(true);
   });
 
+  it("maps postgres unique violations from the driver adapter to P2002", () => {
+    expect(isPrismaErrorCode({ cause: { originalCode: "23505" } }, "P2002")).toBe(true);
+  });
+
+  it("maps postgres foreign key and restrict violations from the driver adapter to P2003", () => {
+    expect(isPrismaErrorCode({ cause: { originalCode: "23503" } }, "P2003")).toBe(true);
+    expect(isPrismaErrorCode({ cause: { originalCode: "23001" } }, "P2003")).toBe(true);
+  });
+
   it("returns false when the error has a different code", () => {
     expect(isPrismaErrorCode(makeKnownError("P2025"), "P2002")).toBe(false);
   });

@@ -11,7 +11,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:integration": "tsx integration-tests/run.ts",
+    "test:integration": "node --import ./integration-tests/register-server-only.mjs --import tsx integration-tests/run.ts",
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

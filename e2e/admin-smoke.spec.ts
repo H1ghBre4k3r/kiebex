@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import {
   E2E_ADMIN_DISPLAY_NAME,
   E2E_ADMIN_EMAIL,
@@ -7,19 +7,22 @@ import {
   E2E_ADMIN_MANAGED_EMAIL,
   E2E_ADMIN_PASSWORD,
 } from "./global-setup";
+import { createE2ETestSuffix, signIn } from "./helpers";
 
-async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto("/login");
-  await page.fill("#login-email", email);
-  await page.fill("#login-password", password);
-  await page.getByRole("button", { name: "Sign In" }).click();
-  await page.waitForURL("/");
+async function expandUserRow(row: Locator): Promise<void> {
+  const toggle = row.locator("button[aria-expanded]").first();
+
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
 }
 
 test("admin management pages support core smoke actions across styles, brands, variants, locations, and users", async ({
   page,
 }, testInfo) => {
-  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const suffix = createE2ETestSuffix(testInfo);
   const styleName = `${E2E_ADMIN_ENTITY_PREFIX} Style ${suffix}`;
   const brandName = `${E2E_ADMIN_ENTITY_PREFIX} Brand ${suffix}`;
   const variantName = `${E2E_ADMIN_ENTITY_PREFIX} Variant ${suffix}`;
@@ -78,14 +81,16 @@ test("admin management pages support core smoke actions across styles, brands, v
 
   let managedUserRow = page.locator("li").filter({ hasText: E2E_ADMIN_MANAGED_EMAIL }).first();
   await expect(managedUserRow).toBeVisible();
-  await managedUserRow.locator("button[aria-expanded]").click();
+  await expandUserRow(managedUserRow);
+  await expect(managedUserRow.getByRole("button", { name: "Verify Email" })).toBeVisible();
   await managedUserRow.getByRole("button", { name: "Verify Email" }).click();
   await expect(page.getByText("User email verified.")).toBeVisible();
 
   await page.fill("#search-users", E2E_ADMIN_MANAGED_EMAIL);
   managedUserRow = page.locator("li").filter({ hasText: E2E_ADMIN_MANAGED_EMAIL }).first();
   await expect(managedUserRow).toContainText("verified");
-  await managedUserRow.locator("button[aria-expanded]").click();
+  await expandUserRow(managedUserRow);
+  await expect(managedUserRow.locator('select[id^="role-"]')).toBeVisible();
   await managedUserRow.locator(`select[id^="role-"]`).selectOption("moderator");
   await managedUserRow.getByRole("button", { name: "Save Role" }).click();
   await expect(page.getByText("User role updated.")).toBeVisible();

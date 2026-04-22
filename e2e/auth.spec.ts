@@ -6,6 +6,7 @@ import {
   E2E_UNVERIFIED_EMAIL,
   E2E_UNVERIFIED_PASSWORD,
 } from "./global-setup";
+import { getCapturedAuthLink } from "./helpers";
 
 test.describe("auth lifecycle", () => {
   test("sign in with valid credentials shows user in nav and sign out returns to guest state", async ({
@@ -35,7 +36,10 @@ test.describe("auth lifecycle", () => {
     await expect(nav.getByRole("button", { name: "Sign Out" })).not.toBeVisible();
   });
 
-  test("login with unverified email surfaces a verification error", async ({ page }) => {
+  test("login with unverified email can recover via resend verification", async ({
+    page,
+    request,
+  }) => {
     await page.goto("/login");
 
     await page.fill("#login-email", E2E_UNVERIFIED_EMAIL);
@@ -51,6 +55,20 @@ test.describe("auth lifecycle", () => {
 
     // User should still be on the login page — no redirect occurred.
     await expect(page).toHaveURL(/\/login/);
+
+    await page.getByRole("button", { name: /resend verification/i }).click();
+    await expect(page.getByRole("status")).toContainText(/verification email resent/i);
+
+    const verificationUrl = await getCapturedAuthLink(
+      request,
+      "verification",
+      E2E_UNVERIFIED_EMAIL,
+    );
+    await page.goto(verificationUrl);
+    await page.waitForURL("/");
+
+    const nav = page.getByRole("navigation", { name: "Site navigation" });
+    await expect(nav.getByRole("button", { name: "Sign Out" })).toBeVisible();
   });
 
   test("login with wrong password shows an error and stays on login page", async ({ page }) => {

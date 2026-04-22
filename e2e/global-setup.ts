@@ -1,15 +1,16 @@
 /**
- * Playwright global setup — seeds a verified test user with a known password
- * so that auth lifecycle specs can sign in without relying on email verification.
+ * Playwright global setup — seeds baseline domain data plus verified test users
+ * with known passwords so E2E specs do not depend on prior manual db:seed runs.
  *
  * Uses raw pg (no Prisma) to avoid path-alias resolution issues in the Playwright
  * test runner context. Implements the same scrypt hash format as src/lib/auth.ts.
  */
 
 import "dotenv/config";
+import { spawn } from "node:child_process";
 import { randomBytes, scrypt as scryptCallback } from "node:crypto";
 import { promisify } from "node:util";
-import pg from "pg";
+import { cleanupTestData, createTestDatabasePool } from "../test";
 
 const scrypt = promisify(scryptCallback);
 
@@ -50,7 +51,16 @@ export const E2E_REGISTER_FLOW_DISPLAY_NAME = "E2E Registration Flow";
 export const E2E_REGISTER_FLOW_PASSWORD = "RegisterPass123";
 export const E2E_REGISTER_FLOW_NEW_PASSWORD = "RegisterPass456";
 
-export const E2E_DYNAMIC_USER_EMAILS = [E2E_REGISTER_FLOW_EMAIL] as const;
+export const E2E_CHANGE_EMAIL_USER_ID = "e2e-change-email-test-user";
+export const E2E_CHANGE_EMAIL_EMAIL = "e2e-change-email@example.com";
+export const E2E_CHANGE_EMAIL_NEW_EMAIL = "e2e-change-email-next@example.com";
+export const E2E_CHANGE_EMAIL_PASSWORD = "TestPass123!";
+export const E2E_CHANGE_EMAIL_DISPLAY_NAME = "E2E Change Email";
+
+export const E2E_DYNAMIC_USER_EMAILS = [
+  E2E_REGISTER_FLOW_EMAIL,
+  E2E_CHANGE_EMAIL_NEW_EMAIL,
+] as const;
 
 export const E2E_USER_IDS = [
   E2E_AUTH_USER_ID,
@@ -59,31 +69,31 @@ export const E2E_USER_IDS = [
   E2E_ADMIN_USER_ID,
   E2E_ADMIN_MANAGED_USER_ID,
   E2E_REPORTER_USER_ID,
+  E2E_CHANGE_EMAIL_USER_ID,
 ] as const;
 
-async function cleanupE2EData(pool: pg.Pool): Promise<void> {
-  const adminSmokeLike = `${E2E_ADMIN_ENTITY_PREFIX}%`;
+function npmCommand(): string {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
+}
 
-  await pool.query(`DELETE FROM "Report" WHERE "reporterId" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "ModerationAuditLog" WHERE "moderatorId" = ANY($1::text[])`, [
-    E2E_USER_IDS,
-  ]);
-  await pool.query(`DELETE FROM "Review" WHERE "userId" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "PriceUpdateProposal" WHERE "createdById" = ANY($1::text[])`, [
-    E2E_USER_IDS,
-  ]);
-  await pool.query(`DELETE FROM "BeerOffer" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "BeerVariant" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "BeerVariant" WHERE "createdById" = ANY($1::text[])`, [
-    E2E_USER_IDS,
-  ]);
-  await pool.query(`DELETE FROM "BeerBrand" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "BeerBrand" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "Location" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "Location" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "BeerStyle" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "User" WHERE email = ANY($1::text[])`, [E2E_DYNAMIC_USER_EMAILS]);
-  await pool.query(`DELETE FROM "User" WHERE id = ANY($1::text[])`, [E2E_USER_IDS]);
+async function seedBaselineData(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(npmCommand(), ["run", "db:seed"], {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: "inherit",
+    });
+
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`db:seed exited with code ${code ?? "unknown"}.`));
+    });
+  });
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -99,10 +109,15 @@ export default async function globalSetup(): Promise<void> {
     throw new Error("DATABASE_URL must be set before running E2E tests.");
   }
 
-  const pool = new pg.Pool({ connectionString });
+  const pool = createTestDatabasePool(connectionString);
 
   try {
-    await cleanupE2EData(pool);
+    await seedBaselineData();
+    await cleanupTestData(pool, {
+      namePrefixes: [E2E_ADMIN_ENTITY_PREFIX],
+      userEmails: [...E2E_DYNAMIC_USER_EMAILS],
+      userIds: [...E2E_USER_IDS],
+    });
 
     const verifiedHash = await hashPassword(E2E_AUTH_PASSWORD);
     const unverifiedHash = await hashPassword(E2E_UNVERIFIED_PASSWORD);
@@ -110,6 +125,7 @@ export default async function globalSetup(): Promise<void> {
     const adminHash = await hashPassword(E2E_ADMIN_PASSWORD);
     const managedUserHash = await hashPassword(E2E_ADMIN_MANAGED_PASSWORD);
     const reporterHash = await hashPassword(E2E_REPORTER_PASSWORD);
+    const changeEmailHash = await hashPassword(E2E_CHANGE_EMAIL_PASSWORD);
 
     // Verified user — can sign in immediately.
     await pool.query(
@@ -152,6 +168,17 @@ export default async function globalSetup(): Promise<void> {
       `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, 'user', $4, true, false, NOW(), NOW())`,
       [E2E_REPORTER_USER_ID, E2E_REPORTER_EMAIL, E2E_REPORTER_DISPLAY_NAME, reporterHash],
+    );
+
+    await pool.query(
+      `INSERT INTO "User" (id, email, "displayName", role, "passwordHash", "emailVerified", "isBanned", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, 'user', $4, true, false, NOW(), NOW())`,
+      [
+        E2E_CHANGE_EMAIL_USER_ID,
+        E2E_CHANGE_EMAIL_EMAIL,
+        E2E_CHANGE_EMAIL_DISPLAY_NAME,
+        changeEmailHash,
+      ],
     );
   } finally {
     await pool.end();

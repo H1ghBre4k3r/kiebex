@@ -1,0 +1,45 @@
+import { expect, type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
+
+export async function signIn(page: Page, email: string, password: string): Promise<void> {
+  await page.goto("/login");
+  await page.fill("#login-email", email);
+  await page.fill("#login-password", password);
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.waitForURL("/");
+}
+
+export async function signOut(page: Page): Promise<void> {
+  const nav = page.getByRole("navigation", { name: "Site navigation" });
+  await nav.getByRole("button", { name: "Sign Out" }).click();
+  await expect(nav.getByRole("link", { name: "Sign In" })).toBeVisible();
+}
+
+export async function getCapturedAuthLink(
+  request: APIRequestContext,
+  kind: "verification" | "change_email_verification" | "password_reset",
+  email: string,
+): Promise<string> {
+  const deadline = Date.now() + 15000;
+
+  while (Date.now() < deadline) {
+    const response = await request.post("/api/v1/test/auth-links", {
+      data: { kind, email },
+    });
+
+    if (response.ok()) {
+      const body = (await response.json()) as { data?: { url?: string } };
+      const url = body.data?.url;
+
+      expect(url).toBeTruthy();
+      return url as string;
+    }
+
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+  }
+
+  throw new Error(`Timed out finding captured ${kind} auth link for ${email}.`);
+}
+
+export function createE2ETestSuffix(testInfo: TestInfo): string {
+  return `${testInfo.workerIndex}-${Date.now()}`;
+}

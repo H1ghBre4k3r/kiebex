@@ -27,6 +27,8 @@ type UsersManagementProps = {
 function UserItem({
   user,
   currentAdminId,
+  expanded,
+  onToggle,
   selectedRole,
   onRoleChange,
   onSaveRole,
@@ -44,6 +46,8 @@ function UserItem({
 }: {
   user: UserForAdmin;
   currentAdminId: string;
+  expanded: boolean;
+  onToggle: () => void;
   selectedRole: UserRole;
   onRoleChange: (role: UserRole) => void;
   onSaveRole: () => void;
@@ -59,7 +63,6 @@ function UserItem({
   unbanning: boolean;
   deleting: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const roleChanged = selectedRole !== user.role;
   const isSelf = user.id === currentAdminId;
@@ -81,7 +84,7 @@ function UserItem({
         ) : undefined
       }
       expanded={expanded}
-      onToggle={() => setExpanded((prev) => !prev)}
+      onToggle={onToggle}
     >
       <div className={styles.meta}>
         <p>
@@ -195,6 +198,8 @@ function UserGroup({
   headingId,
   users,
   currentAdminId,
+  expandedUsers,
+  onToggleExpand,
   selectedRoles,
   onRoleChange,
   onSaveRole,
@@ -214,6 +219,8 @@ function UserGroup({
   headingId: string;
   users: UserForAdmin[];
   currentAdminId: string;
+  expandedUsers: Record<string, boolean>;
+  onToggleExpand: (userId: string) => void;
   selectedRoles: Record<string, UserRole>;
   onRoleChange: (userId: string, role: UserRole) => void;
   onSaveRole: (userId: string) => void;
@@ -242,6 +249,8 @@ function UserGroup({
             key={user.id}
             user={user}
             currentAdminId={currentAdminId}
+            expanded={expandedUsers[user.id] ?? false}
+            onToggle={() => onToggleExpand(user.id)}
             selectedRole={selectedRoles[user.id] ?? user.role}
             onRoleChange={(role) => onRoleChange(user.id, role)}
             onSaveRole={() => onSaveRole(user.id)}
@@ -268,6 +277,7 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>(
     Object.fromEntries(users.map((user) => [user.id, user.role])),
   );
+  const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [verifyingUserId, setVerifyingUserId] = useState<string | null>(null);
   const [resendingUserId, setResendingUserId] = useState<string | null>(null);
@@ -401,6 +411,9 @@ export function UsersManagement({ currentAdminId, users }: UsersManagementProps)
 
   const groupProps = {
     currentAdminId,
+    expandedUsers,
+    onToggleExpand: (userId: string) =>
+      setExpandedUsers((current) => ({ ...current, [userId]: !current[userId] })),
     selectedRoles,
     onRoleChange: (userId: string, role: UserRole) =>
       setSelectedRoles((current) => ({ ...current, [userId]: role })),

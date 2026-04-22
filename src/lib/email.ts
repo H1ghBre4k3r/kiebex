@@ -2,6 +2,7 @@ import "server-only";
 
 import { createTransport } from "nodemailer";
 import { logger } from "@/lib/logger";
+import { captureTestEmail, isTestEmailCaptureEnabled } from "@/lib/test-email";
 
 function isSmtpConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST);
@@ -28,6 +29,19 @@ export async function sendVerificationEmail(to: string, verificationUrl: string)
 <p>This link expires in <strong>24 hours</strong>.</p>
 <p>If you did not create an account, you can safely ignore this email.</p>
 `.trim();
+
+  if (isTestEmailCaptureEnabled()) {
+    captureTestEmail({
+      kind: "verification",
+      to,
+      subject,
+      text,
+      html,
+      actionUrl: verificationUrl,
+    });
+    logger.info("Verification email captured for testing", { to });
+    return;
+  }
 
   if (!isSmtpConfigured()) {
     logger.info("Email verification (SMTP not configured — logging link instead)", {
@@ -83,6 +97,19 @@ export async function sendEmailChangeVerificationEmail(
 <p>If you did not request this change, you can safely ignore this email.</p>
 `.trim();
 
+  if (isTestEmailCaptureEnabled()) {
+    captureTestEmail({
+      kind: "change_email_verification",
+      to,
+      subject,
+      text,
+      html,
+      actionUrl: verificationUrl,
+    });
+    logger.info("Email change verification email captured for testing", { to });
+    return;
+  }
+
   if (!isSmtpConfigured()) {
     logger.info("Email change verification (SMTP not configured — logging link instead)", {
       to,
@@ -133,6 +160,19 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 <p>This link expires in <strong>1 hour</strong>.</p>
 <p>If you did not request a password reset, you can safely ignore this email.</p>
 `.trim();
+
+  if (isTestEmailCaptureEnabled()) {
+    captureTestEmail({
+      kind: "password_reset",
+      to,
+      subject,
+      text,
+      html,
+      actionUrl: resetUrl,
+    });
+    logger.info("Password reset email captured for testing", { to });
+    return;
+  }
 
   if (!isSmtpConfigured()) {
     logger.info("Password reset (SMTP not configured — logging link instead)", {
