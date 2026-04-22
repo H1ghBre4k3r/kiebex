@@ -10,7 +10,7 @@ import "dotenv/config";
 import { spawn } from "node:child_process";
 import { randomBytes, scrypt as scryptCallback } from "node:crypto";
 import { promisify } from "node:util";
-import { cleanupTestData, createTestDatabasePool } from "../test/database-reset";
+import { cleanupTestData, createTestDatabasePool } from "../test";
 
 const scrypt = promisify(scryptCallback);
 

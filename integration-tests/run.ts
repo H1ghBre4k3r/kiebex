@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import {
   createAdminStyle,
   createBeerOffer,
-  createLocation,
   createOfferOrPriceUpdateProposal,
   getDistinctApprovedOfferSizes,
   getBeerOffers,
@@ -16,19 +15,13 @@ import {
 } from "@/lib/query";
 import { authIntegrationChecks } from "./auth";
 import { routeIntegrationChecks } from "./routes";
-import {
-  buildBeerBrand,
-  buildBeerOffer,
-  buildBeerStyle,
-  buildBeerVariant,
-  buildLocation,
-  buildUser,
-} from "../test/factories";
+import { buildBeerOffer, buildLocation, buildUser } from "../test";
 import {
   assert,
   closeIntegrationTestResources,
   runIntegrationTest,
   seedCatalogFixture,
+  seedCatalogOfferFixture,
 } from "./helpers";
 
 async function testGetLocationByIdApproval(): Promise<void> {
@@ -95,24 +88,7 @@ async function testGetBeerOffersFiltersApprovedOnly(): Promise<void> {
 
 async function testCreateOfferOrPriceUpdateProposalFlow(): Promise<void> {
   await runIntegrationTest("offer-or-price-update-flow", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "flow style");
-    const brand = buildBeerBrand(namespace, "flow brand");
-    const variant = buildBeerVariant(namespace, "flow variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-
-    const location = await createLocation({
-      name: namespace.name("Flow Place"),
-      locationType: "pub",
-      district: "Mitte",
-      address: "Flow Street 1",
-      status: "approved",
-    });
+    const { variant, location } = await seedCatalogFixture(namespace, "flow", { offer: false });
 
     const first = await createOfferOrPriceUpdateProposal({
       variantId: variant.id,
@@ -366,23 +342,13 @@ async function testCreateOfferOrPriceUpdateProposalPendingOfferFlow(): Promise<v
 
 async function testCreateBeerOfferSnapshotsVariantNames(): Promise<void> {
   await runIntegrationTest("create-beer-offer-snapshots", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "snapshot style");
-    const brand = buildBeerBrand(namespace, "snapshot brand");
-    const variantSeed = buildBeerVariant(namespace, "snapshot variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variantSeed });
-
-    const location = await createLocation({
-      name: namespace.name("Snapshot Place"),
-      locationType: "supermarket",
-      district: "West",
-      address: "Snapshot 42",
-      status: "approved",
+    const { variant: variantSeed, location } = await seedCatalogFixture(namespace, "snapshot", {
+      offer: false,
+      location: {
+        locationType: "supermarket",
+        district: "West",
+        address: "Snapshot 42",
+      },
     });
 
     const created = await createBeerOffer({
@@ -408,34 +374,21 @@ async function testCreateBeerOfferSnapshotsVariantNames(): Promise<void> {
 
 async function testGetOfferPriceHistoryBatchGroupsByOffer(): Promise<void> {
   await runIntegrationTest("offer-price-history-batch", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "batch style");
-    const brand = buildBeerBrand(namespace, "batch brand");
-    const variant = buildBeerVariant(namespace, "batch variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "batch location");
-    const offerOne = buildBeerOffer(namespace, "one", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 420,
+    const {
+      variant,
+      location,
+      offer: offerOne,
+    } = await seedCatalogOfferFixture(namespace, "batch one", {
+      offer: { priceCents: 420 },
     });
     const offerTwo = buildBeerOffer(namespace, "two", {
-      brand: brand.name,
-      variant: variant.name,
+      brand: offerOne.brand,
+      variant: offerOne.variant,
       variantId: variant.id,
       locationId: location.id,
       priceCents: 510,
       sizeMl: 330,
     });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offerOne });
     await db.beerOffer.create({ data: offerTwo });
 
     await db.offerPriceHistory.create({
@@ -484,37 +437,23 @@ async function testGetOfferPriceHistoryBatchGroupsByOffer(): Promise<void> {
 
 async function testGetDistinctApprovedOfferSizesReturnsSortedUniqueValues(): Promise<void> {
   await runIntegrationTest("distinct-approved-offer-sizes", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "size style");
-    const brand = buildBeerBrand(namespace, "size brand");
-    const variant = buildBeerVariant(namespace, "size variant", {
-      brandId: brand.id,
-      styleId: style.id,
+    const {
+      variant,
+      location: approvedLocation,
+      offer,
+    } = await seedCatalogOfferFixture(namespace, "size approved", {
+      offer: { sizeMl: 123 },
     });
-    const approvedLocation = buildLocation(namespace, "approved location");
     const pendingLocation = buildLocation(namespace, "pending location", {
       id: namespace.id("location-pending"),
       status: "pending",
     });
 
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: approvedLocation });
     await db.location.create({ data: pendingLocation });
-
-    await db.beerOffer.create({
-      data: buildBeerOffer(namespace, "size-500-a", {
-        brand: brand.name,
-        variant: variant.name,
-        variantId: variant.id,
-        locationId: approvedLocation.id,
-        sizeMl: 123,
-      }),
-    });
     await db.beerOffer.create({
       data: buildBeerOffer(namespace, "size-500-b", {
-        brand: brand.name,
-        variant: variant.name,
+        brand: offer.brand,
+        variant: offer.variant,
         variantId: variant.id,
         locationId: approvedLocation.id,
         sizeMl: 123,
@@ -523,8 +462,8 @@ async function testGetDistinctApprovedOfferSizesReturnsSortedUniqueValues(): Pro
     });
     await db.beerOffer.create({
       data: buildBeerOffer(namespace, "size-330", {
-        brand: brand.name,
-        variant: variant.name,
+        brand: offer.brand,
+        variant: offer.variant,
         variantId: variant.id,
         locationId: approvedLocation.id,
         sizeMl: 987,
@@ -532,8 +471,8 @@ async function testGetDistinctApprovedOfferSizesReturnsSortedUniqueValues(): Pro
     });
     await db.beerOffer.create({
       data: buildBeerOffer(namespace, "size-hidden", {
-        brand: brand.name,
-        variant: variant.name,
+        brand: offer.brand,
+        variant: offer.variant,
         variantId: variant.id,
         locationId: pendingLocation.id,
         sizeMl: 777,
@@ -585,27 +524,9 @@ async function testLogModerationActionPersistsEntry(): Promise<void> {
 
 async function testModerateBeerOfferApprovalCreatesHistoryEntry(): Promise<void> {
   await runIntegrationTest("moderate-offer-approval-history", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "mod style");
-    const brand = buildBeerBrand(namespace, "mod brand");
-    const variant = buildBeerVariant(namespace, "mod variant", {
-      brandId: brand.id,
-      styleId: style.id,
+    const { offer } = await seedCatalogOfferFixture(namespace, "moderate offer", {
+      offer: { priceCents: 390, status: "pending" },
     });
-    const location = buildLocation(namespace, "mod location");
-    const offer = buildBeerOffer(namespace, "mod offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 390,
-      status: "pending",
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
 
     const result = await moderateBeerOfferSubmission(offer.id, "approved");
 
@@ -625,26 +546,9 @@ async function testModerateBeerOfferApprovalCreatesHistoryEntry(): Promise<void>
 
 async function testModeratePriceUpdateApprovalUpdatesOfferAndCreatesHistory(): Promise<void> {
   await runIntegrationTest("moderate-price-update-approval", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "pup style");
-    const brand = buildBeerBrand(namespace, "pup brand");
-    const variant = buildBeerVariant(namespace, "pup variant", {
-      brandId: brand.id,
-      styleId: style.id,
+    const { offer } = await seedCatalogOfferFixture(namespace, "price update approval", {
+      offer: { priceCents: 450 },
     });
-    const location = buildLocation(namespace, "pup location");
-    const offer = buildBeerOffer(namespace, "pup offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 450,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
 
     // Seed an initial price history entry (simulating prior approval)
     await db.offerPriceHistory.create({
@@ -690,34 +594,22 @@ async function testModeratePriceUpdateApprovalUpdatesOfferAndCreatesHistory(): P
 
 async function testRejectedLocationCascadesPendingOffers(): Promise<void> {
   await runIntegrationTest("rejected-location-cascades-offers", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "cas style");
-    const brand = buildBeerBrand(namespace, "cas brand");
-    const variant = buildBeerVariant(namespace, "cas variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "cas location", { status: "pending" });
-    const pendingOffer = buildBeerOffer(namespace, "cas pending offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      status: "pending",
+    const {
+      variant,
+      location,
+      offer: pendingOffer,
+    } = await seedCatalogOfferFixture(namespace, "cascade location", {
+      location: { status: "pending" },
+      offer: { status: "pending" },
     });
     const approvedOffer = buildBeerOffer(namespace, "cas approved offer", {
-      brand: brand.name,
-      variant: variant.name,
+      brand: pendingOffer.brand,
+      variant: pendingOffer.variant,
       variantId: variant.id,
       locationId: location.id,
       serving: "bottle",
       status: "approved",
     });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: pendingOffer });
     await db.beerOffer.create({ data: approvedOffer });
 
     const result = await moderateLocationSubmission(location.id, "rejected");

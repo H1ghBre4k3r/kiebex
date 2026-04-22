@@ -1,15 +1,11 @@
 import { db } from "@/lib/db";
-import {
-  buildBeerBrand,
-  buildBeerOffer,
-  buildBeerStyle,
-  buildBeerVariant,
-  buildLocation,
-} from "../test/factories";
+import { buildBeerBrand, buildBeerVariant } from "../test";
 import {
   assert,
   fail,
   runIntegrationTest,
+  seedCatalogFixture,
+  seedCatalogOfferFixture,
   seedAuthUser,
   startAuthenticatedSession,
 } from "./helpers";
@@ -80,25 +76,7 @@ async function testAdminBrandEditDuplicateMapsConflict(): Promise<void> {
 async function testAdminBrandDeleteInUseMapsConflict(): Promise<void> {
   await runIntegrationTest("admin-brand-delete-in-use", async ({ namespace }) => {
     const { user: admin } = await seedAuthUser(namespace, "admin-brand-delete", { role: "admin" });
-    const style = buildBeerStyle(namespace, "brand-delete-style");
-    const brand = buildBeerBrand(namespace, "brand-delete-brand");
-    const variant = buildBeerVariant(namespace, "brand-delete-variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "brand-delete-location");
-    const offer = buildBeerOffer(namespace, "brand-delete-offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
+    const { brand } = await seedCatalogOfferFixture(namespace, "brand delete");
     await startAuthenticatedSession(admin.id);
 
     const { DELETE } = await import("@/app/api/v1/admin/brands/[brandId]/route");
@@ -120,16 +98,9 @@ async function testAdminVariantCreateDuplicateMapsConflict(): Promise<void> {
     const { user: admin } = await seedAuthUser(namespace, "admin-variant-create", {
       role: "admin",
     });
-    const style = buildBeerStyle(namespace, "variant-create-style");
-    const brand = buildBeerBrand(namespace, "variant-create-brand");
-    const variant = buildBeerVariant(namespace, "variant-create-existing", {
-      brandId: brand.id,
-      styleId: style.id,
+    const { style, brand, variant } = await seedCatalogFixture(namespace, "variant create", {
+      offer: false,
     });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
     await startAuthenticatedSession(admin.id);
 
     const { POST } = await import("@/app/api/v1/admin/variants/route");
@@ -153,20 +124,16 @@ async function testAdminVariantCreateDuplicateMapsConflict(): Promise<void> {
 async function testAdminVariantEditDuplicateMapsConflict(): Promise<void> {
   await runIntegrationTest("admin-variant-edit-duplicate", async ({ namespace }) => {
     const { user: admin } = await seedAuthUser(namespace, "admin-variant-edit", { role: "admin" });
-    const style = buildBeerStyle(namespace, "variant-edit-style");
-    const brand = buildBeerBrand(namespace, "variant-edit-brand");
-    const originalVariant = buildBeerVariant(namespace, "variant-edit-original", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
+    const {
+      style,
+      brand,
+      variant: originalVariant,
+    } = await seedCatalogFixture(namespace, "variant edit original", { offer: false });
     const duplicateVariant = buildBeerVariant(namespace, "variant-edit-duplicate", {
       brandId: brand.id,
       styleId: style.id,
     });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.createMany({ data: [originalVariant, duplicateVariant] });
+    await db.beerVariant.create({ data: duplicateVariant });
     await startAuthenticatedSession(admin.id);
 
     const { PUT } = await import("@/app/api/v1/admin/variants/[variantId]/route");
@@ -193,25 +160,7 @@ async function testAdminVariantDeleteInUseMapsConflict(): Promise<void> {
     const { user: admin } = await seedAuthUser(namespace, "admin-variant-delete", {
       role: "admin",
     });
-    const style = buildBeerStyle(namespace, "variant-delete-style");
-    const brand = buildBeerBrand(namespace, "variant-delete-brand");
-    const variant = buildBeerVariant(namespace, "variant-delete-variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "variant-delete-location");
-    const offer = buildBeerOffer(namespace, "variant-delete-offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
+    const { variant } = await seedCatalogOfferFixture(namespace, "variant delete");
     await startAuthenticatedSession(admin.id);
 
     const { DELETE } = await import("@/app/api/v1/admin/variants/[variantId]/route");
@@ -232,16 +181,7 @@ async function testAdminVariantDeleteInUseMapsConflict(): Promise<void> {
 async function testAdminStyleDeleteInUseMapsConflict(): Promise<void> {
   await runIntegrationTest("admin-style-delete-in-use", async ({ namespace }) => {
     const { user: admin } = await seedAuthUser(namespace, "admin-style-delete", { role: "admin" });
-    const style = buildBeerStyle(namespace, "style-delete-style");
-    const brand = buildBeerBrand(namespace, "style-delete-brand");
-    const variant = buildBeerVariant(namespace, "style-delete-variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
+    const { style } = await seedCatalogFixture(namespace, "style delete", { offer: false });
     await startAuthenticatedSession(admin.id);
 
     const { DELETE } = await import("@/app/api/v1/admin/styles/[styleId]/route");
@@ -261,27 +201,9 @@ async function testAdminStyleDeleteInUseMapsConflict(): Promise<void> {
 async function testAdminOfferCreateDuplicateMapsConflict(): Promise<void> {
   await runIntegrationTest("admin-offer-create-duplicate", async ({ namespace }) => {
     const { user: admin } = await seedAuthUser(namespace, "admin-offer-create", { role: "admin" });
-    const style = buildBeerStyle(namespace, "offer-create-style");
-    const brand = buildBeerBrand(namespace, "offer-create-brand");
-    const variant = buildBeerVariant(namespace, "offer-create-variant", {
-      brandId: brand.id,
-      styleId: style.id,
+    const { variant, location } = await seedCatalogOfferFixture(namespace, "offer create", {
+      offer: { sizeMl: 500, serving: "tap" },
     });
-    const location = buildLocation(namespace, "offer-create-location");
-    const offer = buildBeerOffer(namespace, "offer-create-existing", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      sizeMl: 500,
-      serving: "tap",
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
     await startAuthenticatedSession(admin.id);
 
     const { POST } = await import("@/app/api/v1/admin/offers/route");
@@ -313,26 +235,9 @@ async function testModerationOfferEditCreatesAuditLogEntry(): Promise<void> {
     const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-edit", {
       role: "moderator",
     });
-    const style = buildBeerStyle(namespace, "moderation-edit-style");
-    const brand = buildBeerBrand(namespace, "moderation-edit-brand");
-    const variant = buildBeerVariant(namespace, "moderation-edit-variant", {
-      brandId: brand.id,
-      styleId: style.id,
+    const { offer } = await seedCatalogOfferFixture(namespace, "moderation edit", {
+      offer: { priceCents: 450 },
     });
-    const location = buildLocation(namespace, "moderation-edit-location");
-    const offer = buildBeerOffer(namespace, "moderation-edit-offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 450,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
     await startAuthenticatedSession(moderator.id);
 
     const { PUT } = await import("@/app/api/v1/moderation/offers/[offerId]/route");
@@ -385,27 +290,13 @@ async function testModerationOfferApproveCreatesAuditLogEntry(): Promise<void> {
     const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-approve", {
       role: "moderator",
     });
-    const style = buildBeerStyle(namespace, "moderation-approve-style");
-    const brand = buildBeerBrand(namespace, "moderation-approve-brand");
-    const variant = buildBeerVariant(namespace, "moderation-approve-variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "moderation-approve-location");
-    const offer = buildBeerOffer(namespace, "moderation-approve-offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 495,
-      status: "pending",
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
+    const { variant, location, offer } = await seedCatalogOfferFixture(
+      namespace,
+      "moderation approve",
+      {
+        offer: { priceCents: 495, status: "pending" },
+      },
+    );
     await startAuthenticatedSession(moderator.id);
 
     const { PATCH } = await import("@/app/api/v1/moderation/offers/[offerId]/route");
@@ -470,27 +361,9 @@ async function testModerationOfferRejectCreatesAuditLogEntry(): Promise<void> {
     const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-reject", {
       role: "moderator",
     });
-    const style = buildBeerStyle(namespace, "moderation-reject-style");
-    const brand = buildBeerBrand(namespace, "moderation-reject-brand");
-    const variant = buildBeerVariant(namespace, "moderation-reject-variant", {
-      brandId: brand.id,
-      styleId: style.id,
+    const { brand, offer } = await seedCatalogOfferFixture(namespace, "moderation reject", {
+      offer: { priceCents: 510, status: "pending" },
     });
-    const location = buildLocation(namespace, "moderation-reject-location");
-    const offer = buildBeerOffer(namespace, "moderation-reject-offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 510,
-      status: "pending",
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
     await startAuthenticatedSession(moderator.id);
 
     const { PATCH } = await import("@/app/api/v1/moderation/offers/[offerId]/route");
@@ -555,26 +428,13 @@ async function testModerationOfferDeleteCreatesAuditLogEntry(): Promise<void> {
     const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-delete", {
       role: "moderator",
     });
-    const style = buildBeerStyle(namespace, "moderation-delete-style");
-    const brand = buildBeerBrand(namespace, "moderation-delete-brand");
-    const variant = buildBeerVariant(namespace, "moderation-delete-variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "moderation-delete-location");
-    const offer = buildBeerOffer(namespace, "moderation-delete-offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 480,
-    });
-
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: offer });
+    const { variant, location, offer } = await seedCatalogOfferFixture(
+      namespace,
+      "moderation delete",
+      {
+        offer: { priceCents: 480 },
+      },
+    );
     await startAuthenticatedSession(moderator.id);
 
     const { DELETE } = await import("@/app/api/v1/moderation/offers/[offerId]/route");

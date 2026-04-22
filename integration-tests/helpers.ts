@@ -1,10 +1,17 @@
 import { db } from "@/lib/db";
 import { clearCurrentSession, createSession, hashPassword } from "@/lib/auth";
-import { cleanupTestData, createTestDatabasePool } from "../test/database-reset";
-import { createTestNamespace, type TestNamespace } from "../test/factories";
-import { buildCatalogFixture, buildUser } from "../test/factories";
+import {
+  buildCatalogFixture,
+  buildUser,
+  cleanupTestData,
+  createTestDatabasePool,
+  createTestNamespace,
+  type TestNamespace,
+} from "../test";
 
 const resetPool = createTestDatabasePool();
+
+type CatalogFixtureOverrides = NonNullable<Parameters<typeof buildCatalogFixture>[2]>;
 
 export function assert(condition: unknown, message: string): void {
   if (!condition) {
@@ -72,7 +79,7 @@ export async function closeIntegrationTestResources(): Promise<void> {
 export async function seedCatalogFixture(
   namespace: TestNamespace,
   label: string,
-  overrides: Parameters<typeof buildCatalogFixture>[2] = {},
+  overrides: CatalogFixtureOverrides = {},
 ) {
   const fixture = buildCatalogFixture(namespace, label, overrides);
 
@@ -86,6 +93,28 @@ export async function seedCatalogFixture(
   }
 
   return fixture;
+}
+
+export async function seedCatalogOfferFixture(
+  namespace: TestNamespace,
+  label: string,
+  overrides: Omit<CatalogFixtureOverrides, "offer"> & {
+    offer?: Exclude<CatalogFixtureOverrides["offer"], false | undefined>;
+  } = {},
+) {
+  const fixture = await seedCatalogFixture(namespace, label, {
+    ...overrides,
+    offer: overrides.offer ?? {},
+  });
+
+  if (!fixture.offer) {
+    throw new Error("Expected catalog fixture to include an offer.");
+  }
+
+  return {
+    ...fixture,
+    offer: fixture.offer,
+  };
 }
 
 export async function runIntegrationTest(
