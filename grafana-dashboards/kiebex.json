@@ -1161,6 +1161,209 @@
         { "format": "short", "label": null, "logBase": 1, "max": null, "min": null, "show": false }
       ],
       "yaxis": { "align": false, "alignLevel": null }
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 113 },
+      "id": 200,
+      "panels": [],
+      "title": "Homepage Rendering",
+      "type": "row"
+    },
+    {
+      "datasource": "$datasource",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.25 },
+              { "color": "red", "value": 0.75 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 114 },
+      "id": 201,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiebex_page_render_duration_seconds_bucket{namespace=\"$namespace\",route=\"/\"}[5m])) by (le))",
+          "legendFormat": "Homepage p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Homepage Render p95",
+      "type": "stat"
+    },
+    {
+      "datasource": "$datasource",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1.5 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 114 },
+      "id": 202,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(kiebex_page_render_duration_seconds_bucket{namespace=\"$namespace\",route=\"/\"}[5m])) by (le))",
+          "legendFormat": "Homepage p99",
+          "refId": "A"
+        }
+      ],
+      "title": "Homepage Render p99",
+      "type": "stat"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "$datasource",
+      "fill": 2,
+      "fillGradient": 5,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 114 },
+      "hiddenSeries": false,
+      "id": 203,
+      "legend": {
+        "avg": true,
+        "current": false,
+        "max": true,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "options": { "alertThreshold": true },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(kiebex_page_render_duration_seconds_bucket{namespace=\"$namespace\",route=\"/\"}[5m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiebex_page_render_duration_seconds_bucket{namespace=\"$namespace\",route=\"/\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(kiebex_page_render_duration_seconds_bucket{namespace=\"$namespace\",route=\"/\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Homepage Render Duration",
+      "tooltip": { "shared": true, "sort": 2, "value_type": "individual" },
+      "type": "graph",
+      "xaxis": { "buckets": null, "mode": "time", "name": null, "show": true, "values": [] },
+      "yaxes": [
+        { "format": "s", "label": null, "logBase": 1, "max": null, "min": "0", "show": true },
+        { "format": "short", "label": null, "logBase": 1, "max": null, "min": null, "show": false }
+      ],
+      "yaxis": { "align": false, "alignLevel": null }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "$datasource",
+      "fill": 2,
+      "fillGradient": 5,
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 122 },
+      "hiddenSeries": false,
+      "id": 204,
+      "legend": {
+        "avg": true,
+        "current": false,
+        "max": true,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "options": { "alertThreshold": true },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiebex_homepage_stage_duration_seconds_bucket{namespace=\"$namespace\"}[5m])) by (le, stage))",
+          "legendFormat": "{{stage}} p95",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Homepage Stage Duration by Step",
+      "tooltip": { "shared": true, "sort": 2, "value_type": "individual" },
+      "type": "graph",
+      "xaxis": { "buckets": null, "mode": "time", "name": null, "show": true, "values": [] },
+      "yaxes": [
+        { "format": "s", "label": null, "logBase": 1, "max": null, "min": "0", "show": true },
+        { "format": "short", "label": null, "logBase": 1, "max": null, "min": null, "show": false }
+      ],
+      "yaxis": { "align": false, "alignLevel": null }
     }
   ],
   "refresh": "30s",
@@ -1218,6 +1421,6 @@
   "timezone": "",
   "title": "Kiel Beer Index",
   "uid": "kiebex-monitoring",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
