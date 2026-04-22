@@ -4,16 +4,8 @@ import { UserOfferActionOptionsProvider, UserOfferActions } from "@/components/o
 import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
-import {
-  getBeerBrands,
-  getBeerOffersPage,
-  BEER_OFFERS_PAGE_SIZE,
-  getDistinctApprovedOfferSizes,
-  getBeerStyles,
-  getLocationReviewSummaries,
-  getBeerVariants,
-  getLocations,
-} from "@/lib/query";
+import { getCachedPublicDirectoryFilterMetadata } from "@/lib/public-directory-cache";
+import { getBeerOffersPage, BEER_OFFERS_PAGE_SIZE, getLocationReviewSummaries } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";
 import {
@@ -142,15 +134,13 @@ export default async function Home({
     parseInt(String(Array.isArray(rawPage) ? rawPage[0] : (rawPage ?? "1")), 10) || 1,
   );
 
-  const [pageResult, sizes, locations, authUser, brands, stylesList, variants] = await Promise.all([
+  const [pageResult, cachedFilterMetadata, authUser] = await Promise.all([
     getBeerOffersPage(query, page),
-    getDistinctApprovedOfferSizes(),
-    getLocations(),
+    getCachedPublicDirectoryFilterMetadata(),
     getCurrentAuthUser(),
-    getBeerBrands(),
-    getBeerStyles(),
-    getBeerVariants(),
   ]);
+
+  const { sizes, locations, brands, stylesList, variants } = cachedFilterMetadata;
 
   const { offers, total } = pageResult;
   const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);

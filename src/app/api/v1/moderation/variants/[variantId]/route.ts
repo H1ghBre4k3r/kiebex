@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import {
   deleteModerationVariant,
   logModerationAction,
@@ -50,6 +51,8 @@ async function patchHandler(
       },
     });
 
+    invalidatePublicDirectoryFilterMetadataCache();
+
     return jsonOk({ variant: result.variant });
   });
 }
@@ -74,6 +77,8 @@ async function deleteHandler(
       contentId: variantId,
       details: { name: result.name, brand: result.brand, style: result.style },
     });
+
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ deleted: true });
   });

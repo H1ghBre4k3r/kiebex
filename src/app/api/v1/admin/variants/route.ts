@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createBeerVariant, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
@@ -46,6 +47,8 @@ async function postHandler(request: Request): Promise<Response> {
       contentId: variant.id,
       details: { name: variant.name },
     });
+
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ variant }, { status: 201 });
   });

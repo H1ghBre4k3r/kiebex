@@ -1,4 +1,5 @@
 import { jsonOk } from "@/lib/http";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import { createLocation, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { createAdminLocationBodySchema } from "@/lib/validation";
@@ -33,6 +34,8 @@ async function postHandler(request: Request): Promise<Response> {
         address: location.address,
       },
     });
+
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ location }, { status: 201 });
   });
