@@ -1,43 +1,71 @@
 import client from "prom-client";
 
-const register = new client.Registry();
+type MetricsStore = {
+  register: client.Registry;
+  httpRequestDuration: client.Histogram<"method" | "route" | "status_code">;
+  httpRequestTotal: client.Counter<"method" | "route" | "status_code">;
+  pageRenderDuration: client.Histogram<"route">;
+  homepageStageDuration: client.Histogram<"stage">;
+};
 
-register.setDefaultLabels({
-  app: "kiebex",
-});
+function createMetricsStore(): MetricsStore {
+  const register = new client.Registry();
 
-client.collectDefaultMetrics({ register });
+  register.setDefaultLabels({
+    app: "kiebex",
+  });
 
-export const httpRequestDuration = new client.Histogram({
-  name: "kiebex_http_request_duration_seconds",
-  help: "Duration of HTTP requests in seconds",
-  labelNames: ["method", "route", "status_code"],
-  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
-  registers: [register],
-});
+  client.collectDefaultMetrics({ register });
 
-export const httpRequestTotal = new client.Counter({
-  name: "kiebex_http_requests_total",
-  help: "Total number of HTTP requests",
-  labelNames: ["method", "route", "status_code"],
-  registers: [register],
-});
+  return {
+    register,
+    httpRequestDuration: new client.Histogram({
+      name: "kiebex_http_request_duration_seconds",
+      help: "Duration of HTTP requests in seconds",
+      labelNames: ["method", "route", "status_code"],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+      registers: [register],
+    }),
+    httpRequestTotal: new client.Counter({
+      name: "kiebex_http_requests_total",
+      help: "Total number of HTTP requests",
+      labelNames: ["method", "route", "status_code"],
+      registers: [register],
+    }),
+    pageRenderDuration: new client.Histogram({
+      name: "kiebex_page_render_duration_seconds",
+      help: "Duration of server-rendered page requests in seconds",
+      labelNames: ["route"],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+      registers: [register],
+    }),
+    homepageStageDuration: new client.Histogram({
+      name: "kiebex_homepage_stage_duration_seconds",
+      help: "Duration of key homepage server-render stages in seconds",
+      labelNames: ["stage"],
+      buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+      registers: [register],
+    }),
+  };
+}
 
-export const pageRenderDuration = new client.Histogram({
-  name: "kiebex_page_render_duration_seconds",
-  help: "Duration of server-rendered page requests in seconds",
-  labelNames: ["route"],
-  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
-  registers: [register],
-});
+const globalMetrics = globalThis as typeof globalThis & {
+  __kiebexMetricsStore?: MetricsStore;
+};
 
-export const homepageStageDuration = new client.Histogram({
-  name: "kiebex_homepage_stage_duration_seconds",
-  help: "Duration of key homepage server-render stages in seconds",
-  labelNames: ["stage"],
-  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
-  registers: [register],
-});
+const metricsStore = globalMetrics.__kiebexMetricsStore ?? createMetricsStore();
+
+if (!globalMetrics.__kiebexMetricsStore) {
+  globalMetrics.__kiebexMetricsStore = metricsStore;
+}
+
+const {
+  register,
+  httpRequestDuration,
+  httpRequestTotal,
+  pageRenderDuration,
+  homepageStageDuration,
+} = metricsStore;
 
 export function getMetrics(): Promise<string> {
   return register.metrics();
