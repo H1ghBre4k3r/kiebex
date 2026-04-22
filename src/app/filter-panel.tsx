@@ -7,8 +7,17 @@ import {
   toggleValue,
   toggleVariantGroup,
 } from "@/lib/beer-directory-url";
-import { SortForm } from "./sort-form";
+import { SortFormAutoSubmit } from "./sort-form-auto-submit";
 import styles from "./filter-panel.module.css";
+
+type SortValue = "price_asc" | "price_desc" | "name_asc" | "name_desc";
+
+const SORT_OPTIONS: { value: SortValue; label: string }[] = [
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "name_asc", label: "Brand: A to Z" },
+  { value: "name_desc", label: "Brand: Z to A" },
+];
 
 type Props = {
   brands: { id: string; name: string }[];
@@ -114,15 +123,50 @@ export function FilterPanel({
                * Native <form method="GET"> + <input type="radio"> restores correct keyboard
                * semantics (arrow-key navigation, spacebar selection) that <a role="radio">
                * cannot provide. Hidden inputs preserve all active filters; the sort radio
-               * replaces only the sort param. Client-side `requestSubmit()` keeps the
-               * immediate behavior without relying on inline scripts.
+               * replaces only the sort param. A tiny client enhancer adds immediate
+               * submit behavior without changing the no-JS HTML path.
                */}
-              <SortForm
-                currentSort={currentSort}
-                preservedParams={Object.fromEntries(
-                  Object.entries(map).filter(([key]) => key !== "sort" && key !== "page"),
-                )}
-              />
+              <form id="sort-form" method="GET" action="/" aria-labelledby="sort-group-label">
+                {Object.entries(map)
+                  .filter(([key]) => key !== "sort" && key !== "page")
+                  .flatMap(([key, values]) =>
+                    values.map((value, index) => (
+                      <input key={`${key}-${index}`} type="hidden" name={key} value={value} />
+                    )),
+                  )}
+                <ul className={styles.radioList} role="group" aria-labelledby="sort-group-label">
+                  {SORT_OPTIONS.map(({ value, label }) => {
+                    const checked = currentSort === value;
+                    const id = `sort-${value}`;
+
+                    return (
+                      <li key={value}>
+                        <label
+                          htmlFor={id}
+                          className={`${styles.radioItem}${checked ? ` ${styles.selected}` : ""}`}
+                        >
+                          <input
+                            type="radio"
+                            id={id}
+                            name="sort"
+                            value={value}
+                            defaultChecked={checked}
+                            className={styles.srOnly}
+                          />
+                          <span className={styles.radioIndicator} aria-hidden="true" />
+                          {label}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <noscript>
+                  <button type="submit" className={styles.sortSubmit}>
+                    Apply sort
+                  </button>
+                </noscript>
+              </form>
+              <SortFormAutoSubmit formId="sort-form" />
             </div>
 
             {/* ── Brand ── */}

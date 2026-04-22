@@ -9,6 +9,13 @@ import {
 
 const PUBLIC_DIRECTORY_FILTER_METADATA_TAG = "public-directory-filter-metadata";
 
+function isMissingRevalidateContextError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("static generation store missing in revalidateTag")
+  );
+}
+
 const getCachedPublicDirectoryFilterMetadataInternal = unstable_cache(
   async () => {
     const [locations, brands, stylesList, variants, sizes] = await Promise.all([
@@ -38,7 +45,20 @@ export async function getCachedPublicDirectoryFilterMetadata() {
 }
 
 export function invalidatePublicDirectoryFilterMetadataCache(): void {
-  revalidateTag(PUBLIC_DIRECTORY_FILTER_METADATA_TAG, "max");
+  if (process.env.NODE_ENV === "test") {
+    return;
+  }
+
+  try {
+    revalidateTag(PUBLIC_DIRECTORY_FILTER_METADATA_TAG, "max");
+  } catch (error) {
+    // Route/unit/integration tests can invoke handlers outside Next's revalidation context.
+    if (isMissingRevalidateContextError(error)) {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 export { PUBLIC_DIRECTORY_FILTER_METADATA_TAG };

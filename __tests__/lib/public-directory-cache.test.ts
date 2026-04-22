@@ -24,6 +24,9 @@ jest.mock("@/lib/query", () => ({
 }));
 
 describe("public directory cache", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const env = process.env as NodeJS.ProcessEnv & { NODE_ENV: string | undefined };
+
   beforeEach(() => {
     jest.resetModules();
     mockedRevalidateTag.mockReset();
@@ -33,6 +36,7 @@ describe("public directory cache", () => {
     mockedGetBeerStyles.mockReset();
     mockedGetBeerVariants.mockReset();
     mockedGetDistinctApprovedOfferSizes.mockReset();
+    env.NODE_ENV = originalNodeEnv;
   });
 
   it("loads the homepage filter metadata through a cached wrapper", async () => {
@@ -63,12 +67,37 @@ describe("public directory cache", () => {
     ]);
   });
 
-  it("invalidates the shared metadata tag", async () => {
+  it("skips tag invalidation during Jest route tests", async () => {
+    const { invalidatePublicDirectoryFilterMetadataCache } =
+      await import("@/lib/public-directory-cache");
+
+    invalidatePublicDirectoryFilterMetadataCache();
+
+    expect(mockedRevalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("invalidates the shared metadata tag outside the test environment", async () => {
+    env.NODE_ENV = "development";
+
     const { invalidatePublicDirectoryFilterMetadataCache } =
       await import("@/lib/public-directory-cache");
 
     invalidatePublicDirectoryFilterMetadataCache();
 
     expect(mockedRevalidateTag).toHaveBeenCalledWith("public-directory-filter-metadata", "max");
+  });
+
+  it("ignores missing revalidation context outside Next runtime", async () => {
+    env.NODE_ENV = "development";
+    mockedRevalidateTag.mockImplementation(() => {
+      throw new Error(
+        "Invariant: static generation store missing in revalidateTag public-directory-filter-metadata",
+      );
+    });
+
+    const { invalidatePublicDirectoryFilterMetadataCache } =
+      await import("@/lib/public-directory-cache");
+
+    expect(() => invalidatePublicDirectoryFilterMetadataCache()).not.toThrow();
   });
 });
