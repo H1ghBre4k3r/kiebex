@@ -23,6 +23,22 @@ export const httpRequestTotal = new client.Counter({
   registers: [register],
 });
 
+export const pageRenderDuration = new client.Histogram({
+  name: "kiebex_page_render_duration_seconds",
+  help: "Duration of server-rendered page requests in seconds",
+  labelNames: ["route"],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+  registers: [register],
+});
+
+export const homepageStageDuration = new client.Histogram({
+  name: "kiebex_homepage_stage_duration_seconds",
+  help: "Duration of key homepage server-render stages in seconds",
+  labelNames: ["stage"],
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register],
+});
+
 export function getMetrics(): Promise<string> {
   return register.metrics();
 }
@@ -40,4 +56,12 @@ export function recordHttpRequest(
   const status = String(statusCode);
   httpRequestDuration.labels(method, route, status).observe(durationSeconds);
   httpRequestTotal.labels(method, route, status).inc();
+}
+
+export function recordPageRender(route: string, durationSeconds: number): void {
+  pageRenderDuration.labels(route).observe(durationSeconds);
+}
+
+export function recordHomepageStage(stage: string, durationSeconds: number): void {
+  homepageStageDuration.labels(stage).observe(durationSeconds);
 }
