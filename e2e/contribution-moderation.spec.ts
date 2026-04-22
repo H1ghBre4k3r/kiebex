@@ -20,6 +20,13 @@ const TEST_PRICE_LABEL = new Intl.NumberFormat("de-DE", {
   minimumFractionDigits: 2,
 }).format(Number(TEST_PRICE_CENTS) / 100);
 
+const EDITED_TEST_PRICE_EUR = "123.45";
+const EDITED_TEST_PRICE_LABEL = new Intl.NumberFormat("de-DE", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+}).format(Number(EDITED_TEST_PRICE_EUR));
+
 test("contributor can submit an offer and moderator can approve it into the public directory", async ({
   page,
 }) => {
@@ -125,6 +132,65 @@ test("contributor can submit a location and later use it as an approved offer ta
   });
 
   await expect(approvedLocationOption).toHaveCount(1);
+});
+
+test("moderator can edit and reject a pending location submission", async ({ page }, testInfo) => {
+  const suffix = createE2ETestSuffix(testInfo);
+  const locationName = `E2E Reject Location ${suffix}`;
+  const district = `Reject District ${suffix}`;
+  const address = `${suffix} Rejectstrasse 42`;
+  const updatedDistrict = `Edited District ${suffix}`;
+  const updatedAddress = `${suffix} Editedstrasse 99`;
+
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await page.getByRole("tab", { name: "New Location" }).click();
+  await page.fill("#location-name", locationName);
+  await page.selectOption("#location-type", "pub");
+  await page.fill("#location-district", district);
+  await page.fill("#location-address", address);
+  await page.getByRole("button", { name: "Submit Location" }).click();
+  await expect(page.getByRole("status")).toContainText("Location submitted for moderation.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await page.getByRole("button", { name: /Locations \(/ }).click();
+
+  const pendingLocationItem = page
+    .locator("li")
+    .filter({ hasText: locationName })
+    .filter({ hasText: address })
+    .filter({ hasText: district });
+
+  await expect(pendingLocationItem).toHaveCount(1);
+  await pendingLocationItem.getByRole("button", { name: "Edit" }).click();
+  await pendingLocationItem.locator('input[placeholder="' + district + '"]').fill(updatedDistrict);
+  await pendingLocationItem.locator('input[placeholder="' + address + '"]').fill(updatedAddress);
+  await pendingLocationItem.getByRole("button", { name: "Save" }).click();
+
+  await expect(page.locator('p[role="status"]')).toContainText("Location updated.");
+
+  const editedLocationItem = page
+    .locator("li")
+    .filter({ hasText: locationName })
+    .filter({ hasText: updatedAddress })
+    .filter({ hasText: updatedDistrict });
+
+  await expect(editedLocationItem).toHaveCount(1);
+  await editedLocationItem.getByRole("button", { name: "Reject" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("location rejected.");
+  await expect(editedLocationItem).toHaveCount(0);
+
+  await signOut(page);
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await expect(
+    page.locator("#offer-location-id option", { hasText: `${locationName} - Pub (Pending)` }),
+  ).toHaveCount(0);
 });
 
 test("authenticated user can submit a brand and variant and use the pending variant in the offer form", async ({
@@ -270,4 +336,61 @@ test("authenticated user can create, edit, and report a review that a moderator 
     .first();
 
   await expect(resolvedReportItem).toBeVisible();
+});
+
+test("moderator can edit and delete a pending offer submission", async ({ page }) => {
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await expect(page.getByRole("heading", { name: "Contribute" })).toBeVisible();
+
+  const brandName =
+    (await page.locator("#offer-brand-id option:checked").textContent())?.trim() ?? "";
+  const variantLabel =
+    (await page.locator("#offer-variant-id option:checked").textContent())?.trim() ?? "";
+  const variantName = variantLabel.split(" (")[0] ?? "";
+  const offerSizeMl = "888";
+  const offerPriceCents = "43210";
+  const offerPriceLabel = new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+  }).format(Number(offerPriceCents) / 100);
+
+  await page.fill("#offer-size-ml", offerSizeMl);
+  await page.selectOption("#offer-serving", "bottle");
+  await page.fill("#offer-price-cents", offerPriceCents);
+  await page.getByRole("button", { name: "Submit Offer / Price Update" }).click();
+  await expect(page.getByRole("status")).toContainText("Offer submission created for moderation.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await page.getByRole("button", { name: /Offers \(/ }).click();
+
+  const pendingOfferItem = page
+    .locator("li")
+    .filter({ hasText: `${brandName} ${variantName}` })
+    .filter({ hasText: `${offerSizeMl} ml` })
+    .filter({ hasText: offerPriceLabel });
+
+  await expect(pendingOfferItem).toHaveCount(1);
+  await pendingOfferItem.getByRole("button", { name: "Edit Price" }).click();
+  await pendingOfferItem.locator('input[placeholder="432.10"]').fill(EDITED_TEST_PRICE_EUR);
+  await pendingOfferItem.getByRole("button", { name: "Save" }).click();
+
+  await expect(page.locator('p[role="status"]')).toContainText("Offer price updated.");
+
+  const editedOfferItem = page
+    .locator("li")
+    .filter({ hasText: `${brandName} ${variantName}` })
+    .filter({ hasText: `${offerSizeMl} ml` })
+    .filter({ hasText: EDITED_TEST_PRICE_LABEL });
+
+  await expect(editedOfferItem).toHaveCount(1);
+  await editedOfferItem.getByRole("button", { name: "Delete" }).click();
+  await editedOfferItem.getByRole("button", { name: "Confirm Delete" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("offer deleted.");
+  await expect(editedOfferItem).toHaveCount(0);
 });
