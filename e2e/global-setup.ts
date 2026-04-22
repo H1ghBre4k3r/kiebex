@@ -1,12 +1,13 @@
 /**
- * Playwright global setup — seeds a verified test user with a known password
- * so that auth lifecycle specs can sign in without relying on email verification.
+ * Playwright global setup — seeds baseline domain data plus verified test users
+ * with known passwords so E2E specs do not depend on prior manual db:seed runs.
  *
  * Uses raw pg (no Prisma) to avoid path-alias resolution issues in the Playwright
  * test runner context. Implements the same scrypt hash format as src/lib/auth.ts.
  */
 
 import "dotenv/config";
+import { spawn } from "node:child_process";
 import { randomBytes, scrypt as scryptCallback } from "node:crypto";
 import { promisify } from "node:util";
 import pg from "pg";
@@ -61,6 +62,30 @@ export const E2E_USER_IDS = [
   E2E_REPORTER_USER_ID,
 ] as const;
 
+function npmCommand(): string {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
+}
+
+async function seedBaselineData(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(npmCommand(), ["run", "db:seed"], {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: "inherit",
+    });
+
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`db:seed exited with code ${code ?? "unknown"}.`));
+    });
+  });
+}
+
 async function cleanupE2EData(pool: pg.Pool): Promise<void> {
   const adminSmokeLike = `${E2E_ADMIN_ENTITY_PREFIX}%`;
 
@@ -102,6 +127,7 @@ export default async function globalSetup(): Promise<void> {
   const pool = new pg.Pool({ connectionString });
 
   try {
+    await seedBaselineData();
     await cleanupE2EData(pool);
 
     const verifiedHash = await hashPassword(E2E_AUTH_PASSWORD);
