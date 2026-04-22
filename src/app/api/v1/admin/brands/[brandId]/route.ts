@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { deleteModerationBrand, editAdminBrand, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { editAdminBrandBodySchema } from "@/lib/validation";
@@ -15,7 +16,17 @@ async function putHandler(
     }
 
     const { brandId } = await context.params;
-    const result = await editAdminBrand(brandId, parsed.data.name);
+    let result;
+
+    try {
+      result = await editAdminBrand(brandId, parsed.data.name);
+    } catch (error) {
+      if (isPrismaErrorCode(error, "P2002")) {
+        return jsonError(409, "BRAND_NAME_CONFLICT", "A beer brand with that name already exists.");
+      }
+
+      throw error;
+    }
 
     if (!result) {
       return jsonError(404, "BRAND_NOT_FOUND", `No brand found for id '${brandId}'.`);
@@ -40,7 +51,21 @@ async function deleteHandler(
 ): Promise<Response> {
   return withApiAdmin(async (admin) => {
     const { brandId } = await context.params;
-    const result = await deleteModerationBrand(brandId);
+    let result;
+
+    try {
+      result = await deleteModerationBrand(brandId);
+    } catch (error) {
+      if (isPrismaErrorCode(error, "P2003")) {
+        return jsonError(
+          409,
+          "BRAND_IN_USE",
+          "This beer brand is still in use and cannot be deleted.",
+        );
+      }
+
+      throw error;
+    }
 
     if (!result.deleted) {
       return jsonError(404, "BRAND_NOT_FOUND", `No brand found for id '${brandId}'.`);

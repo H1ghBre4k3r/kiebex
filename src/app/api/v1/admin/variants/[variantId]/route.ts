@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { deleteModerationVariant, editAdminVariant, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
 import { editAdminVariantBodySchema } from "@/lib/validation";
@@ -15,7 +16,25 @@ async function putHandler(
     }
 
     const { variantId } = await context.params;
-    const result = await editAdminVariant(variantId, parsed.data);
+    let result;
+
+    try {
+      result = await editAdminVariant(variantId, parsed.data);
+    } catch (error) {
+      if (isPrismaErrorCode(error, "P2002")) {
+        return jsonError(
+          409,
+          "VARIANT_NAME_CONFLICT",
+          "A beer variant with that name already exists for this brand.",
+        );
+      }
+
+      if (isPrismaErrorCode(error, "P2003")) {
+        return jsonError(404, "RELATION_NOT_FOUND", "The specified style does not exist.");
+      }
+
+      throw error;
+    }
 
     if (!result) {
       return jsonError(404, "VARIANT_NOT_FOUND", `No variant found for id '${variantId}'.`);
@@ -46,7 +65,21 @@ async function deleteHandler(
 ): Promise<Response> {
   return withApiAdmin(async (admin) => {
     const { variantId } = await context.params;
-    const result = await deleteModerationVariant(variantId);
+    let result;
+
+    try {
+      result = await deleteModerationVariant(variantId);
+    } catch (error) {
+      if (isPrismaErrorCode(error, "P2003")) {
+        return jsonError(
+          409,
+          "VARIANT_IN_USE",
+          "This beer variant is still in use and cannot be deleted.",
+        );
+      }
+
+      throw error;
+    }
 
     if (!result.deleted) {
       return jsonError(404, "VARIANT_NOT_FOUND", `No variant found for id '${variantId}'.`);

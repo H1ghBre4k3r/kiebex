@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import {
   createEmailVerificationToken,
-  hashPassword,
   requestEmailChange,
   requestPasswordReset,
   resetPassword,
@@ -11,54 +10,12 @@ import {
   verifyEmailToken,
   verifyPassword,
 } from "@/lib/auth";
-import { buildUser, type TestNamespace } from "../test/factories";
-import { assert, runIntegrationTest } from "./helpers";
+import { assert, fail, runIntegrationTest, seedAuthUser } from "./helpers";
 
 type IntegrationCheck = {
   name: string;
   fn: () => Promise<void>;
 };
-
-type SeedAuthUserOptions = {
-  id?: string;
-  email?: string;
-  displayName?: string;
-  role?: "user" | "moderator" | "admin";
-  emailVerified?: boolean;
-  isBanned?: boolean;
-  pendingEmail?: string | null;
-  password?: string;
-};
-
-async function seedAuthUser(
-  namespace: TestNamespace,
-  label: string,
-  options: SeedAuthUserOptions = {},
-): Promise<{ user: ReturnType<typeof buildUser>; password: string }> {
-  const password = options.password ?? "Password123!";
-  const user = buildUser(namespace, label, {
-    ...(options.id !== undefined ? { id: options.id } : {}),
-    ...(options.email !== undefined ? { email: options.email } : {}),
-    ...(options.displayName !== undefined ? { displayName: options.displayName } : {}),
-    ...(options.role !== undefined ? { role: options.role } : {}),
-    emailVerified: options.emailVerified ?? true,
-    isBanned: options.isBanned ?? false,
-    passwordHash: await hashPassword(password),
-  });
-
-  await db.user.create({
-    data: {
-      ...user,
-      pendingEmail: options.pendingEmail ?? null,
-    },
-  });
-
-  return { user, password };
-}
-
-function fail(message: string): never {
-  throw new Error(message);
-}
 
 async function testUpdateDisplayNamePersistsNormalizedValue(): Promise<void> {
   await runIntegrationTest("update-display-name", async ({ namespace }) => {
