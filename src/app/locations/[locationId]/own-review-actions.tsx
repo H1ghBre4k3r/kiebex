@@ -12,9 +12,21 @@ type Props = {
   review: ReviewWithAuthor;
   authUserId: string | null;
   isModerator?: boolean;
+  onUpdated?: (review: ReviewWithAuthor) => void;
+  onDeleted?: (reviewId: string) => void;
 };
 
-export function OwnReviewActions({ review, authUserId, isModerator = false }: Props) {
+type UpdateReviewSuccess = {
+  review: ReviewWithAuthor;
+};
+
+export function OwnReviewActions({
+  review,
+  authUserId,
+  isModerator = false,
+  onUpdated,
+  onDeleted,
+}: Props) {
   const router = useRouter();
   const isOwn = authUserId !== null && review.author.id === authUserId;
   const canAct = isOwn || isModerator;
@@ -57,7 +69,7 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     setSavePending(true);
     setErrorMessage(null);
 
-    const result = await requestApi<null>(
+    const result = await requestApi<UpdateReviewSuccess>(
       editEndpoint,
       jsonInit(editMethod, {
         body: {
@@ -73,7 +85,12 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
       setErrorMessage(result.message);
     } else {
       setEditing(false);
-      router.refresh();
+
+      if (result.data?.review) {
+        onUpdated?.(result.data.review);
+      } else {
+        router.refresh();
+      }
     }
 
     setSavePending(false);
@@ -96,6 +113,12 @@ export function OwnReviewActions({ review, authUserId, isModerator = false }: Pr
     if (!result.ok) {
       setErrorMessage(result.message);
       setConfirmDelete(false);
+      setDeletePending(false);
+      return;
+    }
+
+    if (onDeleted) {
+      onDeleted(review.id);
       setDeletePending(false);
       return;
     }

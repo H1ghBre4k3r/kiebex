@@ -7,6 +7,7 @@ import {
   toggleValue,
   toggleVariantGroup,
 } from "@/lib/beer-directory-url";
+import { SortForm } from "./sort-form";
 import styles from "./filter-panel.module.css";
 
 type Props = {
@@ -112,58 +113,15 @@ export function FilterPanel({
               {/*
                * Native <form method="GET"> + <input type="radio"> restores correct keyboard
                * semantics (arrow-key navigation, spacebar selection) that <a role="radio">
-               * cannot provide.  Hidden inputs preserve all active filters; the sort radio
-               * replaces only the sort param.  An inline script auto-submits on change so
-               * JS users get immediate navigation; the <noscript> button covers the no-JS path.
+               * cannot provide. Hidden inputs preserve all active filters; the sort radio
+               * replaces only the sort param. Client-side `requestSubmit()` keeps the
+               * immediate behavior without relying on inline scripts.
                */}
-              <form id="sort-form" method="GET" action="/" aria-labelledby="sort-group-label">
-                {Object.entries(map)
-                  .filter(([k]) => k !== "sort" && k !== "page")
-                  .flatMap(([k, vs]) =>
-                    vs.map((v, i) => <input key={`${k}-${i}`} type="hidden" name={k} value={v} />),
-                  )}
-                <ul className={styles.radioList} role="group" aria-labelledby="sort-group-label">
-                  {[
-                    { value: "price_asc", label: "Price: Low to High" },
-                    { value: "price_desc", label: "Price: High to Low" },
-                    { value: "name_asc", label: "Brand: A to Z" },
-                    { value: "name_desc", label: "Brand: Z to A" },
-                  ].map(({ value, label }) => {
-                    const checked = currentSort === value;
-                    const id = `sort-${value}`;
-                    return (
-                      <li key={value}>
-                        <label
-                          htmlFor={id}
-                          className={`${styles.radioItem}${checked ? ` ${styles.selected}` : ""}`}
-                        >
-                          <input
-                            type="radio"
-                            id={id}
-                            name="sort"
-                            value={value}
-                            defaultChecked={checked}
-                            className={styles.srOnly}
-                          />
-                          <span className={styles.radioIndicator} aria-hidden="true" />
-                          {label}
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <noscript>
-                  <button type="submit" className={styles.sortSubmit}>
-                    Apply sort
-                  </button>
-                </noscript>
-              </form>
-              {/* Auto-submit the form immediately on radio change when JS is available. */}
-              <script
-                dangerouslySetInnerHTML={{
-                  __html:
-                    "var _sf=document.getElementById('sort-form');if(_sf)_sf.addEventListener('change',function(){_sf.submit();});",
-                }}
+              <SortForm
+                currentSort={currentSort}
+                preservedParams={Object.fromEntries(
+                  Object.entries(map).filter(([key]) => key !== "sort" && key !== "page"),
+                )}
               />
             </div>
 

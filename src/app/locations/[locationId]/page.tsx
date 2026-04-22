@@ -11,8 +11,7 @@ import {
   getOfferPriceHistoryBatch,
 } from "@/lib/query";
 import { AdminLocationActions } from "./admin-location-actions";
-import { OwnReviewActions } from "./own-review-actions";
-import { ReviewForm } from "./review-form";
+import { ReviewsSection } from "./reviews-section";
 import styles from "./page.module.css";
 
 export default async function LocationPage({
@@ -81,30 +80,12 @@ export default async function LocationPage({
       </section>
 
       <section aria-labelledby="location-reviews-heading" className={styles.panel}>
-        <h2 id="location-reviews-heading">Reviews ({reviews.length})</h2>
-
-        {authUser ? (
-          <ReviewForm locationId={location.id} />
-        ) : (
-          <p>
-            <Link href="/login">Sign in</Link> to add a review.
-          </p>
-        )}
-
-        {reviews.length === 0 ? (
-          <p>No reviews yet for this location.</p>
-        ) : (
-          <ul className={styles.reviewList}>
-            {reviews.map((review) => (
-              <OwnReviewActions
-                key={review.id}
-                review={review}
-                authUserId={authUser?.id ?? null}
-                isModerator={isModerator}
-              />
-            ))}
-          </ul>
-        )}
+        <ReviewsSection
+          locationId={location.id}
+          initialReviews={reviews}
+          authUser={authUser ? { id: authUser.id, displayName: authUser.displayName } : null}
+          isModerator={isModerator}
+        />
       </section>
     </main>
   );

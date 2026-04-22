@@ -3,13 +3,19 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { jsonInit, requestApi } from "@/lib/client-api";
+import type { Review } from "@/lib/types";
 import styles from "./page.module.css";
 
 type ReviewFormProps = {
   locationId: string;
+  onCreated?: (review: Review) => void;
 };
 
-export function ReviewForm({ locationId }: ReviewFormProps) {
+type CreateReviewSuccess = {
+  review: Review;
+};
+
+export function ReviewForm({ locationId, onCreated }: ReviewFormProps) {
   const router = useRouter();
   const [rating, setRating] = useState("5");
   const [title, setTitle] = useState("");
@@ -29,7 +35,7 @@ export function ReviewForm({ locationId }: ReviewFormProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const result = await requestApi<null>(
+    const result = await requestApi<CreateReviewSuccess>(
       "/api/v1/reviews",
       jsonInit("POST", {
         body: {
@@ -49,7 +55,12 @@ export function ReviewForm({ locationId }: ReviewFormProps) {
       setTitle("");
       setBody("");
       setSuccessMessage("Review submitted.");
-      router.refresh();
+
+      if (result.data?.review) {
+        onCreated?.(result.data.review);
+      } else {
+        router.refresh();
+      }
     }
 
     setPending(false);
