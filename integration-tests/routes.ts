@@ -380,6 +380,176 @@ async function testModerationOfferEditCreatesAuditLogEntry(): Promise<void> {
   });
 }
 
+async function testModerationOfferApproveCreatesAuditLogEntry(): Promise<void> {
+  await runIntegrationTest("moderation-offer-approve-audit-log", async ({ namespace }) => {
+    const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-approve", {
+      role: "moderator",
+    });
+    const style = buildBeerStyle(namespace, "moderation-approve-style");
+    const brand = buildBeerBrand(namespace, "moderation-approve-brand");
+    const variant = buildBeerVariant(namespace, "moderation-approve-variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "moderation-approve-location");
+    const offer = buildBeerOffer(namespace, "moderation-approve-offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      priceCents: 495,
+      status: "pending",
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: offer });
+    await startAuthenticatedSession(moderator.id);
+
+    const { PATCH } = await import("@/app/api/v1/moderation/offers/[offerId]/route");
+    const response = await PATCH(
+      new Request(`http://localhost/api/v1/moderation/offers/${offer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" }),
+      }),
+      { params: Promise.resolve({ offerId: offer.id }) },
+    );
+
+    assert(response.status === 200, "Expected moderation offer approvals to succeed.");
+
+    const approvedOffer = await db.beerOffer.findUnique({
+      where: { id: offer.id },
+      select: { status: true },
+    });
+    const priceHistory = await db.offerPriceHistory.findMany({
+      where: { beerOfferId: offer.id },
+    });
+    const entry = await db.moderationAuditLog.findFirst({
+      where: { contentId: offer.id, action: "approve", contentType: "offer" },
+      orderBy: { createdAt: "desc" },
+    });
+
+    assert(
+      approvedOffer?.status === "approved",
+      "Expected moderation offer approvals to persist the approved status.",
+    );
+    assert(
+      priceHistory.length === 1,
+      "Expected moderation offer approvals to create a price history entry.",
+    );
+    if (!entry?.details) {
+      fail("Expected moderation offer approvals to create an audit log entry with details.");
+    }
+
+    const details = JSON.parse(entry.details) as {
+      variant?: string;
+      location?: string;
+      priceEur?: number;
+    };
+
+    assert(
+      details.variant === variant.name,
+      "Expected audit log details to include the approved variant name.",
+    );
+    assert(
+      details.location === location.name,
+      "Expected audit log details to include the approved location name.",
+    );
+    assert(
+      details.priceEur === 4.95,
+      "Expected audit log details to include the approved price in EUR.",
+    );
+  });
+}
+
+async function testModerationOfferRejectCreatesAuditLogEntry(): Promise<void> {
+  await runIntegrationTest("moderation-offer-reject-audit-log", async ({ namespace }) => {
+    const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-reject", {
+      role: "moderator",
+    });
+    const style = buildBeerStyle(namespace, "moderation-reject-style");
+    const brand = buildBeerBrand(namespace, "moderation-reject-brand");
+    const variant = buildBeerVariant(namespace, "moderation-reject-variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "moderation-reject-location");
+    const offer = buildBeerOffer(namespace, "moderation-reject-offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      priceCents: 510,
+      status: "pending",
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: offer });
+    await startAuthenticatedSession(moderator.id);
+
+    const { PATCH } = await import("@/app/api/v1/moderation/offers/[offerId]/route");
+    const response = await PATCH(
+      new Request(`http://localhost/api/v1/moderation/offers/${offer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rejected" }),
+      }),
+      { params: Promise.resolve({ offerId: offer.id }) },
+    );
+
+    assert(response.status === 200, "Expected moderation offer rejections to succeed.");
+
+    const rejectedOffer = await db.beerOffer.findUnique({
+      where: { id: offer.id },
+      select: { status: true },
+    });
+    const priceHistory = await db.offerPriceHistory.findMany({
+      where: { beerOfferId: offer.id },
+    });
+    const entry = await db.moderationAuditLog.findFirst({
+      where: { contentId: offer.id, action: "reject", contentType: "offer" },
+      orderBy: { createdAt: "desc" },
+    });
+
+    assert(
+      rejectedOffer?.status === "rejected",
+      "Expected moderation offer rejections to persist the rejected status.",
+    );
+    assert(
+      priceHistory.length === 0,
+      "Expected moderation offer rejections not to create a price history entry.",
+    );
+    if (!entry?.details) {
+      fail("Expected moderation offer rejections to create an audit log entry with details.");
+    }
+
+    const details = JSON.parse(entry.details) as {
+      brand?: string;
+      serving?: string;
+      priceEur?: number;
+    };
+
+    assert(
+      details.brand === brand.name,
+      "Expected audit log details to include the rejected brand name.",
+    );
+    assert(
+      details.serving === "tap",
+      "Expected audit log details to include the rejected serving type.",
+    );
+    assert(
+      details.priceEur === 5.1,
+      "Expected audit log details to include the rejected price in EUR.",
+    );
+  });
+}
+
 async function testModerationOfferDeleteCreatesAuditLogEntry(): Promise<void> {
   await runIntegrationTest("moderation-offer-delete-audit-log", async ({ namespace }) => {
     const { user: moderator } = await seedAuthUser(namespace, "moderation-offer-delete", {
@@ -479,6 +649,14 @@ export const routeIntegrationChecks: IntegrationCheck[] = [
   {
     name: "admin offer create duplicate maps to OFFER_CONFLICT",
     fn: testAdminOfferCreateDuplicateMapsConflict,
+  },
+  {
+    name: "moderation offer approve creates an audit log entry",
+    fn: testModerationOfferApproveCreatesAuditLogEntry,
+  },
+  {
+    name: "moderation offer reject creates an audit log entry",
+    fn: testModerationOfferRejectCreatesAuditLogEntry,
   },
   {
     name: "moderation offer edit creates an audit log entry",
