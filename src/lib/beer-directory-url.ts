@@ -66,9 +66,7 @@ function dropPage(map: RawMap): RawMap {
  */
 export function toggleValue(map: RawMap, key: string, value: string): RawMap {
   const current = map[key] ?? [];
-  const next = current.includes(value)
-    ? current.filter((v) => v !== value)
-    : [...current, value];
+  const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
   const updated = { ...map, [key]: next };
   if (next.length === 0) delete updated[key];
   return dropPage(updated);
@@ -110,10 +108,7 @@ export function setSort(map: RawMap, value: string): RawMap {
  * Build a pagination URL for `targetPage`, preserving all current filters.
  * Omits the `page` param entirely when `targetPage` is 1 for canonical URLs.
  */
-export function buildPaginationUrl(
-  raw: Record<string, SearchValue>,
-  targetPage: number,
-): string {
+export function buildPaginationUrl(raw: Record<string, SearchValue>, targetPage: number): string {
   const map = toRawMap(raw);
   delete map.page;
   if (targetPage > 1) map.page = [String(targetPage)];

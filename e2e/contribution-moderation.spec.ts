@@ -1,0 +1,245 @@
+import { expect, test, type Page } from "@playwright/test";
+import {
+  E2E_AUTH_EMAIL,
+  E2E_AUTH_PASSWORD,
+  E2E_AUTH_DISPLAY_NAME,
+  E2E_MODERATOR_EMAIL,
+  E2E_MODERATOR_PASSWORD,
+  E2E_MODERATOR_DISPLAY_NAME,
+  E2E_REPORTER_EMAIL,
+  E2E_REPORTER_PASSWORD,
+  E2E_REPORTER_DISPLAY_NAME,
+} from "./global-setup";
+
+const TEST_SIZE_ML = "777";
+const TEST_PRICE_CENTS = "49999";
+const TEST_PRICE_LABEL = new Intl.NumberFormat("de-DE", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+}).format(Number(TEST_PRICE_CENTS) / 100);
+
+async function signIn(page: Page, email: string, password: string): Promise<void> {
+  await page.goto("/login");
+  await page.fill("#login-email", email);
+  await page.fill("#login-password", password);
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.waitForURL("/");
+}
+
+async function signOut(page: Page): Promise<void> {
+  const nav = page.getByRole("navigation", { name: "Site navigation" });
+  await nav.getByRole("button", { name: "Sign Out" }).click();
+  await expect(nav.getByRole("link", { name: "Sign In" })).toBeVisible();
+}
+
+test("contributor can submit an offer and moderator can approve it into the public directory", async ({
+  page,
+}) => {
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await expect(page.getByRole("heading", { name: "Contribute" })).toBeVisible();
+
+  const brandName =
+    (await page.locator("#offer-brand-id option:checked").textContent())?.trim() ?? "";
+  const variantLabel =
+    (await page.locator("#offer-variant-id option:checked").textContent())?.trim() ?? "";
+  const variantName = variantLabel.split(" (")[0] ?? "";
+  const locationId = await page.locator("#offer-location-id").inputValue();
+
+  await page.fill("#offer-size-ml", TEST_SIZE_ML);
+  await page.selectOption("#offer-serving", "can");
+  await page.fill("#offer-price-cents", TEST_PRICE_CENTS);
+  await page.getByRole("button", { name: "Submit Offer / Price Update" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Offer submission created for moderation.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await expect(page.getByRole("heading", { name: "Moderation Queue" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Offers \(/ }).click();
+
+  const pendingOfferItem = page
+    .locator("li")
+    .filter({ hasText: `${brandName} ${variantName}` })
+    .filter({ hasText: `${TEST_SIZE_ML} ml` })
+    .filter({ hasText: TEST_PRICE_LABEL })
+    .first();
+
+  await expect(pendingOfferItem).toBeVisible();
+  await pendingOfferItem.getByRole("button", { name: "Approve" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("offer approved.");
+
+  await signOut(page);
+
+  await page.goto(`/?locationId=${encodeURIComponent(locationId)}&sort=price_desc`);
+
+  const publicOfferItem = page
+    .locator('[aria-labelledby="results-heading"] li')
+    .filter({ hasText: `${brandName} ${variantName}` })
+    .filter({ hasText: `${TEST_SIZE_ML} ml` })
+    .filter({ hasText: TEST_PRICE_LABEL })
+    .first();
+
+  await expect(publicOfferItem).toBeVisible();
+});
+
+test("contributor can submit a location and later use it as an approved offer target", async ({
+  page,
+}, testInfo) => {
+  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const locationName = `E2E Harbor Pub ${suffix}`;
+  const district = `Test District ${suffix}`;
+  const address = `${suffix} Teststrasse 42`;
+
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+  await page.getByRole("tab", { name: "New Location" }).click();
+
+  await page.fill("#location-name", locationName);
+  await page.selectOption("#location-type", "pub");
+  await page.fill("#location-district", district);
+  await page.fill("#location-address", address);
+  await page.getByRole("button", { name: "Submit Location" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Location submitted for moderation.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await expect(page.getByRole("heading", { name: "Moderation Queue" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Locations \(/ }).click();
+
+  const pendingLocationItem = page
+    .locator("li")
+    .filter({ hasText: locationName })
+    .filter({ hasText: address })
+    .filter({ hasText: district })
+    .first();
+
+  await expect(pendingLocationItem).toBeVisible();
+  await pendingLocationItem.getByRole("button", { name: "Approve" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("location approved.");
+
+  await signOut(page);
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto("/contribute");
+
+  const approvedLocationOption = page.locator("#offer-location-id option", {
+    hasText: `${locationName} - Pub (Approved)`,
+  });
+
+  await expect(approvedLocationOption).toHaveCount(1);
+});
+
+test("authenticated user can create, edit, and report a review that a moderator resolves", async ({
+  page,
+}, testInfo) => {
+  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const initialTitle = `E2E Review ${suffix}`;
+  const initialBody = `Initial review body ${suffix}`;
+  const updatedTitle = `Updated E2E Review ${suffix}`;
+  const updatedBody = `Updated review body ${suffix}`;
+  const reportNote = `Review report note ${suffix}`;
+
+  await page.goto("/");
+  const firstLocationLink = page.locator('[aria-labelledby="results-heading"] li a').first();
+  const locationPath = new URL((await firstLocationLink.getAttribute("href")) ?? "/", page.url())
+    .pathname;
+
+  await signIn(page, E2E_AUTH_EMAIL, E2E_AUTH_PASSWORD);
+
+  await page.goto(locationPath);
+  await expect(page.getByRole("heading", { level: 2, name: /Reviews/ })).toBeVisible();
+
+  await page.selectOption("#review-rating", "4");
+  await page.fill("#review-title", initialTitle);
+  await page.fill("#review-body", initialBody);
+  await page.getByRole("button", { name: "Submit Review" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Review submitted.");
+
+  const ownReviewItem = page
+    .locator('li[id^="review-"]')
+    .filter({ hasText: initialTitle })
+    .filter({ hasText: E2E_AUTH_DISPLAY_NAME })
+    .first();
+
+  await expect(ownReviewItem).toBeVisible();
+  const ownReviewId = await ownReviewItem.getAttribute("id");
+  await ownReviewItem.getByRole("button", { name: "Edit" }).click();
+
+  const editableReviewItem = page.locator(`#${ownReviewId}`);
+  await editableReviewItem.locator('select[id^="edit-rating-"]').selectOption("2");
+  await editableReviewItem.locator('input[id^="edit-title-"]').fill(updatedTitle);
+  await editableReviewItem.locator('textarea[id^="edit-body-"]').fill(updatedBody);
+  await editableReviewItem.getByRole("button", { name: "Save" }).click();
+
+  const updatedReviewItem = page
+    .locator('li[id^="review-"]')
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: E2E_AUTH_DISPLAY_NAME })
+    .first();
+
+  await expect(updatedReviewItem).toBeVisible();
+  await expect(updatedReviewItem).toContainText("2/5");
+
+  await signOut(page);
+  await signIn(page, E2E_REPORTER_EMAIL, E2E_REPORTER_PASSWORD);
+
+  await page.goto(locationPath);
+
+  const reportableReviewItem = page
+    .locator('li[id^="review-"]')
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: E2E_AUTH_DISPLAY_NAME })
+    .first();
+
+  await expect(reportableReviewItem).toBeVisible();
+  await reportableReviewItem.getByRole("button", { name: "Report" }).click();
+  await reportableReviewItem.locator('select[id^="report-reason-"]').selectOption("offensive");
+  await reportableReviewItem.locator('textarea[id^="report-note-"]').fill(reportNote);
+  await reportableReviewItem.getByRole("button", { name: "Submit Report" }).click();
+  await expect(reportableReviewItem).toContainText("Report submitted.");
+
+  await signOut(page);
+  await signIn(page, E2E_MODERATOR_EMAIL, E2E_MODERATOR_PASSWORD);
+
+  await page.goto("/moderation");
+  await page.getByRole("tab", { name: /Reports \(/ }).click();
+  await page.getByRole("button", { name: /Open Reports \(/ }).click();
+
+  const openReportItem = page
+    .locator("li")
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: reportNote })
+    .filter({ hasText: E2E_REPORTER_DISPLAY_NAME })
+    .first();
+
+  await expect(openReportItem).toBeVisible();
+  await openReportItem.getByRole("button", { name: "Mark Actioned" }).click();
+  await expect(page.locator('p[role="status"]')).toContainText("Report marked as actioned.");
+
+  await page.getByRole("button", { name: /Resolved Reports \(/ }).click();
+
+  const resolvedReportItem = page
+    .locator("li")
+    .filter({ hasText: updatedTitle })
+    .filter({ hasText: updatedBody })
+    .filter({ hasText: "ACTIONED" })
+    .filter({ hasText: E2E_MODERATOR_DISPLAY_NAME })
+    .first();
+
+  await expect(resolvedReportItem).toBeVisible();
+});

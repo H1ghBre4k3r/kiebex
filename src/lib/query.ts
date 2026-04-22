@@ -476,6 +476,17 @@ export async function getBeerOffersPage(
   return { offers: rows.map(mapOfferWithLocation), total };
 }
 
+export async function getDistinctApprovedOfferSizes(): Promise<number[]> {
+  const rows = await db.beerOffer.findMany({
+    where: buildBeerOffersWhere({}),
+    select: { sizeMl: true },
+    distinct: ["sizeMl"],
+    orderBy: [{ sizeMl: "asc" }],
+  });
+
+  return rows.map((row) => row.sizeMl);
+}
+
 export async function getLocationOffers(locationId: string): Promise<BeerOfferWithLocation[]> {
   return getBeerOffers({ locationId: [locationId] });
 }
@@ -818,6 +829,38 @@ export async function getOfferPriceHistory(beerOfferId: string): Promise<OfferPr
     priceUpdateProposalId: entry.priceUpdateProposalId,
     createdAt: entry.createdAt,
   }));
+}
+
+export async function getOfferPriceHistoryBatch(
+  beerOfferIds: string[],
+): Promise<Map<string, OfferPriceHistory[]>> {
+  const historyByOfferId = new Map(
+    beerOfferIds.map((offerId) => [offerId, [] as OfferPriceHistory[]]),
+  );
+
+  if (beerOfferIds.length === 0) {
+    return historyByOfferId;
+  }
+
+  const entries = await db.offerPriceHistory.findMany({
+    where: {
+      beerOfferId: { in: beerOfferIds },
+    },
+    orderBy: [{ beerOfferId: "asc" }, { effectiveAt: "desc" }],
+  });
+
+  for (const entry of entries) {
+    historyByOfferId.get(entry.beerOfferId)?.push({
+      id: entry.id,
+      beerOfferId: entry.beerOfferId,
+      priceEur: entry.priceCents / 100,
+      effectiveAt: entry.effectiveAt,
+      priceUpdateProposalId: entry.priceUpdateProposalId,
+      createdAt: entry.createdAt,
+    });
+  }
+
+  return historyByOfferId;
 }
 
 export async function getPendingLocationSubmissions(): Promise<PendingLocationSubmission[]> {

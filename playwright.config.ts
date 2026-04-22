@@ -7,8 +7,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://127.0.0.1:3100",
     trace: "on-first-retry",
   },
   projects: [
@@ -18,9 +20,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npm run start -- -p 3000",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    command:
+      "APP_URL=http://127.0.0.1:3100 E2E_TEST_MODE=true npm run build && APP_URL=http://127.0.0.1:3100 E2E_TEST_MODE=true PORT=3100 npm run start:standalone",
+    url: "http://127.0.0.1:3100",
+    reuseExistingServer: false,
     timeout: 180000,
   },
 });
