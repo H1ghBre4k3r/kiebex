@@ -14,6 +14,7 @@ import {
   moderateLocationSubmission,
   moderatePriceUpdateProposal,
 } from "@/lib/query";
+import { authIntegrationChecks } from "./auth";
 import {
   buildBeerBrand,
   buildBeerOffer,
@@ -547,6 +548,7 @@ async function testDuplicateStyleNameBlocksCreation(): Promise<void> {
 
 async function run(): Promise<void> {
   const checks: Array<{ name: string; fn: () => Promise<void> }> = [
+    ...authIntegrationChecks,
     { name: "getLocationById only exposes approved", fn: testGetLocationByIdApproval },
     { name: "getBeerOffers filters approved offers", fn: testGetBeerOffersFiltersApprovedOnly },
     { name: "offer submission to price update flow", fn: testCreateOfferOrPriceUpdateProposalFlow },
