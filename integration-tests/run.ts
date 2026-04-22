@@ -127,6 +127,45 @@ async function testCreateOfferOrPriceUpdateProposalFlow(): Promise<void> {
       return;
     }
 
+    const createdOffer = await db.beerOffer.findUnique({
+      where: { id: first.offer.id },
+      select: {
+        id: true,
+        status: true,
+        priceCents: true,
+        locationId: true,
+        variantId: true,
+        sizeMl: true,
+        serving: true,
+      },
+    });
+    const firstProposalCount = await db.priceUpdateProposal.count({
+      where: { beerOfferId: first.offer.id },
+    });
+
+    assert(createdOffer?.status === "pending", "Expected first submit to persist a pending offer.");
+    assert(
+      createdOffer?.priceCents === 450,
+      "Expected first submit to persist the submitted offer price.",
+    );
+    assert(
+      createdOffer?.locationId === location.id,
+      "Expected first submit to persist the target location.",
+    );
+    assert(
+      createdOffer?.variantId === variant.id,
+      "Expected first submit to persist the target variant.",
+    );
+    assert(createdOffer?.sizeMl === 400, "Expected first submit to persist the submitted size.");
+    assert(
+      createdOffer?.serving === "bottle",
+      "Expected first submit to persist the submitted serving.",
+    );
+    assert(
+      firstProposalCount === 0,
+      "Expected first submit not to create a price update proposal.",
+    );
+
     await db.beerOffer.update({
       where: { id: first.offer.id },
       data: { status: "approved" },
@@ -150,6 +189,190 @@ async function testCreateOfferOrPriceUpdateProposalFlow(): Promise<void> {
     assert(
       second.proposal.proposedPriceEur === 4.7,
       "Expected proposal price to be converted to EUR.",
+    );
+
+    const persistedOffer = await db.beerOffer.findUnique({
+      where: { id: first.offer.id },
+      select: { status: true, priceCents: true },
+    });
+    const persistedProposal = await db.priceUpdateProposal.findUnique({
+      where: { id: second.proposal.id },
+      select: {
+        beerOfferId: true,
+        proposedPriceCents: true,
+        status: true,
+      },
+    });
+    const proposalCount = await db.priceUpdateProposal.count({
+      where: { beerOfferId: first.offer.id },
+    });
+
+    assert(
+      persistedOffer?.status === "approved",
+      "Expected the existing offer to remain approved after creating a price update proposal.",
+    );
+    assert(
+      persistedOffer?.priceCents === 450,
+      "Expected the existing offer price to remain unchanged until proposal approval.",
+    );
+    assert(
+      persistedProposal?.beerOfferId === first.offer.id,
+      "Expected the persisted price update proposal to reference the existing offer.",
+    );
+    assert(
+      persistedProposal?.proposedPriceCents === 470,
+      "Expected the persisted price update proposal to keep the submitted price.",
+    );
+    assert(
+      persistedProposal?.status === "pending",
+      "Expected the persisted price update proposal to remain pending.",
+    );
+    assert(
+      proposalCount === 1,
+      "Expected exactly one price update proposal for the existing offer.",
+    );
+  });
+}
+
+async function testCreateOfferOrPriceUpdateProposalSamePriceFlow(): Promise<void> {
+  await runIntegrationTest("offer-or-price-update-same-price", async ({ namespace }) => {
+    const style = buildBeerStyle(namespace, "same price style");
+    const brand = buildBeerBrand(namespace, "same price brand");
+    const variant = buildBeerVariant(namespace, "same price variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "same price location");
+    const existingOffer = buildBeerOffer(namespace, "same price offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      sizeMl: 330,
+      serving: "can",
+      priceCents: 299,
+      status: "approved",
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: existingOffer });
+
+    const result = await createOfferOrPriceUpdateProposal({
+      variantId: variant.id,
+      sizeMl: 330,
+      serving: "can",
+      priceCents: 299,
+      locationId: location.id,
+      status: "pending",
+    });
+
+    assert(result.outcome === "same_price", "Expected identical prices to return same_price.");
+    if (result.outcome !== "same_price") {
+      return;
+    }
+
+    const offerCount = await db.beerOffer.count({
+      where: {
+        locationId: location.id,
+        variantId: variant.id,
+        sizeMl: 330,
+        serving: "can",
+      },
+    });
+    const proposalCount = await db.priceUpdateProposal.count({
+      where: { beerOfferId: existingOffer.id },
+    });
+
+    assert(
+      result.offer.id === existingOffer.id,
+      "Expected same_price to reference the existing offer.",
+    );
+    assert(offerCount === 1, "Expected same_price not to create a duplicate offer row.");
+    assert(proposalCount === 0, "Expected same_price not to create a price update proposal.");
+  });
+}
+
+async function testCreateOfferOrPriceUpdateProposalPendingOfferFlow(): Promise<void> {
+  await runIntegrationTest("offer-or-price-update-existing-pending", async ({ namespace }) => {
+    const style = buildBeerStyle(namespace, "pending offer style");
+    const brand = buildBeerBrand(namespace, "pending offer brand");
+    const variant = buildBeerVariant(namespace, "pending offer variant", {
+      brandId: brand.id,
+      styleId: style.id,
+    });
+    const location = buildLocation(namespace, "pending offer location");
+    const existingOffer = buildBeerOffer(namespace, "pending offer", {
+      brand: brand.name,
+      variant: variant.name,
+      variantId: variant.id,
+      locationId: location.id,
+      sizeMl: 500,
+      serving: "tap",
+      priceCents: 420,
+      status: "pending",
+    });
+
+    await db.beerStyle.create({ data: style });
+    await db.beerBrand.create({ data: brand });
+    await db.beerVariant.create({ data: variant });
+    await db.location.create({ data: location });
+    await db.beerOffer.create({ data: existingOffer });
+
+    const result = await createOfferOrPriceUpdateProposal({
+      variantId: variant.id,
+      sizeMl: 500,
+      serving: "tap",
+      priceCents: 450,
+      locationId: location.id,
+      status: "pending",
+    });
+
+    assert(
+      result.outcome === "existing_offer_not_approved",
+      "Expected a pending existing offer to block branching into a price update proposal.",
+    );
+    if (result.outcome !== "existing_offer_not_approved") {
+      return;
+    }
+
+    const offerCount = await db.beerOffer.count({
+      where: {
+        locationId: location.id,
+        variantId: variant.id,
+        sizeMl: 500,
+        serving: "tap",
+      },
+    });
+    const proposalCount = await db.priceUpdateProposal.count({
+      where: { beerOfferId: existingOffer.id },
+    });
+    const persistedOffer = await db.beerOffer.findUnique({
+      where: { id: existingOffer.id },
+      select: { status: true, priceCents: true },
+    });
+
+    assert(
+      result.offer.id === existingOffer.id,
+      "Expected existing_offer_not_approved to reference the pending existing offer.",
+    );
+    assert(
+      offerCount === 1,
+      "Expected existing_offer_not_approved not to create a duplicate offer row.",
+    );
+    assert(
+      proposalCount === 0,
+      "Expected existing_offer_not_approved not to create a price update proposal.",
+    );
+    assert(
+      persistedOffer?.status === "pending",
+      "Expected the existing pending offer to remain pending after the blocked submission.",
+    );
+    assert(
+      persistedOffer?.priceCents === 420,
+      "Expected the existing pending offer price to remain unchanged after the blocked submission.",
     );
   });
 }
@@ -554,6 +777,14 @@ async function run(): Promise<void> {
     { name: "getLocationById only exposes approved", fn: testGetLocationByIdApproval },
     { name: "getBeerOffers filters approved offers", fn: testGetBeerOffersFiltersApprovedOnly },
     { name: "offer submission to price update flow", fn: testCreateOfferOrPriceUpdateProposalFlow },
+    {
+      name: "offer submission same-price branch preserves persistence",
+      fn: testCreateOfferOrPriceUpdateProposalSamePriceFlow,
+    },
+    {
+      name: "offer submission pending-offer branch preserves persistence",
+      fn: testCreateOfferOrPriceUpdateProposalPendingOfferFlow,
+    },
     {
       name: "createBeerOffer snapshots variant names",
       fn: testCreateBeerOfferSnapshotsVariantNames,
