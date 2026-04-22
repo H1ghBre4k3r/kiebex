@@ -1,24 +1,11 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import {
   E2E_REGISTER_FLOW_DISPLAY_NAME,
   E2E_REGISTER_FLOW_EMAIL,
   E2E_REGISTER_FLOW_NEW_PASSWORD,
   E2E_REGISTER_FLOW_PASSWORD,
 } from "./global-setup";
-
-async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto("/login");
-  await page.fill("#login-email", email);
-  await page.fill("#login-password", password);
-  await page.getByRole("button", { name: "Sign In" }).click();
-  await page.waitForURL("/");
-}
-
-async function signOut(page: Page): Promise<void> {
-  const nav = page.getByRole("navigation", { name: "Site navigation" });
-  await nav.getByRole("button", { name: "Sign Out" }).click();
-  await expect(nav.getByRole("link", { name: "Sign In" })).toBeVisible();
-}
+import { signIn, signOut } from "./helpers";
 
 async function createAuthLink(
   request: APIRequestContext,

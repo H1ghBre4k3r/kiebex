@@ -10,7 +10,7 @@ import "dotenv/config";
 import { spawn } from "node:child_process";
 import { randomBytes, scrypt as scryptCallback } from "node:crypto";
 import { promisify } from "node:util";
-import pg from "pg";
+import { cleanupTestData, createTestDatabasePool } from "../test/database-reset";
 
 const scrypt = promisify(scryptCallback);
 
@@ -86,31 +86,6 @@ async function seedBaselineData(): Promise<void> {
   });
 }
 
-async function cleanupE2EData(pool: pg.Pool): Promise<void> {
-  const adminSmokeLike = `${E2E_ADMIN_ENTITY_PREFIX}%`;
-
-  await pool.query(`DELETE FROM "Report" WHERE "reporterId" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "ModerationAuditLog" WHERE "moderatorId" = ANY($1::text[])`, [
-    E2E_USER_IDS,
-  ]);
-  await pool.query(`DELETE FROM "Review" WHERE "userId" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "PriceUpdateProposal" WHERE "createdById" = ANY($1::text[])`, [
-    E2E_USER_IDS,
-  ]);
-  await pool.query(`DELETE FROM "BeerOffer" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "BeerVariant" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "BeerVariant" WHERE "createdById" = ANY($1::text[])`, [
-    E2E_USER_IDS,
-  ]);
-  await pool.query(`DELETE FROM "BeerBrand" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "BeerBrand" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "Location" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "Location" WHERE "createdById" = ANY($1::text[])`, [E2E_USER_IDS]);
-  await pool.query(`DELETE FROM "BeerStyle" WHERE name LIKE $1`, [adminSmokeLike]);
-  await pool.query(`DELETE FROM "User" WHERE email = ANY($1::text[])`, [E2E_DYNAMIC_USER_EMAILS]);
-  await pool.query(`DELETE FROM "User" WHERE id = ANY($1::text[])`, [E2E_USER_IDS]);
-}
-
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
@@ -124,11 +99,15 @@ export default async function globalSetup(): Promise<void> {
     throw new Error("DATABASE_URL must be set before running E2E tests.");
   }
 
-  const pool = new pg.Pool({ connectionString });
+  const pool = createTestDatabasePool(connectionString);
 
   try {
     await seedBaselineData();
-    await cleanupE2EData(pool);
+    await cleanupTestData(pool, {
+      namePrefixes: [E2E_ADMIN_ENTITY_PREFIX],
+      userEmails: [...E2E_DYNAMIC_USER_EMAILS],
+      userIds: [...E2E_USER_IDS],
+    });
 
     const verifiedHash = await hashPassword(E2E_AUTH_PASSWORD);
     const unverifiedHash = await hashPassword(E2E_UNVERIFIED_PASSWORD);

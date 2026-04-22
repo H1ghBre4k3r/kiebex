@@ -24,7 +24,12 @@ import {
   buildLocation,
   buildUser,
 } from "../test/factories";
-import { assert, runIntegrationTest } from "./helpers";
+import {
+  assert,
+  closeIntegrationTestResources,
+  runIntegrationTest,
+  seedCatalogFixture,
+} from "./helpers";
 
 async function testGetLocationByIdApproval(): Promise<void> {
   await runIntegrationTest("get-location-by-id-approval", async ({ namespace }) => {
@@ -48,19 +53,16 @@ async function testGetLocationByIdApproval(): Promise<void> {
 
 async function testGetBeerOffersFiltersApprovedOnly(): Promise<void> {
   await runIntegrationTest("get-beer-offers-approved-only", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "style");
-    const brand = buildBeerBrand(namespace, "brand");
-    const variant = buildBeerVariant(namespace, "variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "offers place");
-    const approvedOffer = buildBeerOffer(namespace, "approved", {
-      brand: "Approved Brand",
-      variant: "Approved Variant",
-      variantId: variant.id,
-      locationId: location.id,
-      priceCents: 333,
+    const {
+      variant,
+      location,
+      offer: approvedOffer,
+    } = await seedCatalogFixture(namespace, "offers", {
+      offer: {
+        brand: "Approved Brand",
+        variant: "Approved Variant",
+        priceCents: 333,
+      },
     });
     const pendingOffer = buildBeerOffer(namespace, "pending", {
       brand: "Pending Brand",
@@ -72,11 +74,10 @@ async function testGetBeerOffersFiltersApprovedOnly(): Promise<void> {
       status: "pending",
     });
 
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: approvedOffer });
+    if (!approvedOffer) {
+      throw new Error("Expected approved offer fixture to be created.");
+    }
+
     await db.beerOffer.create({ data: pendingOffer });
 
     const offers = await getBeerOffers();
@@ -236,29 +237,22 @@ async function testCreateOfferOrPriceUpdateProposalFlow(): Promise<void> {
 
 async function testCreateOfferOrPriceUpdateProposalSamePriceFlow(): Promise<void> {
   await runIntegrationTest("offer-or-price-update-same-price", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "same price style");
-    const brand = buildBeerBrand(namespace, "same price brand");
-    const variant = buildBeerVariant(namespace, "same price variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "same price location");
-    const existingOffer = buildBeerOffer(namespace, "same price offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      sizeMl: 330,
-      serving: "can",
-      priceCents: 299,
-      status: "approved",
+    const {
+      variant,
+      location,
+      offer: existingOffer,
+    } = await seedCatalogFixture(namespace, "same price", {
+      offer: {
+        sizeMl: 330,
+        serving: "can",
+        priceCents: 299,
+        status: "approved",
+      },
     });
 
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: existingOffer });
+    if (!existingOffer) {
+      throw new Error("Expected same-price offer fixture to be created.");
+    }
 
     const result = await createOfferOrPriceUpdateProposal({
       variantId: variant.id,
@@ -297,29 +291,22 @@ async function testCreateOfferOrPriceUpdateProposalSamePriceFlow(): Promise<void
 
 async function testCreateOfferOrPriceUpdateProposalPendingOfferFlow(): Promise<void> {
   await runIntegrationTest("offer-or-price-update-existing-pending", async ({ namespace }) => {
-    const style = buildBeerStyle(namespace, "pending offer style");
-    const brand = buildBeerBrand(namespace, "pending offer brand");
-    const variant = buildBeerVariant(namespace, "pending offer variant", {
-      brandId: brand.id,
-      styleId: style.id,
-    });
-    const location = buildLocation(namespace, "pending offer location");
-    const existingOffer = buildBeerOffer(namespace, "pending offer", {
-      brand: brand.name,
-      variant: variant.name,
-      variantId: variant.id,
-      locationId: location.id,
-      sizeMl: 500,
-      serving: "tap",
-      priceCents: 420,
-      status: "pending",
+    const {
+      variant,
+      location,
+      offer: existingOffer,
+    } = await seedCatalogFixture(namespace, "pending offer", {
+      offer: {
+        sizeMl: 500,
+        serving: "tap",
+        priceCents: 420,
+        status: "pending",
+      },
     });
 
-    await db.beerStyle.create({ data: style });
-    await db.beerBrand.create({ data: brand });
-    await db.beerVariant.create({ data: variant });
-    await db.location.create({ data: location });
-    await db.beerOffer.create({ data: existingOffer });
+    if (!existingOffer) {
+      throw new Error("Expected pending-offer fixture to be created.");
+    }
 
     const result = await createOfferOrPriceUpdateProposal({
       variantId: variant.id,
@@ -827,10 +814,12 @@ async function run(): Promise<void> {
 
 run()
   .then(async () => {
+    await closeIntegrationTestResources();
     await db.$disconnect();
   })
   .catch(async (error) => {
     console.error("Integration checks failed:", error);
+    await closeIntegrationTestResources();
     await db.$disconnect();
     process.exit(1);
   });

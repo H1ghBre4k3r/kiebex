@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import {
   E2E_AUTH_EMAIL,
   E2E_AUTH_PASSWORD,
@@ -10,6 +10,7 @@ import {
   E2E_REPORTER_PASSWORD,
   E2E_REPORTER_DISPLAY_NAME,
 } from "./global-setup";
+import { createE2ETestSuffix, signIn, signOut } from "./helpers";
 
 const TEST_SIZE_ML = "777";
 const TEST_PRICE_CENTS = "49999";
@@ -18,20 +19,6 @@ const TEST_PRICE_LABEL = new Intl.NumberFormat("de-DE", {
   currency: "EUR",
   minimumFractionDigits: 2,
 }).format(Number(TEST_PRICE_CENTS) / 100);
-
-async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto("/login");
-  await page.fill("#login-email", email);
-  await page.fill("#login-password", password);
-  await page.getByRole("button", { name: "Sign In" }).click();
-  await page.waitForURL("/");
-}
-
-async function signOut(page: Page): Promise<void> {
-  const nav = page.getByRole("navigation", { name: "Site navigation" });
-  await nav.getByRole("button", { name: "Sign Out" }).click();
-  await expect(nav.getByRole("link", { name: "Sign In" })).toBeVisible();
-}
 
 test("contributor can submit an offer and moderator can approve it into the public directory", async ({
   page,
@@ -91,7 +78,7 @@ test("contributor can submit an offer and moderator can approve it into the publ
 test("contributor can submit a location and later use it as an approved offer target", async ({
   page,
 }, testInfo) => {
-  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const suffix = createE2ETestSuffix(testInfo);
   const locationName = `E2E Harbor Pub ${suffix}`;
   const district = `Test District ${suffix}`;
   const address = `${suffix} Teststrasse 42`;
@@ -143,7 +130,7 @@ test("contributor can submit a location and later use it as an approved offer ta
 test("authenticated user can create, edit, and report a review that a moderator resolves", async ({
   page,
 }, testInfo) => {
-  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
+  const suffix = createE2ETestSuffix(testInfo);
   const initialTitle = `E2E Review ${suffix}`;
   const initialBody = `Initial review body ${suffix}`;
   const updatedTitle = `Updated E2E Review ${suffix}`;
