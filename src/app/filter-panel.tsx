@@ -27,6 +27,7 @@ export function FilterPanel({
   searchParams,
 }: Props) {
   const map = toRawMap(searchParams);
+  const filterLinkProps = { prefetch: false } as const;
 
   const selectedBrands = map.brandId ?? [];
   const selectedVariants = map.variantId ?? [];
@@ -96,7 +97,7 @@ export function FilterPanel({
           <div className={styles.panelHeader}>
             <h2 id="filter-heading">Filter Offers</h2>
             {hasAnyFilter && (
-              <Link href="/" className={styles.clearAll}>
+              <Link href="/" className={styles.clearAll} {...filterLinkProps}>
                 Clear All
               </Link>
             )}
@@ -177,6 +178,7 @@ export function FilterPanel({
                       <li key={brand.id}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "brandId", brand.id))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -202,6 +204,7 @@ export function FilterPanel({
                       <li key={group.name}>
                         <Link
                           href={rawMapToUrl(toggleVariantGroup(map, group.ids))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -227,6 +230,7 @@ export function FilterPanel({
                       <li key={style.id}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "styleId", style.id))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -251,6 +255,7 @@ export function FilterPanel({
                     <li key={value}>
                       <Link
                         href={rawMapToUrl(toggleValue(map, "serving", value))}
+                        {...filterLinkProps}
                         role="checkbox"
                         aria-checked={checked}
                         className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -275,6 +280,7 @@ export function FilterPanel({
                       <li key={size}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "sizeMl", String(size)))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -299,6 +305,7 @@ export function FilterPanel({
                     <li key={value}>
                       <Link
                         href={rawMapToUrl(toggleValue(map, "locationType", value))}
+                        {...filterLinkProps}
                         role="checkbox"
                         aria-checked={checked}
                         className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -323,6 +330,7 @@ export function FilterPanel({
                       <li key={location.id}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "locationId", location.id))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}

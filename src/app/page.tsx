@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
-import { UserOfferActions } from "@/components/offer-user-actions";
+import { UserOfferActionOptionsProvider, UserOfferActions } from "@/components/offer-user-actions";
 import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
@@ -208,12 +208,17 @@ export default async function Home({
           {activeChips.length > 0 && (
             <div className={styles.chips} aria-label="Active filters">
               {activeChips.map((chip) => (
-                <Link key={chip.label} href={chip.removeUrl} className={styles.chip}>
+                <Link
+                  key={chip.label}
+                  href={chip.removeUrl}
+                  className={styles.chip}
+                  prefetch={false}
+                >
                   {chip.label} <span aria-hidden="true">×</span>
                 </Link>
               ))}
               {activeChips.length > 1 && (
-                <Link href="/" className={styles.chipClear}>
+                <Link href="/" className={styles.chipClear} prefetch={false}>
                   Clear all ×
                 </Link>
               )}
@@ -227,41 +232,39 @@ export default async function Home({
           ) : (
             <>
               <ul className={styles.offerList}>
-                {offers.map((offer, index) => (
-                  <li key={offer.id} className={styles.offerItem}>
-                    <article>
-                      <OfferSummary
-                        offer={offer}
-                        reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
-                      />
+                <UserOfferActionOptionsProvider brands={approvedBrands} variants={approvedVariants}>
+                  {offers.map((offer, index) => (
+                    <li key={offer.id} className={styles.offerItem}>
+                      <article>
+                        <OfferSummary
+                          offer={offer}
+                          reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
+                        />
 
-                      {index === 0 && isPriceSorted && (
-                        <p className={styles.cheapest}>
-                          {sortDesc
-                            ? "Highest price in current result"
-                            : "Lowest price in current result"}
-                        </p>
-                      )}
+                        {index === 0 && isPriceSorted && (
+                          <p className={styles.cheapest}>
+                            {sortDesc
+                              ? "Highest price in current result"
+                              : "Lowest price in current result"}
+                          </p>
+                        )}
 
-                      <div className={styles.actionsContainer}>
-                        {authUser?.role === "admin" && (
-                          <AdminOfferActions
-                            offerId={offer.id}
-                            currentPriceCents={Math.round(offer.priceEur * 100)}
-                            className={styles.adminActions}
-                          />
-                        )}
-                        {authUser && authUser.role !== "admin" && (
-                          <UserOfferActions
-                            offer={offer}
-                            brands={approvedBrands}
-                            variants={approvedVariants}
-                          />
-                        )}
-                      </div>
-                    </article>
-                  </li>
-                ))}
+                        <div className={styles.actionsContainer}>
+                          {authUser?.role === "admin" && (
+                            <AdminOfferActions
+                              offerId={offer.id}
+                              currentPriceCents={Math.round(offer.priceEur * 100)}
+                              className={styles.adminActions}
+                            />
+                          )}
+                          {authUser && authUser.role !== "admin" && (
+                            <UserOfferActions offer={offer} />
+                          )}
+                        </div>
+                      </article>
+                    </li>
+                  ))}
+                </UserOfferActionOptionsProvider>
               </ul>
 
               {totalPages > 1 && (
@@ -270,6 +273,7 @@ export default async function Home({
                     <Link
                       href={buildPaginationUrl(rawSearchParams, page - 1)}
                       className={styles.pageLink}
+                      prefetch={false}
                     >
                       &larr; Prev
                     </Link>
@@ -283,6 +287,7 @@ export default async function Home({
                     <Link
                       href={buildPaginationUrl(rawSearchParams, page + 1)}
                       className={styles.pageLink}
+                      prefetch={false}
                     >
                       Next &rarr;
                     </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { createContext, type FormEvent, useContext, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jsonInit, requestApi } from "@/lib/client-api";
 import { SERVING_TYPE_OPTIONS } from "@/lib/display";
@@ -10,10 +10,13 @@ import styles from "./offer-user-actions.module.css";
 type BrandOption = { id: string; name: string };
 type VariantOption = { id: string; name: string; brandId: string };
 
-type Props = {
-  offer: BeerOfferWithLocation;
+type ActionOptions = {
   brands: BrandOption[];
   variants: VariantOption[];
+};
+
+type Props = {
+  offer: BeerOfferWithLocation;
 };
 
 type Mode = "price-update" | "new-offer" | null;
@@ -22,9 +25,30 @@ type OfferApiSuccess = {
   outcome?: "offer_submission_created" | "price_update_proposed";
 };
 
-export function UserOfferActions({ offer, brands, variants }: Props) {
+const offerActionOptionsContext = createContext<ActionOptions | null>(null);
+
+export function UserOfferActionOptionsProvider({
+  brands,
+  variants,
+  children,
+}: ActionOptions & { children: React.ReactNode }) {
+  return (
+    <offerActionOptionsContext.Provider value={{ brands, variants }}>
+      {children}
+    </offerActionOptionsContext.Provider>
+  );
+}
+
+export function UserOfferActions({ offer }: Props) {
   const router = useRouter();
+  const options = useContext(offerActionOptionsContext);
   const [mode, setMode] = useState<Mode>(null);
+
+  if (!options) {
+    throw new Error("UserOfferActions must be rendered inside UserOfferActionOptionsProvider.");
+  }
+
+  const { brands, variants } = options;
 
   // Price update state
   const [priceInput, setPriceInput] = useState(offer.priceEur.toFixed(2));

@@ -14,6 +14,7 @@ const SESSION_COOKIE_NAME = "kbi_session";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const VERIFICATION_TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
 const PASSWORD_RESET_TOKEN_DURATION_MS = 60 * 60 * 1000; // 1 hour
+const inFlightAuthUserLookups = new Map<string, Promise<AuthUser | null>>();
 
 const authUserSelect = {
   id: true,
@@ -368,27 +369,44 @@ export async function getCurrentAuthUser(): Promise<AuthUser | null> {
     return null;
   }
 
-  const session = await db.session.findUnique({
-    where: {
-      tokenHash: hashSessionToken(token),
-    },
-    select: {
-      expiresAt: true,
-      user: {
-        select: authUserSelect,
+  const existingLookup = inFlightAuthUserLookups.get(token);
+  if (existingLookup) {
+    return existingLookup;
+  }
+
+  const lookup = (async () => {
+    const session = await db.session.findUnique({
+      where: {
+        tokenHash: hashSessionToken(token),
       },
-    },
-  });
+      select: {
+        expiresAt: true,
+        user: {
+          select: authUserSelect,
+        },
+      },
+    });
 
-  if (!session) {
-    return null;
+    if (!session) {
+      return null;
+    }
+
+    if (session.expiresAt <= new Date()) {
+      return null;
+    }
+
+    return session.user;
+  })();
+
+  inFlightAuthUserLookups.set(token, lookup);
+
+  try {
+    return await lookup;
+  } finally {
+    if (inFlightAuthUserLookups.get(token) === lookup) {
+      inFlightAuthUserLookups.delete(token);
+    }
   }
-
-  if (session.expiresAt <= new Date()) {
-    return null;
-  }
-
-  return session.user;
 }
 
 export async function requireAuthUser(): Promise<AuthUser> {
