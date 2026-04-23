@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createReview, getLocationReviewPermission, getLocationReviews } from "@/lib/query";
 import {
@@ -64,6 +65,8 @@ async function postReview(request: Request): Promise<Response> {
         title: parsed.data.title,
         body: parsed.data.body,
       });
+
+      invalidatePendingQueueCountCache();
 
       return jsonOk({ review }, { status: 201 });
     } catch (error) {

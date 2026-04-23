@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import {
   deleteModerationReview,
   editModerationReview,
@@ -55,6 +56,8 @@ async function patchHandler(
         locationName: review.locationName,
       },
     });
+
+    invalidatePendingQueueCountCache();
 
     return jsonOk({ review });
   });
@@ -124,6 +127,8 @@ async function deleteHandler(
         locationName: result.locationName,
       },
     });
+
+    invalidatePendingQueueCountCache();
 
     return jsonOk({ deleted: true });
   });

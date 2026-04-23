@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createLocation } from "@/lib/query";
 import { parseJsonBody, withApiAuth, withMetrics } from "@/lib/route-handlers";
@@ -18,6 +19,8 @@ async function postLocation(request: Request): Promise<Response> {
         createdById: user.id,
         status: "pending",
       });
+
+      invalidatePendingQueueCountCache();
 
       return jsonOk({ location }, { status: 201 });
     } catch (error) {

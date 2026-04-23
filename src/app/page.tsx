@@ -1,19 +1,12 @@
 import Link from "next/link";
 import { AdminOfferActions } from "@/components/admin-offer-actions";
-import { UserOfferActions } from "@/components/offer-user-actions";
+import { UserOfferActionOptionsProvider, UserOfferActions } from "@/components/offer-user-actions";
 import { OfferSummary } from "@/components/offer-display";
 import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
-import {
-  getBeerBrands,
-  getBeerOffersPage,
-  BEER_OFFERS_PAGE_SIZE,
-  getDistinctApprovedOfferSizes,
-  getBeerStyles,
-  getLocationReviewSummaries,
-  getBeerVariants,
-  getLocations,
-} from "@/lib/query";
+import { recordHomepageStage, recordPageRender } from "@/lib/metrics";
+import { getCachedPublicDirectoryFilterMetadata } from "@/lib/public-directory-cache";
+import { getBeerOffersPageSlice, getLocationReviewSummaries } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";
 import {
@@ -28,6 +21,16 @@ import { FilterPanel } from "./filter-panel";
 import styles from "./page.module.css";
 
 type ActiveChip = { label: string; removeUrl: string };
+
+async function timeHomepageStage<T>(stage: string, work: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+
+  try {
+    return await work();
+  } finally {
+    recordHomepageStage(stage, (performance.now() - start) / 1000);
+  }
+}
 
 function buildActiveChips(
   raw: Record<string, SearchValue>,
@@ -132,169 +135,181 @@ export default async function Home({
 }: {
   searchParams: Promise<Record<string, SearchValue>>;
 }) {
-  const rawSearchParams = await searchParams;
-  const parsedQuery = parseBeerQueryRecord(rawSearchParams);
-  const query = parsedQuery.success ? parsedQuery.data : {};
+  const pageStart = performance.now();
 
-  const rawPage = rawSearchParams.page;
-  const page = Math.max(
-    1,
-    parseInt(String(Array.isArray(rawPage) ? rawPage[0] : (rawPage ?? "1")), 10) || 1,
-  );
+  try {
+    const rawSearchParams = await searchParams;
+    const parsedQuery = parseBeerQueryRecord(rawSearchParams);
+    const query = parsedQuery.success ? parsedQuery.data : {};
 
-  const [pageResult, sizes, locations, authUser, brands, stylesList, variants] = await Promise.all([
-    getBeerOffersPage(query, page),
-    getDistinctApprovedOfferSizes(),
-    getLocations(),
-    getCurrentAuthUser(),
-    getBeerBrands(),
-    getBeerStyles(),
-    getBeerVariants(),
-  ]);
+    const rawPage = rawSearchParams.page;
+    const page = Math.max(
+      1,
+      parseInt(String(Array.isArray(rawPage) ? rawPage[0] : (rawPage ?? "1")), 10) || 1,
+    );
 
-  const { offers, total } = pageResult;
-  const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);
+    const [pageResult, cachedFilterMetadata, authUser] = await Promise.all([
+      timeHomepageStage("offers_query", () => getBeerOffersPageSlice(query, page)),
+      timeHomepageStage("filter_metadata", getCachedPublicDirectoryFilterMetadata),
+      timeHomepageStage("auth_lookup", getCurrentAuthUser),
+    ]);
 
-  const reviewSummaryByLocation = await getLocationReviewSummaries([
-    ...new Set(offers.map((offer) => offer.location.id)),
-  ]);
+    const { sizes, locations, brands, stylesList, variants } = cachedFilterMetadata;
 
-  const activeChips = buildActiveChips(rawSearchParams, brands, stylesList, variants, locations);
-  const sortDesc = query.sort === "price_desc";
-  const isPriceSorted = !query.sort || query.sort === "price_asc" || sortDesc;
+    const { offers, hasNextPage } = pageResult;
 
-  const approvedBrands = brands
-    .filter((b) => b.status === "approved")
-    .map((b) => ({ id: b.id, name: b.name }));
-  const approvedVariants = variants
-    .filter((v) => v.status === "approved")
-    .map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }));
+    const reviewSummaryByLocation = await timeHomepageStage("review_summary", () =>
+      getLocationReviewSummaries([...new Set(offers.map((offer) => offer.location.id))]),
+    );
 
-  return (
-    <div className={styles.page}>
-      <header className={styles.hero}>
-        <p className={styles.kicker}>Public Price Tracker</p>
-        <h1>Kiel Beer Index</h1>
-        <p>
-          Compare beer prices across pubs, bars, restaurants, and supermarkets in Kiel. Filter by
-          brand, variant, style, serving, and size to find the best offer quickly.
-        </p>
-      </header>
+    const activeChips = buildActiveChips(rawSearchParams, brands, stylesList, variants, locations);
+    const sortDesc = query.sort === "price_desc";
+    const isPriceSorted = !query.sort || query.sort === "price_asc" || sortDesc;
 
-      <main className={styles.main}>
-        <FilterPanel
-          brands={brands.map((b) => ({ id: b.id, name: b.name }))}
-          variants={variants.map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }))}
-          stylesList={stylesList.map((s) => ({ id: s.id, name: s.name }))}
-          sizes={sizes}
-          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
-          searchParams={rawSearchParams}
-        />
+    const approvedBrands = brands
+      .filter((b) => b.status === "approved")
+      .map((b) => ({ id: b.id, name: b.name }));
+    const approvedVariants = variants
+      .filter((v) => v.status === "approved")
+      .map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }));
 
-        <section className={styles.panel} aria-labelledby="results-heading">
-          <h2 id="results-heading">Offers ({total})</h2>
+    return (
+      <div className={styles.page}>
+        <header className={styles.hero}>
+          <p className={styles.kicker}>Public Price Tracker</p>
+          <h1>Kiel Beer Index</h1>
+          <p>
+            Compare beer prices across pubs, bars, restaurants, and supermarkets in Kiel. Filter by
+            brand, variant, style, serving, and size to find the best offer quickly.
+          </p>
+        </header>
 
-          {!parsedQuery.success && (
-            <div className={styles.errorBox} role="alert" aria-live="polite">
-              <p>Some filters were invalid and ignored:</p>
-              <ul>
-                {parsedQuery.error.issues.map((issue) => (
-                  <li key={`${issue.path.join(".")}-${issue.code}`}>{issue.message}</li>
+        <main className={styles.main}>
+          <FilterPanel
+            brands={brands.map((b) => ({ id: b.id, name: b.name }))}
+            variants={variants.map((v) => ({ id: v.id, name: v.name, brandId: v.brandId }))}
+            stylesList={stylesList.map((s) => ({ id: s.id, name: s.name }))}
+            sizes={sizes}
+            locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+            searchParams={rawSearchParams}
+          />
+
+          <section className={styles.panel} aria-labelledby="results-heading">
+            <h2 id="results-heading">Offers (Page {page})</h2>
+
+            {!parsedQuery.success && (
+              <div className={styles.errorBox} role="alert" aria-live="polite">
+                <p>Some filters were invalid and ignored:</p>
+                <ul>
+                  {parsedQuery.error.issues.map((issue) => (
+                    <li key={`${issue.path.join(".")}-${issue.code}`}>{issue.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {activeChips.length > 0 && (
+              <div className={styles.chips} aria-label="Active filters">
+                {activeChips.map((chip) => (
+                  <Link
+                    key={chip.label}
+                    href={chip.removeUrl}
+                    className={styles.chip}
+                    prefetch={false}
+                  >
+                    {chip.label} <span aria-hidden="true">×</span>
+                  </Link>
                 ))}
-              </ul>
-            </div>
-          )}
+                {activeChips.length > 1 && (
+                  <Link href="/" className={styles.chipClear} prefetch={false}>
+                    Clear all ×
+                  </Link>
+                )}
+              </div>
+            )}
 
-          {activeChips.length > 0 && (
-            <div className={styles.chips} aria-label="Active filters">
-              {activeChips.map((chip) => (
-                <Link key={chip.label} href={chip.removeUrl} className={styles.chip}>
-                  {chip.label} <span aria-hidden="true">×</span>
-                </Link>
-              ))}
-              {activeChips.length > 1 && (
-                <Link href="/" className={styles.chipClear}>
-                  Clear all ×
-                </Link>
-              )}
-            </div>
-          )}
-
-          {offers.length === 0 ? (
-            <p className={styles.emptyState}>
-              No offers match your current filter set. Try broadening your search.
-            </p>
-          ) : (
-            <>
-              <ul className={styles.offerList}>
-                {offers.map((offer, index) => (
-                  <li key={offer.id} className={styles.offerItem}>
-                    <article>
-                      <OfferSummary
-                        offer={offer}
-                        reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
-                      />
-
-                      {index === 0 && isPriceSorted && (
-                        <p className={styles.cheapest}>
-                          {sortDesc
-                            ? "Highest price in current result"
-                            : "Lowest price in current result"}
-                        </p>
-                      )}
-
-                      <div className={styles.actionsContainer}>
-                        {authUser?.role === "admin" && (
-                          <AdminOfferActions
-                            offerId={offer.id}
-                            currentPriceCents={Math.round(offer.priceEur * 100)}
-                            className={styles.adminActions}
-                          />
-                        )}
-                        {authUser && authUser.role !== "admin" && (
-                          <UserOfferActions
+            {offers.length === 0 ? (
+              <p className={styles.emptyState}>
+                No offers match your current filter set. Try broadening your search.
+              </p>
+            ) : (
+              <>
+                <ul className={styles.offerList}>
+                  <UserOfferActionOptionsProvider
+                    brands={approvedBrands}
+                    variants={approvedVariants}
+                  >
+                    {offers.map((offer, index) => (
+                      <li key={offer.id} className={styles.offerItem}>
+                        <article>
+                          <OfferSummary
                             offer={offer}
-                            brands={approvedBrands}
-                            variants={approvedVariants}
+                            reviewSummary={reviewSummaryByLocation.get(offer.location.id) ?? null}
                           />
-                        )}
-                      </div>
-                    </article>
-                  </li>
-                ))}
-              </ul>
 
-              {totalPages > 1 && (
-                <nav className={styles.pagination} aria-label="Offer pages">
-                  {page > 1 ? (
-                    <Link
-                      href={buildPaginationUrl(rawSearchParams, page - 1)}
-                      className={styles.pageLink}
-                    >
-                      &larr; Prev
-                    </Link>
-                  ) : (
-                    <span className={styles.pageLinkDisabled}>&larr; Prev</span>
-                  )}
-                  <span className={styles.pageInfo}>
-                    Page {page} of {totalPages}
-                  </span>
-                  {page < totalPages ? (
-                    <Link
-                      href={buildPaginationUrl(rawSearchParams, page + 1)}
-                      className={styles.pageLink}
-                    >
-                      Next &rarr;
-                    </Link>
-                  ) : (
-                    <span className={styles.pageLinkDisabled}>Next &rarr;</span>
-                  )}
-                </nav>
-              )}
-            </>
-          )}
-        </section>
-      </main>
-    </div>
-  );
+                          {index === 0 && isPriceSorted && (
+                            <p className={styles.cheapest}>
+                              {sortDesc
+                                ? "Highest price in current result"
+                                : "Lowest price in current result"}
+                            </p>
+                          )}
+
+                          <div className={styles.actionsContainer}>
+                            {authUser?.role === "admin" && (
+                              <AdminOfferActions
+                                offerId={offer.id}
+                                currentPriceCents={Math.round(offer.priceEur * 100)}
+                                className={styles.adminActions}
+                              />
+                            )}
+                            {authUser && authUser.role !== "admin" && (
+                              <UserOfferActions offer={offer} />
+                            )}
+                          </div>
+                        </article>
+                      </li>
+                    ))}
+                  </UserOfferActionOptionsProvider>
+                </ul>
+
+                {(page > 1 || hasNextPage) && (
+                  <nav className={styles.pagination} aria-label="Offer pages">
+                    {page > 1 ? (
+                      <Link
+                        href={buildPaginationUrl(rawSearchParams, page - 1)}
+                        className={styles.pageLink}
+                        prefetch={false}
+                      >
+                        &larr; Prev
+                      </Link>
+                    ) : (
+                      <span className={styles.pageLinkDisabled}>&larr; Prev</span>
+                    )}
+                    <span className={styles.pageInfo}>
+                      Page {page}
+                      {hasNextPage && " of more results"}
+                    </span>
+                    {hasNextPage ? (
+                      <Link
+                        href={buildPaginationUrl(rawSearchParams, page + 1)}
+                        className={styles.pageLink}
+                        prefetch={false}
+                      >
+                        Next &rarr;
+                      </Link>
+                    ) : (
+                      <span className={styles.pageLinkDisabled}>Next &rarr;</span>
+                    )}
+                  </nav>
+                )}
+              </>
+            )}
+          </section>
+        </main>
+      </div>
+    );
+  } finally {
+    recordPageRender("/", (performance.now() - pageStart) / 1000);
+  }
 }

@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createBeerOffer, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
@@ -57,6 +58,8 @@ async function postHandler(request: Request): Promise<Response> {
         priceEur: offer.priceEur,
       },
     });
+
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ offer }, { status: 201 });
   });

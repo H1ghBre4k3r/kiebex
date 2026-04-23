@@ -1,4 +1,6 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import {
   deleteModerationLocation,
   editModerationLocation,
@@ -43,6 +45,9 @@ async function patchHandler(
         address: location.address,
       },
     });
+
+    invalidatePendingQueueCountCache();
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ location });
   });
@@ -95,6 +100,9 @@ async function putHandler(
       details: logDetails,
     });
 
+    invalidatePendingQueueCountCache();
+    invalidatePublicDirectoryFilterMetadataCache();
+
     return jsonOk({ location: result.location });
   });
 }
@@ -124,6 +132,9 @@ async function deleteHandler(
         address: result.address,
       },
     });
+
+    invalidatePendingQueueCountCache();
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ deleted: true });
   });

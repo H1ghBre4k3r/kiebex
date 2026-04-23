@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { createAdminStyle, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
@@ -36,6 +37,8 @@ async function postHandler(request: Request): Promise<Response> {
       contentId: style.id,
       details: { name: parsed.data.name },
     });
+
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ style }, { status: 201 });
   });

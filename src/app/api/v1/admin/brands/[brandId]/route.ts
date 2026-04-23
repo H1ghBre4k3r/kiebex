@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePublicDirectoryFilterMetadataCache } from "@/lib/public-directory-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import { deleteModerationBrand, editAdminBrand, logModerationAction } from "@/lib/query";
 import { parseJsonBody, withApiAdmin, withMetrics } from "@/lib/route-handlers";
@@ -41,6 +42,8 @@ async function putHandler(
       details: { name: result.brand.name, previousName: result.previousName },
     });
 
+    invalidatePublicDirectoryFilterMetadataCache();
+
     return jsonOk({ brand: result.brand });
   });
 }
@@ -79,6 +82,8 @@ async function deleteHandler(
       contentId: brandId,
       details: { name: result.name },
     });
+
+    invalidatePublicDirectoryFilterMetadataCache();
 
     return jsonOk({ deleted: true });
   });

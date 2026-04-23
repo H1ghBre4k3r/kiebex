@@ -1,5 +1,5 @@
 import { getCurrentAuthUser } from "@/lib/auth";
-import { getPendingQueueCount } from "@/lib/query";
+import { getCachedPendingQueueCount } from "@/lib/pending-queue-cache";
 import { SiteHeaderClient } from "./site-header-client";
 
 export async function SiteHeader() {
@@ -7,7 +7,7 @@ export async function SiteHeader() {
 
   let pendingCount = 0;
   if (authUser?.role === "moderator" || authUser?.role === "admin") {
-    pendingCount = await getPendingQueueCount();
+    pendingCount = await getCachedPendingQueueCount();
   }
 
   return <SiteHeaderClient authUser={authUser} pendingCount={pendingCount} />;

@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "npm run start:standalone",
     "start:standalone": "node scripts/start-standalone.mjs",
+    "perf:capture-directory-sql": "tsx scripts/capture-directory-query-sql.ts",
+    "perf:explain-directory": "tsx scripts/explain-directory-queries.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

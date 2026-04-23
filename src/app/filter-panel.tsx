@@ -7,7 +7,17 @@ import {
   toggleValue,
   toggleVariantGroup,
 } from "@/lib/beer-directory-url";
+import { SortFormAutoSubmit } from "./sort-form-auto-submit";
 import styles from "./filter-panel.module.css";
+
+type SortValue = "price_asc" | "price_desc" | "name_asc" | "name_desc";
+
+const SORT_OPTIONS: { value: SortValue; label: string }[] = [
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "name_asc", label: "Brand: A to Z" },
+  { value: "name_desc", label: "Brand: Z to A" },
+];
 
 type Props = {
   brands: { id: string; name: string }[];
@@ -27,6 +37,7 @@ export function FilterPanel({
   searchParams,
 }: Props) {
   const map = toRawMap(searchParams);
+  const filterLinkProps = { prefetch: false } as const;
 
   const selectedBrands = map.brandId ?? [];
   const selectedVariants = map.variantId ?? [];
@@ -96,7 +107,7 @@ export function FilterPanel({
           <div className={styles.panelHeader}>
             <h2 id="filter-heading">Filter Offers</h2>
             {hasAnyFilter && (
-              <Link href="/" className={styles.clearAll}>
+              <Link href="/" className={styles.clearAll} {...filterLinkProps}>
                 Clear All
               </Link>
             )}
@@ -111,25 +122,23 @@ export function FilterPanel({
               {/*
                * Native <form method="GET"> + <input type="radio"> restores correct keyboard
                * semantics (arrow-key navigation, spacebar selection) that <a role="radio">
-               * cannot provide.  Hidden inputs preserve all active filters; the sort radio
-               * replaces only the sort param.  An inline script auto-submits on change so
-               * JS users get immediate navigation; the <noscript> button covers the no-JS path.
+               * cannot provide. Hidden inputs preserve all active filters; the sort radio
+               * replaces only the sort param. A tiny client enhancer adds immediate
+               * submit behavior without changing the no-JS HTML path.
                */}
               <form id="sort-form" method="GET" action="/" aria-labelledby="sort-group-label">
                 {Object.entries(map)
-                  .filter(([k]) => k !== "sort" && k !== "page")
-                  .flatMap(([k, vs]) =>
-                    vs.map((v, i) => <input key={`${k}-${i}`} type="hidden" name={k} value={v} />),
+                  .filter(([key]) => key !== "sort" && key !== "page")
+                  .flatMap(([key, values]) =>
+                    values.map((value, index) => (
+                      <input key={`${key}-${index}`} type="hidden" name={key} value={value} />
+                    )),
                   )}
                 <ul className={styles.radioList} role="group" aria-labelledby="sort-group-label">
-                  {[
-                    { value: "price_asc", label: "Price: Low to High" },
-                    { value: "price_desc", label: "Price: High to Low" },
-                    { value: "name_asc", label: "Brand: A to Z" },
-                    { value: "name_desc", label: "Brand: Z to A" },
-                  ].map(({ value, label }) => {
+                  {SORT_OPTIONS.map(({ value, label }) => {
                     const checked = currentSort === value;
                     const id = `sort-${value}`;
+
                     return (
                       <li key={value}>
                         <label
@@ -157,13 +166,7 @@ export function FilterPanel({
                   </button>
                 </noscript>
               </form>
-              {/* Auto-submit the form immediately on radio change when JS is available. */}
-              <script
-                dangerouslySetInnerHTML={{
-                  __html:
-                    "var _sf=document.getElementById('sort-form');if(_sf)_sf.addEventListener('change',function(){_sf.submit();});",
-                }}
-              />
+              <SortFormAutoSubmit formId="sort-form" />
             </div>
 
             {/* ── Brand ── */}
@@ -177,6 +180,7 @@ export function FilterPanel({
                       <li key={brand.id}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "brandId", brand.id))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -202,6 +206,7 @@ export function FilterPanel({
                       <li key={group.name}>
                         <Link
                           href={rawMapToUrl(toggleVariantGroup(map, group.ids))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -227,6 +232,7 @@ export function FilterPanel({
                       <li key={style.id}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "styleId", style.id))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -251,6 +257,7 @@ export function FilterPanel({
                     <li key={value}>
                       <Link
                         href={rawMapToUrl(toggleValue(map, "serving", value))}
+                        {...filterLinkProps}
                         role="checkbox"
                         aria-checked={checked}
                         className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -275,6 +282,7 @@ export function FilterPanel({
                       <li key={size}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "sizeMl", String(size)))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -299,6 +307,7 @@ export function FilterPanel({
                     <li key={value}>
                       <Link
                         href={rawMapToUrl(toggleValue(map, "locationType", value))}
+                        {...filterLinkProps}
                         role="checkbox"
                         aria-checked={checked}
                         className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}
@@ -323,6 +332,7 @@ export function FilterPanel({
                       <li key={location.id}>
                         <Link
                           href={rawMapToUrl(toggleValue(map, "locationId", location.id))}
+                          {...filterLinkProps}
                           role="checkbox"
                           aria-checked={checked}
                           className={`${styles.checkItem}${checked ? ` ${styles.selected}` : ""}`}

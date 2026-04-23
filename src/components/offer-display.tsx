@@ -47,7 +47,9 @@ export function OfferSummary({
             <div>
               <dt>Location</dt>
               <dd>
-                <Link href={`/locations/${offer.location.id}`}>{offer.location.name}</Link>
+                <Link href={`/locations/${offer.location.id}`} prefetch={false}>
+                  {offer.location.name}
+                </Link>
               </dd>
             </div>
             <div>

@@ -1,4 +1,11 @@
+import { resolveApprovedVariantIdsForBeerQuery } from "@/lib/beer-offer-query-shape";
 import { db } from "@/lib/db";
+import { getDirectoryPageSliceTake, toDirectoryPageSlice } from "@/lib/directory-page-slice";
+import {
+  buildBeerOffersDirectoryMetricLabels,
+  timeDirectoryQuery,
+} from "@/lib/directory-query-metrics";
+import { withDirectoryQuerySqlCapture } from "@/lib/directory-query-sql-capture";
 import type {
   AuditDetailsMap,
   BeerBrand,
@@ -413,20 +420,21 @@ export async function getVariantContributionPermission(
 
 export const BEER_OFFERS_PAGE_SIZE = 20;
 
-function buildBeerOffersWhere(query: BeerQuery) {
+function buildBeerOffersWhere(query: BeerQuery, variantIds?: string[] | null) {
   return {
     sizeMl: query.sizeMl?.length ? { in: query.sizeMl } : undefined,
     serving: query.serving?.length ? { in: query.serving } : undefined,
     locationId: query.locationId?.length ? { in: query.locationId } : undefined,
+    variantId: variantIds?.length ? { in: variantIds } : undefined,
     status: "approved" as const,
     location: {
       locationType: query.locationType?.length ? { in: query.locationType } : undefined,
       status: "approved" as const,
     },
     variantRef: {
-      id: query.variantId?.length ? { in: query.variantId } : undefined,
-      brandId: query.brandId?.length ? { in: query.brandId } : undefined,
-      styleId: query.styleId?.length ? { in: query.styleId } : undefined,
+      id: !variantIds && query.variantId?.length ? { in: query.variantId } : undefined,
+      brandId: !variantIds && query.brandId?.length ? { in: query.brandId } : undefined,
+      styleId: !variantIds && query.styleId?.length ? { in: query.styleId } : undefined,
       status: "approved" as const,
       brand: { status: "approved" as const },
     },
@@ -447,8 +455,13 @@ function buildBeerOffersOrderBy(query: BeerQuery): Record<string, "asc" | "desc"
 }
 
 export async function getBeerOffers(query: BeerQuery = {}): Promise<BeerOfferWithLocation[]> {
+  const variantIds = await resolveApprovedVariantIdsForBeerQuery(query);
+  if (variantIds && variantIds.length === 0) {
+    return [];
+  }
+
   const offers = await db.beerOffer.findMany({
-    where: buildBeerOffersWhere(query),
+    where: buildBeerOffersWhere(query, variantIds),
     include: offerInclude(),
     orderBy: buildBeerOffersOrderBy(query),
   });
@@ -460,29 +473,79 @@ export async function getBeerOffersPage(
   query: BeerQuery,
   page: number,
 ): Promise<{ offers: BeerOfferWithLocation[]; total: number }> {
-  const where = buildBeerOffersWhere(query);
+  const variantIds = await resolveApprovedVariantIdsForBeerQuery(query);
+  if (variantIds && variantIds.length === 0) {
+    return { offers: [], total: 0 };
+  }
+
+  const where = buildBeerOffersWhere(query, variantIds);
+  const metricLabels = buildBeerOffersDirectoryMetricLabels(query, page);
 
   const [total, rows] = await Promise.all([
-    db.beerOffer.count({ where }),
-    db.beerOffer.findMany({
-      where,
-      include: offerInclude(),
-      orderBy: buildBeerOffersOrderBy(query),
-      skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
-      take: BEER_OFFERS_PAGE_SIZE,
-    }),
+    timeDirectoryQuery({ ...metricLabels, query_name: "offers_count" }, () =>
+      withDirectoryQuerySqlCapture("offers_count", () => db.beerOffer.count({ where })),
+    ),
+    timeDirectoryQuery({ ...metricLabels, query_name: "offers_page" }, () =>
+      withDirectoryQuerySqlCapture("offers_page", () =>
+        db.beerOffer.findMany({
+          where,
+          include: offerInclude(),
+          orderBy: buildBeerOffersOrderBy(query),
+          skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
+          take: BEER_OFFERS_PAGE_SIZE,
+        }),
+      ),
+    ),
   ]);
 
   return { offers: rows.map(mapOfferWithLocation), total };
 }
 
+export async function getBeerOffersPageSlice(
+  query: BeerQuery,
+  page: number,
+): Promise<{ offers: BeerOfferWithLocation[]; hasNextPage: boolean }> {
+  const variantIds = await resolveApprovedVariantIdsForBeerQuery(query);
+  if (variantIds && variantIds.length === 0) {
+    return { offers: [], hasNextPage: false };
+  }
+
+  const where = buildBeerOffersWhere(query, variantIds);
+  const metricLabels = buildBeerOffersDirectoryMetricLabels(query, page);
+  const rows = await timeDirectoryQuery({ ...metricLabels, query_name: "offers_page" }, () =>
+    withDirectoryQuerySqlCapture("offers_page", () =>
+      db.beerOffer.findMany({
+        where,
+        include: offerInclude(),
+        orderBy: buildBeerOffersOrderBy(query),
+        skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
+        take: getDirectoryPageSliceTake(BEER_OFFERS_PAGE_SIZE),
+      }),
+    ),
+  );
+
+  const mappedRows = rows.map(mapOfferWithLocation);
+  return toDirectoryPageSlice(mappedRows, BEER_OFFERS_PAGE_SIZE);
+}
+
 export async function getDistinctApprovedOfferSizes(): Promise<number[]> {
-  const rows = await db.beerOffer.findMany({
-    where: buildBeerOffersWhere({}),
-    select: { sizeMl: true },
-    distinct: ["sizeMl"],
-    orderBy: [{ sizeMl: "asc" }],
-  });
+  const rows = await timeDirectoryQuery(
+    {
+      query_name: "approved_offer_sizes",
+      sort: "na",
+      filter_shape: "none",
+      page_bucket: "na",
+    },
+    () =>
+      withDirectoryQuerySqlCapture("approved_offer_sizes", () =>
+        db.beerOffer.findMany({
+          where: buildBeerOffersWhere({}),
+          select: { sizeMl: true },
+          distinct: ["sizeMl"],
+          orderBy: [{ sizeMl: "asc" }],
+        }),
+      ),
+  );
 
   return rows.map((row) => row.sizeMl);
 }

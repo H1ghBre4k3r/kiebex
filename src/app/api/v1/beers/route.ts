@@ -6,6 +6,7 @@ import {
   getVariantContributionPermission,
 } from "@/lib/query";
 import { jsonError, jsonOk } from "@/lib/http";
+import { invalidatePendingQueueCountCache } from "@/lib/pending-queue-cache";
 import { isPrismaErrorCode } from "@/lib/prisma-errors";
 import {
   jsonQueryValidationError,
@@ -90,6 +91,8 @@ async function postBeer(request: Request): Promise<Response> {
       });
 
       if (result.outcome === "offer") {
+        invalidatePendingQueueCountCache();
+
         return jsonOk(
           {
             outcome: "offer_submission_created",
@@ -100,6 +103,8 @@ async function postBeer(request: Request): Promise<Response> {
       }
 
       if (result.outcome === "price_update") {
+        invalidatePendingQueueCountCache();
+
         return jsonOk(
           {
             outcome: "price_update_proposed",
