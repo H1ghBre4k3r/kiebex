@@ -39,15 +39,14 @@ describe("directory query SQL capture", () => {
   it("logs exact SQL only within an active capture scope", async () => {
     process.env.KBI_CAPTURE_DIRECTORY_SQL = "true";
 
-    const { withDirectoryQuerySqlCapture, logCapturedDirectoryQuerySql } = await import(
-      "@/lib/directory-query-sql-capture"
-    );
+    const { withDirectoryQuerySqlCapture, logCapturedDirectoryQuerySql } =
+      await import("@/lib/directory-query-sql-capture");
     const { runWithContext } = await import("@/lib/request-context");
 
     await runWithContext({ requestId: "req-1", userId: "user-1" }, async () => {
       await withDirectoryQuerySqlCapture("offers_page", async () => {
         logCapturedDirectoryQuerySql({
-          query: "SELECT \"BeerOffer\".* FROM \"BeerOffer\" WHERE \"status\" = $1",
+          query: 'SELECT "BeerOffer".* FROM "BeerOffer" WHERE "status" = $1',
           params: '["approved"]',
           duration: 12,
           target: "quaint::connector::metrics",
@@ -78,5 +77,48 @@ describe("directory query SQL capture", () => {
     });
 
     expect(mockedLoggerInfo).not.toHaveBeenCalled();
+  });
+
+  it("does not leak capture scope across overlapping async work", async () => {
+    process.env.KBI_CAPTURE_DIRECTORY_SQL = "true";
+
+    const { withDirectoryQuerySqlCapture, logCapturedDirectoryQuerySql } =
+      await import("@/lib/directory-query-sql-capture");
+    const { runWithContext } = await import("@/lib/request-context");
+
+    await Promise.all([
+      runWithContext({ requestId: "req-1" }, async () => {
+        await withDirectoryQuerySqlCapture("offers_page", async () => {
+          await new Promise<void>((resolve) => setImmediate(resolve));
+          logCapturedDirectoryQuerySql({
+            query: 'SELECT "BeerOffer".* FROM "BeerOffer"',
+            params: "[]",
+            duration: 5,
+            target: "quaint::connector::metrics",
+          });
+          await new Promise<void>((resolve) => setImmediate(resolve));
+        });
+      }),
+      runWithContext({ requestId: "req-2" }, async () => {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        logCapturedDirectoryQuerySql({
+          query: "SELECT 1",
+          params: "[]",
+          duration: 1,
+          target: "db",
+        });
+      }),
+    ]);
+
+    expect(mockedLoggerInfo).toHaveBeenCalledTimes(1);
+    expect(mockedLoggerInfo).toHaveBeenCalledWith("directory_query.sql", {
+      scope: "offers_page",
+      query: 'SELECT "BeerOffer".* FROM "BeerOffer"',
+      params: "[]",
+      durationMs: 5,
+      target: "quaint::connector::metrics",
+      requestId: "req-1",
+      userId: undefined,
+    });
   });
 });

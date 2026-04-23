@@ -104,26 +104,29 @@ export function OwnReviewActions({
     setDeletePending(true);
     setErrorMessage(null);
 
-    const result = await requestApi<null>(
-      deleteEndpoint,
-      { method: "DELETE" },
-      "Unable to delete. Please try again.",
-    );
+    try {
+      const result = await requestApi<null>(
+        deleteEndpoint,
+        { method: "DELETE" },
+        "Unable to delete. Please try again.",
+      );
 
-    if (!result.ok) {
-      setErrorMessage(result.message);
+      if (!result.ok) {
+        setErrorMessage(result.message);
+        setConfirmDelete(false);
+        return;
+      }
+
+      if (onDeleted) {
+        onDeleted(review.id);
+        return;
+      }
+
       setConfirmDelete(false);
+      router.refresh();
+    } finally {
       setDeletePending(false);
-      return;
     }
-
-    if (onDeleted) {
-      onDeleted(review.id);
-      setDeletePending(false);
-      return;
-    }
-
-    router.refresh();
   }
 
   async function handleModerate(status: "approved" | "rejected") {

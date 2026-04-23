@@ -18,7 +18,6 @@ type PrismaQueryEvent = {
 };
 
 const directoryQuerySqlCaptureStorage = new AsyncLocalStorage<DirectoryQuerySqlCaptureContext>();
-const directoryQuerySqlCaptureScopeStack: DirectoryQuerySqlScope[] = [];
 
 export function isDirectoryQuerySqlCaptureEnabled(): boolean {
   return process.env.KBI_CAPTURE_DIRECTORY_SQL === "true";
@@ -32,23 +31,7 @@ export function withDirectoryQuerySqlCapture<T>(
     return work();
   }
 
-  directoryQuerySqlCaptureScopeStack.push(scope);
-
-  return directoryQuerySqlCaptureStorage.run({ scope }, async () => {
-    try {
-      return await work();
-    } finally {
-      const currentScope = directoryQuerySqlCaptureScopeStack.at(-1);
-      if (currentScope === scope) {
-        directoryQuerySqlCaptureScopeStack.pop();
-      } else {
-        const scopeIndex = directoryQuerySqlCaptureScopeStack.lastIndexOf(scope);
-        if (scopeIndex >= 0) {
-          directoryQuerySqlCaptureScopeStack.splice(scopeIndex, 1);
-        }
-      }
-    }
-  });
+  return directoryQuerySqlCaptureStorage.run({ scope }, work);
 }
 
 export function getActiveDirectoryQuerySqlCaptureScope(): DirectoryQuerySqlScope | null {
@@ -56,7 +39,7 @@ export function getActiveDirectoryQuerySqlCaptureScope(): DirectoryQuerySqlScope
     return null;
   }
 
-  return directoryQuerySqlCaptureStorage.getStore()?.scope ?? directoryQuerySqlCaptureScopeStack.at(-1) ?? null;
+  return directoryQuerySqlCaptureStorage.getStore()?.scope ?? null;
 }
 
 export function logCapturedDirectoryQuerySql(
