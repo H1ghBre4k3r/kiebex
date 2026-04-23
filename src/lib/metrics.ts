@@ -1,11 +1,28 @@
 import client from "prom-client";
 
+export type DirectoryQueryMetricLabels = {
+  query_name: "offers_count" | "offers_page" | "approved_offer_sizes";
+  sort: "price_asc" | "price_desc" | "name_asc" | "name_desc" | "na";
+  filter_shape:
+    | "none"
+    | "brand"
+    | "variant"
+    | "style"
+    | "size"
+    | "serving"
+    | "location_type"
+    | "location"
+    | "multi";
+  page_bucket: "1" | "2_5" | "6_plus" | "na";
+};
+
 type MetricsStore = {
   register: client.Registry;
   httpRequestDuration: client.Histogram<"method" | "route" | "status_code">;
   httpRequestTotal: client.Counter<"method" | "route" | "status_code">;
   pageRenderDuration: client.Histogram<"route">;
   homepageStageDuration: client.Histogram<"stage">;
+  directoryQueryDuration: client.Histogram<"query_name" | "sort" | "filter_shape" | "page_bucket">;
 };
 
 function createMetricsStore(): MetricsStore {
@@ -46,6 +63,13 @@ function createMetricsStore(): MetricsStore {
       buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
       registers: [register],
     }),
+    directoryQueryDuration: new client.Histogram({
+      name: "kiebex_directory_query_duration_seconds",
+      help: "Duration of directory-related database queries in seconds",
+      labelNames: ["query_name", "sort", "filter_shape", "page_bucket"],
+      buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+      registers: [register],
+    }),
   };
 }
 
@@ -65,6 +89,7 @@ const {
   httpRequestTotal,
   pageRenderDuration,
   homepageStageDuration,
+  directoryQueryDuration,
 } = metricsStore;
 
 export function getMetrics(): Promise<string> {
@@ -92,4 +117,13 @@ export function recordPageRender(route: string, durationSeconds: number): void {
 
 export function recordHomepageStage(stage: string, durationSeconds: number): void {
   homepageStageDuration.labels(stage).observe(durationSeconds);
+}
+
+export function recordDirectoryQuery(
+  labels: DirectoryQueryMetricLabels,
+  durationSeconds: number,
+): void {
+  directoryQueryDuration
+    .labels(labels.query_name, labels.sort, labels.filter_shape, labels.page_bucket)
+    .observe(durationSeconds);
 }

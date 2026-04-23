@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { GET } from "@/app/api/v1/metrics/route";
-import { recordHomepageStage, recordPageRender } from "@/lib/metrics";
+import { recordDirectoryQuery, recordHomepageStage, recordPageRender } from "@/lib/metrics";
 
 describe("GET /api/v1/metrics", () => {
   beforeEach(() => {
     recordPageRender("/", 0.05);
     recordHomepageStage("offers_query", 0.02);
+    recordDirectoryQuery(
+      {
+        query_name: "offers_page",
+        sort: "price_asc",
+        filter_shape: "none",
+        page_bucket: "1",
+      },
+      0.01,
+    );
   });
 
   it("returns Prometheus-compatible metrics", async () => {
@@ -31,6 +40,7 @@ describe("GET /api/v1/metrics", () => {
     expect(body).toContain("kiebex_http_requests_total");
     expect(body).toContain("kiebex_page_render_duration_seconds");
     expect(body).toContain("kiebex_homepage_stage_duration_seconds");
+    expect(body).toContain("kiebex_directory_query_duration_seconds");
   });
 
   it("includes homepage render labels after recording metrics", async () => {
@@ -42,6 +52,9 @@ describe("GET /api/v1/metrics", () => {
     );
     expect(body).toContain(
       'kiebex_homepage_stage_duration_seconds_bucket{le="0.025",app="kiebex",stage="offers_query"}',
+    );
+    expect(body).toContain(
+      'kiebex_directory_query_duration_seconds_bucket{le="0.025",app="kiebex",query_name="offers_page",sort="price_asc",filter_shape="none",page_bucket="1"}',
     );
   });
 

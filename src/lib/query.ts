@@ -1,4 +1,8 @@
 import { db } from "@/lib/db";
+import {
+  buildBeerOffersDirectoryMetricLabels,
+  timeDirectoryQuery,
+} from "@/lib/directory-query-metrics";
 import type {
   AuditDetailsMap,
   BeerBrand,
@@ -461,28 +465,42 @@ export async function getBeerOffersPage(
   page: number,
 ): Promise<{ offers: BeerOfferWithLocation[]; total: number }> {
   const where = buildBeerOffersWhere(query);
+  const metricLabels = buildBeerOffersDirectoryMetricLabels(query, page);
 
   const [total, rows] = await Promise.all([
-    db.beerOffer.count({ where }),
-    db.beerOffer.findMany({
-      where,
-      include: offerInclude(),
-      orderBy: buildBeerOffersOrderBy(query),
-      skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
-      take: BEER_OFFERS_PAGE_SIZE,
-    }),
+    timeDirectoryQuery({ ...metricLabels, query_name: "offers_count" }, () =>
+      db.beerOffer.count({ where }),
+    ),
+    timeDirectoryQuery({ ...metricLabels, query_name: "offers_page" }, () =>
+      db.beerOffer.findMany({
+        where,
+        include: offerInclude(),
+        orderBy: buildBeerOffersOrderBy(query),
+        skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
+        take: BEER_OFFERS_PAGE_SIZE,
+      }),
+    ),
   ]);
 
   return { offers: rows.map(mapOfferWithLocation), total };
 }
 
 export async function getDistinctApprovedOfferSizes(): Promise<number[]> {
-  const rows = await db.beerOffer.findMany({
-    where: buildBeerOffersWhere({}),
-    select: { sizeMl: true },
-    distinct: ["sizeMl"],
-    orderBy: [{ sizeMl: "asc" }],
-  });
+  const rows = await timeDirectoryQuery(
+    {
+      query_name: "approved_offer_sizes",
+      sort: "na",
+      filter_shape: "none",
+      page_bucket: "na",
+    },
+    () =>
+      db.beerOffer.findMany({
+        where: buildBeerOffersWhere({}),
+        select: { sizeMl: true },
+        distinct: ["sizeMl"],
+        orderBy: [{ sizeMl: "asc" }],
+      }),
+  );
 
   return rows.map((row) => row.sizeMl);
 }

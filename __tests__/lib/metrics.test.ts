@@ -11,6 +11,15 @@ describe("metrics singleton", () => {
     const firstImport = await import("@/lib/metrics");
     firstImport.recordPageRender("/", 0.05);
     firstImport.recordHomepageStage("offers_query", 0.02);
+    firstImport.recordDirectoryQuery(
+      {
+        query_name: "offers_page",
+        sort: "price_asc",
+        filter_shape: "none",
+        page_bucket: "1",
+      },
+      0.01,
+    );
 
     jest.resetModules();
 
@@ -20,6 +29,9 @@ describe("metrics singleton", () => {
     expect(body).toContain('kiebex_page_render_duration_seconds_count{app="kiebex",route="/"} 1');
     expect(body).toContain(
       'kiebex_homepage_stage_duration_seconds_count{app="kiebex",stage="offers_query"} 1',
+    );
+    expect(body).toContain(
+      'kiebex_directory_query_duration_seconds_count{app="kiebex",query_name="offers_page",sort="price_asc",filter_shape="none",page_bucket="1"} 1',
     );
   });
 });
