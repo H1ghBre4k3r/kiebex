@@ -40,7 +40,7 @@ spec:
             - -c
             - log_duration=off
             - -c
-            - log_line_prefix=%m [%p] db=%d,user=%u,app=%a,client=%h 
+            - log_line_prefix=%m [%p] db=%d,user=%u,app=%a,client=%h
           env:
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
