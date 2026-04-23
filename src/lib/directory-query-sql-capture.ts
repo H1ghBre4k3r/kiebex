@@ -2,11 +2,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { logger } from "@/lib/logger";
 import { getRequestContext } from "@/lib/request-context";
 
-type DirectoryQuerySqlScope = "offers_count" | "offers_page" | "approved_offer_sizes";
+export type DirectoryQuerySqlScope = "offers_count" | "offers_page" | "approved_offer_sizes";
 
 type DirectoryQuerySqlCaptureContext = {
   scope: DirectoryQuerySqlScope;
 };
+
+type RequestContext = ReturnType<typeof getRequestContext>;
 
 type PrismaQueryEvent = {
   query: string;
@@ -16,6 +18,7 @@ type PrismaQueryEvent = {
 };
 
 const directoryQuerySqlCaptureStorage = new AsyncLocalStorage<DirectoryQuerySqlCaptureContext>();
+const directoryQuerySqlCaptureScopeStack: DirectoryQuerySqlScope[] = [];
 
 export function isDirectoryQuerySqlCaptureEnabled(): boolean {
   return process.env.KBI_CAPTURE_DIRECTORY_SQL === "true";
@@ -29,22 +32,52 @@ export function withDirectoryQuerySqlCapture<T>(
     return work();
   }
 
-  return directoryQuerySqlCaptureStorage.run({ scope }, work);
+  directoryQuerySqlCaptureScopeStack.push(scope);
+
+  return directoryQuerySqlCaptureStorage.run({ scope }, async () => {
+    try {
+      return await work();
+    } finally {
+      const currentScope = directoryQuerySqlCaptureScopeStack.at(-1);
+      if (currentScope === scope) {
+        directoryQuerySqlCaptureScopeStack.pop();
+      } else {
+        const scopeIndex = directoryQuerySqlCaptureScopeStack.lastIndexOf(scope);
+        if (scopeIndex >= 0) {
+          directoryQuerySqlCaptureScopeStack.splice(scopeIndex, 1);
+        }
+      }
+    }
+  });
 }
 
-export function logCapturedDirectoryQuerySql(event: PrismaQueryEvent): void {
+export function getActiveDirectoryQuerySqlCaptureScope(): DirectoryQuerySqlScope | null {
+  if (!isDirectoryQuerySqlCaptureEnabled()) {
+    return null;
+  }
+
+  return directoryQuerySqlCaptureStorage.getStore()?.scope ?? directoryQuerySqlCaptureScopeStack.at(-1) ?? null;
+}
+
+export function logCapturedDirectoryQuerySql(
+  event: PrismaQueryEvent,
+  options?: {
+    scope?: DirectoryQuerySqlScope | null;
+    requestContext?: RequestContext;
+  },
+): void {
   if (!isDirectoryQuerySqlCaptureEnabled()) {
     return;
   }
 
-  const captureContext = directoryQuerySqlCaptureStorage.getStore();
-  if (!captureContext) {
+  const scope = options?.scope ?? directoryQuerySqlCaptureStorage.getStore()?.scope ?? null;
+  if (!scope) {
     return;
   }
 
-  const requestContext = getRequestContext();
+  const requestContext = options?.requestContext ?? getRequestContext();
   logger.info("directory_query.sql", {
-    scope: captureContext.scope,
+    scope,
     query: event.query,
     params: event.params,
     durationMs: event.duration,
