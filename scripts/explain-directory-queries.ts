@@ -258,6 +258,11 @@ function buildExplainCases(inputs: RepresentativeInputs): ExplainCase[] {
       params: [...baseParams, ...inputs.brandVariantIds, PAGE_SIZE, 0],
     },
     {
+      title: `Variant-only filter (${inputs.variantName}), count`,
+      sql: buildCountSql('"j1"."id" IN ($5)', 6),
+      params: [...baseParams, inputs.variantId, 0],
+    },
+    {
       title: `Variant-only filter (${inputs.variantName}), page`,
       sql: buildPageSql('"public"."BeerOffer"."priceCents" ASC', '"j1"."id" IN ($5)', 6),
       params: [...baseParams, inputs.variantId, PAGE_SIZE, 0],
@@ -278,6 +283,11 @@ function buildExplainCases(inputs: RepresentativeInputs): ExplainCase[] {
         5 + inputs.styleVariantIds.length,
       ),
       params: [...baseParams, ...inputs.styleVariantIds, PAGE_SIZE, 0],
+    },
+    {
+      title: `Location-type-only filter (${inputs.locationType}), count`,
+      sql: buildCountSql('"j0"."locationType" IN (CAST($5::text AS "public"."LocationType"))', 6),
+      params: [...baseParams, inputs.locationType, 0],
     },
     {
       title: `Location-type-only filter (${inputs.locationType}), page`,
