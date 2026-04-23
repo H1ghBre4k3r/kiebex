@@ -6,7 +6,7 @@ import { getCurrentAuthUser } from "@/lib/auth";
 import { servingLabel, locationTypeLabel } from "@/lib/display";
 import { recordHomepageStage, recordPageRender } from "@/lib/metrics";
 import { getCachedPublicDirectoryFilterMetadata } from "@/lib/public-directory-cache";
-import { getBeerOffersPage, BEER_OFFERS_PAGE_SIZE, getLocationReviewSummaries } from "@/lib/query";
+import { getBeerOffersPageSlice, getLocationReviewSummaries } from "@/lib/query";
 import { parseBeerQueryRecord } from "@/lib/validation";
 import type { BeerBrand, BeerStyle, BeerVariant, Location } from "@/lib/types";
 import {
@@ -149,15 +149,14 @@ export default async function Home({
     );
 
     const [pageResult, cachedFilterMetadata, authUser] = await Promise.all([
-      timeHomepageStage("offers_query", () => getBeerOffersPage(query, page)),
+      timeHomepageStage("offers_query", () => getBeerOffersPageSlice(query, page)),
       timeHomepageStage("filter_metadata", getCachedPublicDirectoryFilterMetadata),
       timeHomepageStage("auth_lookup", getCurrentAuthUser),
     ]);
 
     const { sizes, locations, brands, stylesList, variants } = cachedFilterMetadata;
 
-    const { offers, total } = pageResult;
-    const totalPages = Math.ceil(total / BEER_OFFERS_PAGE_SIZE);
+    const { offers, hasNextPage } = pageResult;
 
     const reviewSummaryByLocation = await timeHomepageStage("review_summary", () =>
       getLocationReviewSummaries([...new Set(offers.map((offer) => offer.location.id))]),
@@ -196,7 +195,7 @@ export default async function Home({
           />
 
           <section className={styles.panel} aria-labelledby="results-heading">
-            <h2 id="results-heading">Offers ({total})</h2>
+            <h2 id="results-heading">Offers (Page {page})</h2>
 
             {!parsedQuery.success && (
               <div className={styles.errorBox} role="alert" aria-live="polite">
@@ -274,7 +273,7 @@ export default async function Home({
                   </UserOfferActionOptionsProvider>
                 </ul>
 
-                {totalPages > 1 && (
+                {(page > 1 || hasNextPage) && (
                   <nav className={styles.pagination} aria-label="Offer pages">
                     {page > 1 ? (
                       <Link
@@ -288,9 +287,10 @@ export default async function Home({
                       <span className={styles.pageLinkDisabled}>&larr; Prev</span>
                     )}
                     <span className={styles.pageInfo}>
-                      Page {page} of {totalPages}
+                      Page {page}
+                      {hasNextPage && " of more results"}
                     </span>
-                    {page < totalPages ? (
+                    {hasNextPage ? (
                       <Link
                         href={buildPaginationUrl(rawSearchParams, page + 1)}
                         className={styles.pageLink}

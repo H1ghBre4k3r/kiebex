@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { getDirectoryPageSliceTake, toDirectoryPageSlice } from "@/lib/directory-page-slice";
 import {
   buildBeerOffersDirectoryMetricLabels,
   timeDirectoryQuery,
@@ -486,6 +487,28 @@ export async function getBeerOffersPage(
   ]);
 
   return { offers: rows.map(mapOfferWithLocation), total };
+}
+
+export async function getBeerOffersPageSlice(
+  query: BeerQuery,
+  page: number,
+): Promise<{ offers: BeerOfferWithLocation[]; hasNextPage: boolean }> {
+  const where = buildBeerOffersWhere(query);
+  const metricLabels = buildBeerOffersDirectoryMetricLabels(query, page);
+  const rows = await timeDirectoryQuery({ ...metricLabels, query_name: "offers_page" }, () =>
+    withDirectoryQuerySqlCapture("offers_page", () =>
+      db.beerOffer.findMany({
+        where,
+        include: offerInclude(),
+        orderBy: buildBeerOffersOrderBy(query),
+        skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
+        take: getDirectoryPageSliceTake(BEER_OFFERS_PAGE_SIZE),
+      }),
+    ),
+  );
+
+  const mappedRows = rows.map(mapOfferWithLocation);
+  return toDirectoryPageSlice(mappedRows, BEER_OFFERS_PAGE_SIZE);
 }
 
 export async function getDistinctApprovedOfferSizes(): Promise<number[]> {
