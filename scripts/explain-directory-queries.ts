@@ -11,12 +11,14 @@ type ExplainCase = {
 type RepresentativeInputs = {
   brandId: string;
   brandName: string;
+  brandVariantIds: string[];
   variantId: string;
   variantName: string;
   variantBrandId: string;
   variantStyleId: string;
   styleId: string;
   styleName: string;
+  styleVariantIds: string[];
   locationType: string;
   sizeMl: number;
 };
@@ -26,6 +28,10 @@ const PAGE_SIZE = 20;
 
 function printSection(title: string): void {
   console.log(`\n### ${title}`);
+}
+
+function buildTextInClause(startParamIndex: number, values: string[]): string {
+  return values.map((_, index) => `$${startParamIndex + index}`).join(",");
 }
 
 function buildOffersJoinWhereClause(filterClause?: string): string {
@@ -108,24 +114,28 @@ OFFSET $5
 }
 
 async function getRepresentativeInputs(pool: Pool): Promise<RepresentativeInputs> {
-  const [brandResult, variantResult, styleResult, locationResult, sizeResult] = await Promise.all([
-    pool.query<{ id: string; name: string }>(
-      `SELECT id, name FROM "public"."BeerBrand" WHERE status = $1 ORDER BY name ASC LIMIT 1`,
-      [APPROVED_SUBMISSION],
-    ),
-    pool.query<{ id: string; name: string; brandId: string; styleId: string }>(
+  const [variantResult, locationResult, sizeResult] = await Promise.all([
+    pool.query<{
+      id: string;
+      name: string;
+      brandId: string;
+      brandName: string;
+      styleId: string;
+      styleName: string;
+    }>(
       `
-        SELECT bv.id, bv.name, bv."brandId", bv."styleId"
-        FROM "public"."BeerVariant" bv
-        WHERE bv.status = $1
-        ORDER BY bv.name ASC
+        SELECT bv.id, bv.name, bv."brandId", bb.name AS "brandName", bv."styleId", bs.name AS "styleName"
+        FROM "public"."BeerOffer" bo
+        INNER JOIN "public"."Location" l ON l.id = bo."locationId" AND l.status = $1
+        INNER JOIN "public"."BeerVariant" bv ON bo."variantId" = bv.id AND bv.status = $2
+        INNER JOIN "public"."BeerBrand" bb ON bb.id = bv."brandId" AND bb.status = $2
+        INNER JOIN "public"."BeerStyle" bs ON bs.id = bv."styleId"
+        WHERE bo.status = $3
+        GROUP BY bv.id, bv.name, bv."brandId", bb.name, bv."styleId", bs.name
+        ORDER BY bb.name ASC, bv.name ASC
         LIMIT 1
       `,
-      [APPROVED_SUBMISSION],
-    ),
-    pool.query<{ id: string; name: string }>(
-      `SELECT id, name FROM "public"."BeerStyle" ORDER BY name ASC LIMIT 1`,
-      [],
+      [APPROVED_SUBMISSION, APPROVED_SUBMISSION, APPROVED_SUBMISSION],
     ),
     pool.query<{ locationType: string }>(
       `
@@ -152,25 +162,55 @@ async function getRepresentativeInputs(pool: Pool): Promise<RepresentativeInputs
     ),
   ]);
 
-  const brand = brandResult.rows[0];
   const variant = variantResult.rows[0];
-  const style = styleResult.rows[0];
   const location = locationResult.rows[0];
   const size = sizeResult.rows[0];
 
-  if (!brand || !variant || !style || !location || !size) {
+  if (!variant || !location || !size) {
     throw new Error("Could not load representative inputs for EXPLAIN capture.");
   }
 
+  const [brandVariantIdsResult, styleVariantIdsResult] = await Promise.all([
+    pool.query<{ id: string }>(
+      `
+        SELECT bv.id
+        FROM "public"."BeerVariant" bv
+        INNER JOIN "public"."BeerBrand" bb ON bb.id = bv."brandId" AND bb.status = $2
+        WHERE bv.status = $1 AND bv."brandId" = $3
+        ORDER BY bv.id ASC
+      `,
+      [APPROVED_SUBMISSION, APPROVED_SUBMISSION, variant.brandId],
+    ),
+    pool.query<{ id: string }>(
+      `
+        SELECT bv.id
+        FROM "public"."BeerVariant" bv
+        INNER JOIN "public"."BeerBrand" bb ON bb.id = bv."brandId" AND bb.status = $2
+        WHERE bv.status = $1 AND bv."styleId" = $3
+        ORDER BY bv.id ASC
+      `,
+      [APPROVED_SUBMISSION, APPROVED_SUBMISSION, variant.styleId],
+    ),
+  ]);
+
+  const brandVariantIds = brandVariantIdsResult.rows.map((row) => row.id);
+  const styleVariantIds = styleVariantIdsResult.rows.map((row) => row.id);
+
+  if (brandVariantIds.length === 0 || styleVariantIds.length === 0) {
+    throw new Error("Could not load representative brand/style variant IDs for EXPLAIN capture.");
+  }
+
   return {
-    brandId: brand.id,
-    brandName: brand.name,
+    brandId: variant.brandId,
+    brandName: variant.brandName,
+    brandVariantIds,
     variantId: variant.id,
     variantName: variant.name,
     variantBrandId: variant.brandId,
     variantStyleId: variant.styleId,
-    styleId: style.id,
-    styleName: style.name,
+    styleId: variant.styleId,
+    styleName: variant.styleName,
+    styleVariantIds,
     locationType: location.locationType,
     sizeMl: size.sizeMl,
   };
@@ -202,13 +242,20 @@ function buildExplainCases(inputs: RepresentativeInputs): ExplainCase[] {
     },
     {
       title: `Brand-only filter (${inputs.brandName}), count`,
-      sql: buildCountSql('"j1"."brandId" IN ($5)', 6),
-      params: [...baseParams, inputs.brandId, 0],
+      sql: buildCountSql(
+        `"public"."BeerOffer"."variantId" IN (${buildTextInClause(5, inputs.brandVariantIds)})`,
+        5 + inputs.brandVariantIds.length,
+      ),
+      params: [...baseParams, ...inputs.brandVariantIds, 0],
     },
     {
       title: `Brand-only filter (${inputs.brandName}), page`,
-      sql: buildPageSql('"public"."BeerOffer"."priceCents" ASC', '"j1"."brandId" IN ($5)', 6),
-      params: [...baseParams, inputs.brandId, PAGE_SIZE, 0],
+      sql: buildPageSql(
+        '"public"."BeerOffer"."priceCents" ASC',
+        `"public"."BeerOffer"."variantId" IN (${buildTextInClause(5, inputs.brandVariantIds)})`,
+        5 + inputs.brandVariantIds.length,
+      ),
+      params: [...baseParams, ...inputs.brandVariantIds, PAGE_SIZE, 0],
     },
     {
       title: `Variant-only filter (${inputs.variantName}), page`,
@@ -216,13 +263,29 @@ function buildExplainCases(inputs: RepresentativeInputs): ExplainCase[] {
       params: [...baseParams, inputs.variantId, PAGE_SIZE, 0],
     },
     {
+      title: `Style-only filter (${inputs.styleName}), count`,
+      sql: buildCountSql(
+        `"public"."BeerOffer"."variantId" IN (${buildTextInClause(5, inputs.styleVariantIds)})`,
+        5 + inputs.styleVariantIds.length,
+      ),
+      params: [...baseParams, ...inputs.styleVariantIds, 0],
+    },
+    {
       title: `Style-only filter (${inputs.styleName}), page`,
-      sql: buildPageSql('"public"."BeerOffer"."priceCents" ASC', '"j1"."styleId" IN ($5)', 6),
-      params: [...baseParams, inputs.styleId, PAGE_SIZE, 0],
+      sql: buildPageSql(
+        '"public"."BeerOffer"."priceCents" ASC',
+        `"public"."BeerOffer"."variantId" IN (${buildTextInClause(5, inputs.styleVariantIds)})`,
+        5 + inputs.styleVariantIds.length,
+      ),
+      params: [...baseParams, ...inputs.styleVariantIds, PAGE_SIZE, 0],
     },
     {
       title: `Location-type-only filter (${inputs.locationType}), page`,
-      sql: buildPageSql('"public"."BeerOffer"."priceCents" ASC', '"j0"."locationType" IN (CAST($5::text AS "public"."LocationType"))', 6),
+      sql: buildPageSql(
+        '"public"."BeerOffer"."priceCents" ASC',
+        '"j0"."locationType" IN (CAST($5::text AS "public"."LocationType"))',
+        6,
+      ),
       params: [...baseParams, inputs.locationType, PAGE_SIZE, 0],
     },
     {

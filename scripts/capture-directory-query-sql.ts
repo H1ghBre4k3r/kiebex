@@ -3,6 +3,7 @@ import "dotenv/config";
 process.env.KBI_CAPTURE_DIRECTORY_SQL ??= "true";
 
 import { randomUUID } from "node:crypto";
+import { db } from "@/lib/db";
 import { runWithContext } from "@/lib/request-context";
 
 type QueryModule = typeof import("@/lib/query");
@@ -17,13 +18,35 @@ function printSection(title: string): void {
 }
 
 async function buildScenarios(query: QueryModule): Promise<Scenario[]> {
-  const [brands, variants, styles, locations, sizes] = await Promise.all([
-    query.getBeerBrands(),
-    query.getBeerVariants(),
-    query.getBeerStyles(),
+  const [representativeVariant, locations, sizes] = await Promise.all([
+    db.beerVariant.findFirst({
+      where: {
+        status: "approved",
+        brand: {
+          status: "approved",
+        },
+        offers: {
+          some: {
+            status: "approved",
+            location: {
+              status: "approved",
+            },
+          },
+        },
+      },
+      include: {
+        brand: true,
+        style: true,
+      },
+      orderBy: [{ brand: { name: "asc" } }, { name: "asc" }],
+    }),
     query.getLocations(),
     query.getDistinctApprovedOfferSizes(),
   ]);
+
+  if (!representativeVariant?.brand || !representativeVariant.style) {
+    throw new Error("Could not load a representative approved variant for SQL capture.");
+  }
 
   const scenarios: Scenario[] = [
     {
@@ -40,7 +63,7 @@ async function buildScenarios(query: QueryModule): Promise<Scenario[]> {
     },
   ];
 
-  const brand = brands[0];
+  const brand = representativeVariant.brand;
   if (brand) {
     scenarios.push({
       name: `Brand-only filter (${brand.name})`,
@@ -50,7 +73,7 @@ async function buildScenarios(query: QueryModule): Promise<Scenario[]> {
     });
   }
 
-  const variant = variants[0];
+  const variant = representativeVariant;
   if (variant) {
     scenarios.push({
       name: `Variant-only filter (${variant.name})`,
@@ -60,7 +83,7 @@ async function buildScenarios(query: QueryModule): Promise<Scenario[]> {
     });
   }
 
-  const style = styles[0];
+  const style = representativeVariant.style;
   if (style) {
     scenarios.push({
       name: `Style-only filter (${style.name})`,
