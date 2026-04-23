@@ -3,6 +3,7 @@ import {
   buildBeerOffersDirectoryMetricLabels,
   timeDirectoryQuery,
 } from "@/lib/directory-query-metrics";
+import { withDirectoryQuerySqlCapture } from "@/lib/directory-query-sql-capture";
 import type {
   AuditDetailsMap,
   BeerBrand,
@@ -469,16 +470,18 @@ export async function getBeerOffersPage(
 
   const [total, rows] = await Promise.all([
     timeDirectoryQuery({ ...metricLabels, query_name: "offers_count" }, () =>
-      db.beerOffer.count({ where }),
+      withDirectoryQuerySqlCapture("offers_count", () => db.beerOffer.count({ where })),
     ),
     timeDirectoryQuery({ ...metricLabels, query_name: "offers_page" }, () =>
-      db.beerOffer.findMany({
-        where,
-        include: offerInclude(),
-        orderBy: buildBeerOffersOrderBy(query),
-        skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
-        take: BEER_OFFERS_PAGE_SIZE,
-      }),
+      withDirectoryQuerySqlCapture("offers_page", () =>
+        db.beerOffer.findMany({
+          where,
+          include: offerInclude(),
+          orderBy: buildBeerOffersOrderBy(query),
+          skip: (page - 1) * BEER_OFFERS_PAGE_SIZE,
+          take: BEER_OFFERS_PAGE_SIZE,
+        }),
+      ),
     ),
   ]);
 
@@ -494,12 +497,14 @@ export async function getDistinctApprovedOfferSizes(): Promise<number[]> {
       page_bucket: "na",
     },
     () =>
-      db.beerOffer.findMany({
-        where: buildBeerOffersWhere({}),
-        select: { sizeMl: true },
-        distinct: ["sizeMl"],
-        orderBy: [{ sizeMl: "asc" }],
-      }),
+      withDirectoryQuerySqlCapture("approved_offer_sizes", () =>
+        db.beerOffer.findMany({
+          where: buildBeerOffersWhere({}),
+          select: { sizeMl: true },
+          distinct: ["sizeMl"],
+          orderBy: [{ sizeMl: "asc" }],
+        }),
+      ),
   );
 
   return rows.map((row) => row.sizeMl);

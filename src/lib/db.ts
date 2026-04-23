@@ -1,6 +1,10 @@
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, type PrismaClient as PrismaClientType } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import {
+  isDirectoryQuerySqlCaptureEnabled,
+  logCapturedDirectoryQuerySql,
+} from "@/lib/directory-query-sql-capture";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -14,8 +18,20 @@ const pool =
   });
 
 const adapter = new PrismaPg(pool);
+const shouldCaptureDirectorySql = isDirectoryQuerySqlCaptureEnabled();
 
-export const db = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter,
+    log: shouldCaptureDirectorySql ? [{ emit: "event", level: "query" }] : undefined,
+  });
+
+if (shouldCaptureDirectorySql) {
+  (db as PrismaClientType<"query">).$on("query", (event) => {
+    logCapturedDirectoryQuerySql(event);
+  });
+}
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;
