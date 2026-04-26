@@ -283,6 +283,142 @@ export const authenticatedUserContracts: ContractCase[] = [
       assertJsonError(response, 404, "REVIEW_NOT_FOUND");
     },
   },
+  {
+    name: "POST /api/v1/locations creates a pending location submission",
+    request: authedRequestWithBody("POST", "/api/v1/locations", fixtureCookies.user, {
+      name: "Contract Submitted Location",
+      locationType: "pub",
+      district: "Contract District",
+      address: "Contract Street 10",
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertObject(data.location, "Expected created location object.");
+      assertEqual(
+        data.location.name,
+        "Contract Submitted Location",
+        "Expected submitted location name.",
+      );
+      assertEqual(
+        data.location.status,
+        "pending",
+        "Expected user location submission to be pending.",
+      );
+      assertEqual(data.location.createdById, fixtureIds.user, "Expected fixture user ownership.");
+    },
+  },
+  {
+    name: "POST /api/v1/beer-brands creates a pending brand submission",
+    request: authedRequestWithBody("POST", "/api/v1/beer-brands", fixtureCookies.user, {
+      name: "Contract Submitted Brand",
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertObject(data.brand, "Expected created brand object.");
+      assertEqual(data.brand.name, "Contract Submitted Brand", "Expected submitted brand name.");
+      assertEqual(data.brand.status, "pending", "Expected user brand submission to be pending.");
+      assertEqual(data.brand.createdById, fixtureIds.user, "Expected fixture user ownership.");
+    },
+  },
+  {
+    name: "POST /api/v1/beer-variants creates a pending variant submission",
+    request: authedRequestWithBody("POST", "/api/v1/beer-variants", fixtureCookies.user, {
+      name: "Contract Submitted Variant",
+      brandId: fixtureIds.brand,
+      styleId: fixtureIds.style,
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertObject(data.variant, "Expected created variant object.");
+      assertEqual(
+        data.variant.name,
+        "Contract Submitted Variant",
+        "Expected submitted variant name.",
+      );
+      assertEqual(
+        data.variant.status,
+        "pending",
+        "Expected user variant submission to be pending.",
+      );
+      assertEqual(data.variant.createdById, fixtureIds.user, "Expected fixture user ownership.");
+    },
+  },
+  {
+    name: "POST /api/v1/beers creates a pending offer submission",
+    request: authedRequestWithBody("POST", "/api/v1/beers", fixtureCookies.user, {
+      variantId: fixtureIds.variant,
+      sizeMl: 250,
+      serving: "can",
+      priceCents: 275,
+      locationId: fixtureIds.location,
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertEqual(
+        data.outcome,
+        "offer_submission_created",
+        "Expected new offer submission outcome.",
+      );
+      assertObject(data.offer, "Expected created offer object.");
+      assertEqual(data.offer.status, "pending", "Expected user offer submission to be pending.");
+      assertEqual(data.offer.createdById, fixtureIds.user, "Expected fixture user ownership.");
+    },
+  },
+  {
+    name: "POST /api/v1/beers proposes a price update for an approved offer",
+    request: authedRequestWithBody("POST", "/api/v1/beers", fixtureCookies.user, {
+      variantId: fixtureIds.variant,
+      sizeMl: 500,
+      serving: "tap",
+      priceCents: 525,
+      locationId: fixtureIds.location,
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertEqual(data.outcome, "price_update_proposed", "Expected price update proposal outcome.");
+      assertObject(data.proposal, "Expected created price update proposal object.");
+      assertEqual(data.proposal.status, "pending", "Expected price update proposal to be pending.");
+      assertEqual(data.proposal.createdById, fixtureIds.user, "Expected fixture user ownership.");
+      assertObject(data.offer, "Expected matching approved offer object.");
+      assertEqual(data.offer.id, fixtureIds.offer, "Expected proposal for fixture offer.");
+    },
+  },
+  {
+    name: "POST /api/v1/reviews creates a review for an approved location",
+    request: authedRequestWithBody("POST", "/api/v1/reviews", fixtureCookies.user, {
+      locationId: fixtureIds.location,
+      rating: 5,
+      title: "Contract Submitted Review",
+      body: "A valid contract review submission.",
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertObject(data.review, "Expected created review object.");
+      assertEqual(data.review.locationId, fixtureIds.location, "Expected fixture location review.");
+      assertEqual(data.review.userId, fixtureIds.user, "Expected fixture user review.");
+      assertEqual(data.review.rating, 5, "Expected submitted review rating.");
+    },
+  },
+  {
+    name: "POST /api/v1/reports creates a report without validating target existence",
+    request: authedRequestWithBody("POST", "/api/v1/reports", fixtureCookies.user, {
+      contentType: "review",
+      contentId: "contract_report_target_without_review",
+      reason: "other",
+      note: "Contract report submission.",
+    }),
+    assert(response) {
+      const data = assertJsonOk(response, 201);
+      assertObject(data.report, "Expected created report object.");
+      assertEqual(data.report.reporterId, fixtureIds.user, "Expected fixture reporter.");
+      assertEqual(
+        data.report.contentId,
+        "contract_report_target_without_review",
+        "Expected report target.",
+      );
+      assertEqual(data.report.status, "open", "Expected new report to be open.");
+    },
+  },
 ];
 
 export const authContracts: ContractCase[] = [
@@ -569,6 +705,122 @@ export const authenticatedModeratorContracts: ContractCase[] = [
         },
       }) satisfies ContractCase,
   ),
+  {
+    name: "PATCH /api/v1/moderation/locations/:locationId approves a pending location",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/locations/${fixtureIds.pendingLocation}`,
+      fixtureCookies.moderator,
+      { status: "approved" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.location, "Expected moderated location object.");
+      assertEqual(
+        data.location.id,
+        fixtureIds.pendingLocation,
+        "Expected fixture pending location.",
+      );
+      assertEqual(data.location.status, "approved", "Expected approved location status.");
+    },
+  },
+  {
+    name: "PATCH /api/v1/moderation/brands/:brandId approves a pending brand",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/brands/${fixtureIds.pendingBrand}`,
+      fixtureCookies.moderator,
+      { status: "approved" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.brand, "Expected moderated brand object.");
+      assertEqual(data.brand.id, fixtureIds.pendingBrand, "Expected fixture pending brand.");
+      assertEqual(data.brand.status, "approved", "Expected approved brand status.");
+    },
+  },
+  {
+    name: "PATCH /api/v1/moderation/variants/:variantId approves a pending variant",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/variants/${fixtureIds.pendingVariant}`,
+      fixtureCookies.moderator,
+      { status: "approved" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.variant, "Expected moderated variant object.");
+      assertEqual(data.variant.id, fixtureIds.pendingVariant, "Expected fixture pending variant.");
+      assertEqual(data.variant.status, "approved", "Expected approved variant status.");
+    },
+  },
+  {
+    name: "PATCH /api/v1/moderation/offers/:offerId approves a pending offer",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/offers/${fixtureIds.pendingOffer}`,
+      fixtureCookies.moderator,
+      { status: "approved" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.offer, "Expected moderated offer object.");
+      assertEqual(data.offer.id, fixtureIds.pendingOffer, "Expected fixture pending offer.");
+      assertEqual(data.offer.status, "approved", "Expected approved offer status.");
+    },
+  },
+  {
+    name: "PATCH /api/v1/moderation/price-updates/:proposalId approves a pending price update",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/price-updates/${fixtureIds.pendingPriceUpdate}`,
+      fixtureCookies.moderator,
+      { status: "approved" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.proposal, "Expected moderated price update proposal object.");
+      assertEqual(
+        data.proposal.id,
+        fixtureIds.pendingPriceUpdate,
+        "Expected fixture price proposal.",
+      );
+      assertEqual(data.proposal.status, "approved", "Expected approved proposal status.");
+      assertObject(data.offer, "Expected updated offer object.");
+      assertEqual(data.offer.id, fixtureIds.offer, "Expected fixture offer.");
+    },
+  },
+  {
+    name: "PATCH /api/v1/moderation/reviews/:reviewId approves a pending review",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/reviews/${fixtureIds.pendingReview}`,
+      fixtureCookies.moderator,
+      { status: "approved" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.review, "Expected moderated review object.");
+      assertEqual(data.review.id, fixtureIds.pendingReview, "Expected fixture pending review.");
+      assertEqual(data.review.status, "approved", "Expected approved review status.");
+    },
+  },
+  {
+    name: "PATCH /api/v1/moderation/reports/:reportId resolves an open report",
+    request: authedRequestWithBody(
+      "PATCH",
+      `/api/v1/moderation/reports/${fixtureIds.pendingReport}`,
+      fixtureCookies.moderator,
+      { decision: "dismissed" },
+    ),
+    assert(response) {
+      const data = assertJsonOk(response);
+      assertObject(data.report, "Expected resolved report object.");
+      assertEqual(data.report.id, fixtureIds.pendingReport, "Expected fixture pending report.");
+      assertEqual(data.report.status, "dismissed", "Expected dismissed report status.");
+      assertEqual(data.report.resolvedById, fixtureIds.moderator, "Expected fixture resolver.");
+    },
+  },
 ];
 
 export const adminContracts: ContractCase[] = [
