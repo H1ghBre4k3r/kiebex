@@ -28,9 +28,11 @@
     "db:studio": "prisma studio",
     "api:dev": "cargo run --manifest-path backend/Cargo.toml -p api",
     "api:fmt": "cargo fmt --manifest-path backend/Cargo.toml --all",
+    "api:fmt:check": "cargo fmt --manifest-path backend/Cargo.toml --all --check",
     "api:check": "cargo check --manifest-path backend/Cargo.toml --workspace --all-features",
-    "api:clippy": "cargo clippy --manifest-path backend/Cargo.toml --workspace --all-targets --all-features",
+    "api:clippy": "cargo clippy --manifest-path backend/Cargo.toml --workspace --all-targets --all-features -- -D warnings",
     "api:test": "cargo test --manifest-path backend/Cargo.toml --workspace --all-features",
+    "api:build": "cargo build --manifest-path backend/Cargo.toml --workspace --all-features --release",
     "api:spec": "cargo run --manifest-path backend/Cargo.toml -p api --bin export-openapi"
   },
   "dependencies": {

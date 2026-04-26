@@ -83,6 +83,38 @@ jobs:
       - name: E2E tests
         run: npm run test:e2e
 
+  rust-api:
+    name: Rust API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.95
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry and build output
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend -> target
+
+      - name: Check formatting
+        run: npm run api:fmt:check
+
+      - name: Check compilation
+        run: npm run api:check
+
+      - name: Clippy
+        run: npm run api:clippy
+
+      - name: Tests
+        run: npm run api:test
+
+      - name: Release build
+        run: npm run api:build
+
   image:
     if: github.event_name == 'push'
     permissions:
@@ -91,6 +123,7 @@ jobs:
     needs:
       - integration-and-e2e
       - lint-typecheck-unit
+      - rust-api
     uses: ./.github/workflows/image.yml
     secrets: inherit
 
@@ -111,6 +144,7 @@ jobs:
     needs:
       - lint-typecheck-unit
       - integration-and-e2e
+      - rust-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -155,6 +189,17 @@ jobs:
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/kiebex-migrate:pr-${{ github.event.number }}-${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/kiebex-migrate:pr-${{ github.event.number }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64/v8
+          context: .
+          target: api-runner
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/kiebex-api:pr-${{ github.event.number }}-${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/kiebex-api:pr-${{ github.event.number }}
 
   review-app-deploy:
     name: Deploy Review App
