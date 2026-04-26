@@ -22,7 +22,13 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "api:dev": "cargo run --manifest-path backend/Cargo.toml -p api",
+    "api:fmt": "cargo fmt --manifest-path backend/Cargo.toml --all",
+    "api:check": "cargo check --manifest-path backend/Cargo.toml --workspace --all-features",
+    "api:clippy": "cargo clippy --manifest-path backend/Cargo.toml --workspace --all-targets --all-features",
+    "api:test": "cargo test --manifest-path backend/Cargo.toml --workspace --all-features",
+    "api:spec": "cargo run --manifest-path backend/Cargo.toml -p api --bin export-openapi"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
