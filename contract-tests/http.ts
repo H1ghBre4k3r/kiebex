@@ -9,7 +9,7 @@ export async function sendContractRequest(
   let body: string | undefined;
 
   if (request.body !== undefined) {
-    body = JSON.stringify(request.body);
+    body = request.body === "__RAW_INVALID_JSON__" ? "{" : JSON.stringify(request.body);
     if (!headers.has("content-type")) {
       headers.set("content-type", "application/json");
     }
