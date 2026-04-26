@@ -19,7 +19,7 @@ spec:
     spec:
       initContainers:
         - name: migrate
-          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:pr-59-5d7917d9fce1db3e93c014ba912ba934a4b3cab7
+          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:pr-59-05c4531ed5d7ff809df22e2db68b872bef14acbc
           imagePullPolicy: Always
           command:
             - /bin/sh
@@ -40,7 +40,7 @@ spec:
               memory: 256Mi
       containers:
         - name: kiebex
-          image: ghcr.io/h1ghbre4k3r/kiebex:pr-59-5d7917d9fce1db3e93c014ba912ba934a4b3cab7
+          image: ghcr.io/h1ghbre4k3r/kiebex:pr-59-05c4531ed5d7ff809df22e2db68b872bef14acbc
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
