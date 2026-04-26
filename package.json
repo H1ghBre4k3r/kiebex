@@ -14,6 +14,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:contract": "tsx contract-tests/run.ts",
+    "test:contract:ci": "node scripts/run-contract-ci.mjs",
     "test:contract:parity": "tsx contract-tests/parity.ts",
     "test:integration": "node --import ./integration-tests/register-server-only.mjs --import tsx integration-tests/run.ts",
     "test:e2e": "playwright test",
