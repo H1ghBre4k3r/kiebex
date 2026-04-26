@@ -1,4 +1,5 @@
 import { assert, assertEqual, assertObject, assertString } from "../assert";
+import { fixtureCookies, fixtureIds } from "../fixtures";
 import type { ContractCase, ContractRequest } from "../types";
 import {
   assertArrayField,
@@ -24,6 +25,23 @@ function requestWithBody(
   body: unknown,
 ): ContractRequest {
   return { method, path, headers: JSON_HEADERS, body };
+}
+
+function authedRequest(
+  method: ContractRequest["method"],
+  path: string,
+  cookie: string,
+): ContractRequest {
+  return { method, path, headers: { cookie } };
+}
+
+function authedRequestWithBody(
+  method: Exclude<ContractRequest["method"], "GET" | "DELETE">,
+  path: string,
+  cookie: string,
+  body: unknown,
+): ContractRequest {
+  return { method, path, headers: { ...JSON_HEADERS, cookie }, body };
 }
 
 function invalidQueryContract(name: string, path: string): ContractCase {
@@ -172,6 +190,99 @@ export const contributionContracts: ContractCase[] = [
     "/api/v1/reviews/__contract_review__",
   ),
   authRouteContract("POST /api/v1/reports requires authentication", "POST", "/api/v1/reports"),
+];
+
+export const authenticatedUserContracts: ContractCase[] = [
+  publicOkContract(
+    "GET /api/v1/auth/session returns authenticated fixture user",
+    authedRequest("GET", "/api/v1/auth/session", fixtureCookies.user),
+    (data) => {
+      assertEqual(data.authenticated, true, "Expected authenticated session.");
+      assertObject(data.user, "Expected authenticated session user.");
+      assertEqual(data.user.id, fixtureIds.user, "Expected fixture user id.");
+      assertEqual(data.user.role, "user", "Expected fixture user role.");
+    },
+  ),
+  publicOkContract(
+    "GET /api/v1/auth/me returns authenticated fixture user",
+    authedRequest("GET", "/api/v1/auth/me", fixtureCookies.user),
+    (data) => {
+      assertObject(data.user, "Expected current user object.");
+      assertEqual(data.user.id, fixtureIds.user, "Expected fixture user id.");
+      assertEqual(data.user.email, "contract-user@example.com", "Expected fixture user email.");
+      assertEqual(data.user.displayName, "Contract User", "Expected fixture display name.");
+      assertEqual(data.user.role, "user", "Expected fixture user role.");
+    },
+  ),
+  publicOkContract(
+    "GET /api/v1/auth/profile returns authenticated fixture user",
+    authedRequest("GET", "/api/v1/auth/profile", fixtureCookies.user),
+    (data) => {
+      assertObject(data.user, "Expected profile user object.");
+      assertEqual(data.user.id, fixtureIds.user, "Expected fixture user id.");
+      assertEqual(data.user.role, "user", "Expected fixture user role.");
+    },
+  ),
+  ...[
+    ["POST /api/v1/locations validates body after authentication", "POST", "/api/v1/locations"],
+    ["POST /api/v1/beer-brands validates body after authentication", "POST", "/api/v1/beer-brands"],
+    [
+      "POST /api/v1/beer-variants validates body after authentication",
+      "POST",
+      "/api/v1/beer-variants",
+    ],
+    ["POST /api/v1/beers validates body after authentication", "POST", "/api/v1/beers"],
+    ["POST /api/v1/reviews validates body after authentication", "POST", "/api/v1/reviews"],
+    ["POST /api/v1/reports validates body after authentication", "POST", "/api/v1/reports"],
+    [
+      "PATCH /api/v1/auth/profile validates body after authentication",
+      "PATCH",
+      "/api/v1/auth/profile",
+    ],
+    [
+      "POST /api/v1/auth/change-email validates body after authentication",
+      "POST",
+      "/api/v1/auth/change-email",
+    ],
+  ].map(
+    ([name, method, path]) =>
+      ({
+        name,
+        request: authedRequestWithBody(
+          method as Exclude<ContractRequest["method"], "GET" | "DELETE">,
+          path,
+          fixtureCookies.user,
+          {},
+        ),
+        assert(response) {
+          const error = assertJsonError(response, 400, "INVALID_BODY");
+          assertValidationDetails(error);
+        },
+      }) satisfies ContractCase,
+  ),
+  {
+    name: "PATCH /api/v1/reviews/:reviewId returns 404 for authenticated non-existent review",
+    request: authedRequestWithBody(
+      "PATCH",
+      "/api/v1/reviews/__contract_missing_review__",
+      fixtureCookies.user,
+      { rating: 4 },
+    ),
+    assert(response) {
+      assertJsonError(response, 404, "REVIEW_NOT_FOUND");
+    },
+  },
+  {
+    name: "DELETE /api/v1/reviews/:reviewId returns 404 for authenticated non-existent review",
+    request: authedRequest(
+      "DELETE",
+      "/api/v1/reviews/__contract_missing_review__",
+      fixtureCookies.user,
+    ),
+    assert(response) {
+      assertJsonError(response, 404, "REVIEW_NOT_FOUND");
+    },
+  },
 ];
 
 export const authContracts: ContractCase[] = [
@@ -357,6 +468,109 @@ export const moderationContracts: ContractCase[] = [
   ),
 ];
 
+export const authenticatedModeratorContracts: ContractCase[] = [
+  publicOkContract(
+    "GET /api/v1/moderation/submissions allows moderator fixture",
+    authedRequest("GET", "/api/v1/moderation/submissions", fixtureCookies.moderator),
+    (data) => {
+      assertArrayField(data, "pendingLocations");
+      assertArrayField(data, "pendingBrands");
+      assertArrayField(data, "pendingVariants");
+      assertArrayField(data, "pendingOffers");
+      assertArrayField(data, "pendingPriceUpdates");
+      assertObject(data.counts, "Expected moderation counts object.");
+    },
+  ),
+  publicOkContract(
+    "GET /api/v1/moderation/audit-log allows moderator fixture",
+    authedRequest("GET", "/api/v1/moderation/audit-log", fixtureCookies.moderator),
+    (data) => {
+      assertArrayField(data, "entries");
+    },
+  ),
+  publicOkContract(
+    "GET /api/v1/moderation/reports allows moderator fixture",
+    authedRequest("GET", "/api/v1/moderation/reports", fixtureCookies.moderator),
+    (data) => {
+      assertArrayField(data, "reports");
+    },
+  ),
+  {
+    name: "GET /api/v1/moderation/submissions rejects plain authenticated user",
+    request: authedRequest("GET", "/api/v1/moderation/submissions", fixtureCookies.user),
+    assert(response) {
+      assertJsonError(response, 403, "FORBIDDEN");
+    },
+  },
+  ...[
+    [
+      "PATCH /api/v1/moderation/reports/:reportId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/reports/__contract_report__",
+    ],
+    [
+      "PATCH /api/v1/moderation/locations/:locationId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/locations/__contract_location__",
+    ],
+    [
+      "PUT /api/v1/moderation/locations/:locationId validates body after moderator auth",
+      "PUT",
+      "/api/v1/moderation/locations/__contract_location__",
+    ],
+    [
+      "PATCH /api/v1/moderation/brands/:brandId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/brands/__contract_brand__",
+    ],
+    [
+      "PATCH /api/v1/moderation/variants/:variantId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/variants/__contract_variant__",
+    ],
+    [
+      "PATCH /api/v1/moderation/offers/:offerId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/offers/__contract_offer__",
+    ],
+    [
+      "PUT /api/v1/moderation/offers/:offerId validates body after moderator auth",
+      "PUT",
+      "/api/v1/moderation/offers/__contract_offer__",
+    ],
+    [
+      "PATCH /api/v1/moderation/price-updates/:proposalId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/price-updates/__contract_proposal__",
+    ],
+    [
+      "PATCH /api/v1/moderation/reviews/:reviewId validates body after moderator auth",
+      "PATCH",
+      "/api/v1/moderation/reviews/__contract_review__",
+    ],
+    [
+      "PUT /api/v1/moderation/reviews/:reviewId validates body after moderator auth",
+      "PUT",
+      "/api/v1/moderation/reviews/__contract_review__",
+    ],
+  ].map(
+    ([name, method, path]) =>
+      ({
+        name,
+        request: authedRequestWithBody(
+          method as Exclude<ContractRequest["method"], "GET" | "DELETE">,
+          path,
+          fixtureCookies.moderator,
+          {},
+        ),
+        assert(response) {
+          const error = assertJsonError(response, 400, "INVALID_BODY");
+          assertValidationDetails(error);
+        },
+      }) satisfies ContractCase,
+  ),
+];
+
 export const adminContracts: ContractCase[] = [
   authRouteContract("GET /api/v1/admin/users requires admin", "GET", "/api/v1/admin/users"),
   authRouteContract(
@@ -430,6 +644,79 @@ export const adminContracts: ContractCase[] = [
   authRouteContract("POST /api/v1/admin/offers requires admin", "POST", "/api/v1/admin/offers"),
 ];
 
+export const authenticatedAdminContracts: ContractCase[] = [
+  publicOkContract(
+    "GET /api/v1/admin/users allows admin fixture",
+    authedRequest("GET", "/api/v1/admin/users", fixtureCookies.admin),
+    (data) => {
+      const users = assertArrayField(data, "users");
+      const fixtureAdmin = users.find(
+        (user) =>
+          typeof user === "object" && user !== null && "id" in user && user.id === fixtureIds.admin,
+      );
+      assertObject(fixtureAdmin, "Expected fixture admin in users list.");
+      assertEqual(fixtureAdmin.passwordHash, null, "Expected admin users to redact passwordHash.");
+    },
+  ),
+  {
+    name: "GET /api/v1/admin/users rejects moderator fixture",
+    request: authedRequest("GET", "/api/v1/admin/users", fixtureCookies.moderator),
+    assert(response) {
+      assertJsonError(response, 403, "FORBIDDEN");
+    },
+  },
+  ...[
+    ["POST /api/v1/admin/styles validates body after admin auth", "POST", "/api/v1/admin/styles"],
+    [
+      "PUT /api/v1/admin/styles/:styleId validates body after admin auth",
+      "PUT",
+      "/api/v1/admin/styles/__contract_style__",
+    ],
+    ["POST /api/v1/admin/brands validates body after admin auth", "POST", "/api/v1/admin/brands"],
+    [
+      "PUT /api/v1/admin/brands/:brandId validates body after admin auth",
+      "PUT",
+      "/api/v1/admin/brands/__contract_brand__",
+    ],
+    [
+      "POST /api/v1/admin/variants validates body after admin auth",
+      "POST",
+      "/api/v1/admin/variants",
+    ],
+    [
+      "PUT /api/v1/admin/variants/:variantId validates body after admin auth",
+      "PUT",
+      "/api/v1/admin/variants/__contract_variant__",
+    ],
+    [
+      "POST /api/v1/admin/locations validates body after admin auth",
+      "POST",
+      "/api/v1/admin/locations",
+    ],
+    ["POST /api/v1/admin/offers validates body after admin auth", "POST", "/api/v1/admin/offers"],
+    [
+      "PATCH /api/v1/admin/users/:userId/role validates body after admin auth",
+      "PATCH",
+      "/api/v1/admin/users/__contract_user__/role",
+    ],
+  ].map(
+    ([name, method, path]) =>
+      ({
+        name,
+        request: authedRequestWithBody(
+          method as Exclude<ContractRequest["method"], "GET" | "DELETE">,
+          path,
+          fixtureCookies.admin,
+          {},
+        ),
+        assert(response) {
+          const error = assertJsonError(response, 400, "INVALID_BODY");
+          assertValidationDetails(error);
+        },
+      }) satisfies ContractCase,
+  ),
+];
+
 export const testSupportContracts: ContractCase[] = [
   {
     name: "POST /api/v1/test/auth-links is unavailable unless test mode is enabled",
@@ -471,8 +758,11 @@ export const operationalShapeContracts: ContractCase[] = [
 export const routeInventoryContracts: ContractCase[] = [
   ...publicCatalogContracts,
   ...contributionContracts,
+  ...authenticatedUserContracts,
   ...authContracts,
   ...moderationContracts,
+  ...authenticatedModeratorContracts,
   ...adminContracts,
+  ...authenticatedAdminContracts,
   ...testSupportContracts,
 ];

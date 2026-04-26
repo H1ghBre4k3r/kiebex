@@ -2,6 +2,11 @@ import { inspect } from "node:util";
 
 import { assertDeepEqual } from "./assert";
 import { contracts } from "./contracts";
+import {
+  cleanupContractFixtures,
+  disconnectContractFixtures,
+  setupContractFixtures,
+} from "./fixtures";
 import { sendContractRequest } from "./http";
 
 async function main(): Promise<void> {
@@ -22,40 +27,47 @@ async function main(): Promise<void> {
 
   let passed = 0;
 
-  for (const contract of contracts) {
-    const [nextResponse, rustResponse] = await Promise.all([
-      sendContractRequest(nextApiBaseUrl, contract.request),
-      sendContractRequest(rustApiBaseUrl, contract.request),
-    ]);
+  await setupContractFixtures();
 
-    await contract.assert(nextResponse, { baseUrl: nextApiBaseUrl });
-    await contract.assert(rustResponse, { baseUrl: rustApiBaseUrl });
+  try {
+    for (const contract of contracts) {
+      const [nextResponse, rustResponse] = await Promise.all([
+        sendContractRequest(nextApiBaseUrl, contract.request),
+        sendContractRequest(rustApiBaseUrl, contract.request),
+      ]);
 
-    const normalize = contract.normalize ?? ((response: typeof nextResponse) => response);
-    const normalizedNextResponse = normalize(nextResponse);
-    const normalizedRustResponse = normalize(rustResponse);
+      await contract.assert(nextResponse, { baseUrl: nextApiBaseUrl });
+      await contract.assert(rustResponse, { baseUrl: rustApiBaseUrl });
 
-    try {
-      assertDeepEqual(
-        normalizedRustResponse,
-        normalizedNextResponse,
-        `Expected Rust response to match Next response for ${contract.name}.`,
-      );
-    } catch (error) {
-      console.error("Next response:");
-      console.error(inspect(normalizedNextResponse, { depth: null, colors: true }));
-      console.error("Rust response:");
-      console.error(inspect(normalizedRustResponse, { depth: null, colors: true }));
-      throw error;
+      const normalize = contract.normalize ?? ((response: typeof nextResponse) => response);
+      const normalizedNextResponse = normalize(nextResponse);
+      const normalizedRustResponse = normalize(rustResponse);
+
+      try {
+        assertDeepEqual(
+          normalizedRustResponse,
+          normalizedNextResponse,
+          `Expected Rust response to match Next response for ${contract.name}.`,
+        );
+      } catch (error) {
+        console.error("Next response:");
+        console.error(inspect(normalizedNextResponse, { depth: null, colors: true }));
+        console.error("Rust response:");
+        console.error(inspect(normalizedRustResponse, { depth: null, colors: true }));
+        throw error;
+      }
+
+      passed += 1;
+      console.log(`ok ${passed} - ${contract.name}`);
     }
 
-    passed += 1;
-    console.log(`ok ${passed} - ${contract.name}`);
+    console.log(
+      `\n${passed} parity contract test(s) passed between ${nextApiBaseUrl} and ${rustApiBaseUrl}.`,
+    );
+  } finally {
+    await cleanupContractFixtures();
+    await disconnectContractFixtures();
   }
-
-  console.log(
-    `\n${passed} parity contract test(s) passed between ${nextApiBaseUrl} and ${rustApiBaseUrl}.`,
-  );
 }
 
 main().catch((error: unknown) => {
