@@ -8,6 +8,23 @@ import {
   setupContractFixtures,
 } from "./fixtures";
 import { sendContractRequest } from "./http";
+import { normalizeHeaders } from "./normalize";
+import type { ContractCase, ContractResponse } from "./types";
+
+const VOLATILE_HEADERS = ["connection", "date", "keep-alive", "transfer-encoding", "x-request-id"];
+
+async function sendWithFreshFixtures(
+  baseUrl: string,
+  contract: ContractCase,
+): Promise<ContractResponse> {
+  await setupContractFixtures();
+  return sendContractRequest(baseUrl, contract.request);
+}
+
+function normalizeForParity(response: ContractResponse, contract: ContractCase): ContractResponse {
+  const normalized = normalizeHeaders(response, VOLATILE_HEADERS);
+  return contract.normalize ? contract.normalize(normalized) : normalized;
+}
 
 async function main(): Promise<void> {
   const nextApiBaseUrl = process.env.NEXT_API_BASE_URL;
@@ -27,21 +44,16 @@ async function main(): Promise<void> {
 
   let passed = 0;
 
-  await setupContractFixtures();
-
   try {
     for (const contract of contracts) {
-      const [nextResponse, rustResponse] = await Promise.all([
-        sendContractRequest(nextApiBaseUrl, contract.request),
-        sendContractRequest(rustApiBaseUrl, contract.request),
-      ]);
-
+      const nextResponse = await sendWithFreshFixtures(nextApiBaseUrl, contract);
       await contract.assert(nextResponse, { baseUrl: nextApiBaseUrl });
+
+      const rustResponse = await sendWithFreshFixtures(rustApiBaseUrl, contract);
       await contract.assert(rustResponse, { baseUrl: rustApiBaseUrl });
 
-      const normalize = contract.normalize ?? ((response: typeof nextResponse) => response);
-      const normalizedNextResponse = normalize(nextResponse);
-      const normalizedRustResponse = normalize(rustResponse);
+      const normalizedNextResponse = normalizeForParity(nextResponse, contract);
+      const normalizedRustResponse = normalizeForParity(rustResponse, contract);
 
       try {
         assertDeepEqual(

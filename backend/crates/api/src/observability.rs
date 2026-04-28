@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::{
     body::Body,
@@ -28,6 +28,16 @@ impl Metrics {
                 ],
             )?
             .install_recorder()?;
+
+        let upkeep_handle = handle.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(30));
+
+            loop {
+                interval.tick().await;
+                upkeep_handle.run_upkeep();
+            }
+        });
 
         Ok(Self { handle })
     }

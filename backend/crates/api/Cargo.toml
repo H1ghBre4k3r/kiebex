@@ -24,7 +24,7 @@ serde_json = "1.0.149"
 sha2 = "0.11.0"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "macros", "migrate", "chrono", "uuid", "json"] }
 thiserror = "2.0.18"
-tokio = { version = "1.52.1", features = ["macros", "net", "rt-multi-thread", "signal"] }
+tokio = { version = "1.52.1", features = ["macros", "net", "rt-multi-thread", "signal", "time"] }
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.6.8", features = ["trace", "request-id", "compression-full", "sensitive-headers"] }
 tracing = "0.1.44"
