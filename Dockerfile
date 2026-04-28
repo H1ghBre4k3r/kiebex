@@ -11,7 +11,7 @@ COPY prisma/schema.prisma ./prisma/schema.prisma
 
 # Install all deps. The postinstall hook runs `prisma generate`,
 # emitting the client to src/generated/prisma.
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Copy the rest of the source and build the Next.js standalone bundle.
 COPY . .

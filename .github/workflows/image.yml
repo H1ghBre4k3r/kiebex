@@ -47,6 +47,8 @@ jobs:
           context: .
           target: runner
           push: ${{ github.ref_name == 'main' }}
+          cache-from: type=gha,scope=kiebex
+          cache-to: type=gha,scope=kiebex,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:${{ github.sha }}
@@ -58,6 +60,10 @@ jobs:
           context: .
           target: migrator
           push: ${{ github.ref_name == 'main' }}
+          cache-from: |
+            type=gha,scope=kiebex-migrate
+            type=gha,scope=kiebex
+          cache-to: type=gha,scope=kiebex-migrate,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:${{ github.sha }}
@@ -69,6 +75,8 @@ jobs:
           context: .
           target: api-runner
           push: ${{ github.ref_name == 'main' }}
+          cache-from: type=gha,scope=kiebex-api
+          cache-to: type=gha,scope=kiebex-api,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.API_IMAGE }}:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.API_IMAGE }}:${{ github.sha }}
