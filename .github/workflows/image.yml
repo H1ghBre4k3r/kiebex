@@ -6,6 +6,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE: kiebex
+  API_IMAGE: kiebex-api
 
 jobs:
   publish-docker-image:
@@ -46,6 +47,8 @@ jobs:
           context: .
           target: runner
           push: ${{ github.ref_name == 'main' }}
+          cache-from: type=gha,scope=kiebex
+          cache-to: type=gha,scope=kiebex,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:${{ github.sha }}
@@ -57,9 +60,26 @@ jobs:
           context: .
           target: migrator
           push: ${{ github.ref_name == 'main' }}
+          cache-from: |
+            type=gha,scope=kiebex-migrate
+            type=gha,scope=kiebex
+          cache-to: type=gha,scope=kiebex-migrate,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}-migrate:${{ github.sha }}
+
+      - name: Build and Push API Image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64/v8
+          context: .
+          target: api-runner
+          push: ${{ github.ref_name == 'main' }}
+          cache-from: type=gha,scope=kiebex-api
+          cache-to: type=gha,scope=kiebex-api,mode=max
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.API_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.API_IMAGE }}:${{ github.sha }}
 
       - name: Prune old production images
         if: ${{ github.ref_name == 'main' }}
@@ -73,7 +93,7 @@ jobs:
             PKG_BASE="users/${OWNER_LC}/packages/container"
           fi
 
-          for pkg in "${IMAGE}" "${IMAGE}-migrate"; do
+          for pkg in "${IMAGE}" "${IMAGE}-migrate" "${API_IMAGE}"; do
             # Collect all versions via pagination so >100-version repos are handled.
             ALL_VERSIONS="[]"
             PAGE=1

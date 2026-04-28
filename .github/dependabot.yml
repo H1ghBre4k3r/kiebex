@@ -16,3 +16,10 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+
+  - package-ecosystem: "cargo"
+    directory: "/backend/crates/api"
+    schedule:
+      interval: "daily"
+    labels:
+      - "dependencies"

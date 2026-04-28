@@ -11,7 +11,7 @@ COPY prisma/schema.prisma ./prisma/schema.prisma
 
 # Install all deps. The postinstall hook runs `prisma generate`,
 # emitting the client to src/generated/prisma.
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Copy the rest of the source and build the Next.js standalone bundle.
 COPY . .
@@ -57,3 +57,45 @@ USER nextjs
 EXPOSE 3000
 
 CMD ["node", "server.js"]
+
+# ---- api-builder ------------------------------------------------------------
+# Build the Rust API service as a separate target so it can be published as
+# ghcr.io/<owner>/kiebex-api while the Next.js image remains unchanged.
+FROM rust:1.95-slim AS api-builder
+WORKDIR /app/backend
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/crates ./crates
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/backend/target \
+    cargo build --locked --release -p api \
+ && cp /app/backend/target/release/api /app/api
+
+# ---- api-runner -------------------------------------------------------------
+FROM debian:bookworm-slim AS api-runner
+WORKDIR /app
+
+ENV RUST_API_BIND_ADDR=0.0.0.0:4000
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --gid 1001 api \
+ && useradd --uid 1001 --gid api --create-home --shell /usr/sbin/nologin api
+
+COPY --from=api-builder --chown=api:api /app/api /app/api
+
+USER api
+
+EXPOSE 4000
+
+CMD ["/app/api"]
