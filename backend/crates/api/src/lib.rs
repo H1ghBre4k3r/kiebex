@@ -11,7 +11,6 @@ use axum::middleware;
 use tokio::net::TcpListener;
 use tower_http::{
     compression::CompressionLayer,
-    cors::CorsLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     sensitive_headers::SetSensitiveRequestHeadersLayer,
     trace::TraceLayer,
@@ -42,7 +41,6 @@ pub async fn build_app(config: Config) -> Result<Router, AppError> {
         tower::ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
             .layer(middleware::from_fn(observability::record_http_metrics))
-            .layer(CorsLayer::permissive())
             .layer(SetSensitiveRequestHeadersLayer::new([
                 axum::http::header::AUTHORIZATION,
             ]))

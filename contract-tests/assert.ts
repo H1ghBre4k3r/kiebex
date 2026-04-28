@@ -1,3 +1,4 @@
+import { strict as assertStrict } from "node:assert";
 import { inspect } from "node:util";
 
 export function assert(condition: unknown, message: string): asserts condition {
@@ -15,10 +16,9 @@ export function assertEqual<T>(actual: T, expected: T, message: string): void {
 }
 
 export function assertDeepEqual(actual: unknown, expected: unknown, message: string): void {
-  const actualJson = JSON.stringify(actual);
-  const expectedJson = JSON.stringify(expected);
-
-  if (actualJson !== expectedJson) {
+  try {
+    assertStrict.deepStrictEqual(actual, expected);
+  } catch {
     throw new Error(
       `${message}\nExpected: ${inspect(expected, { depth: null })}\nActual: ${inspect(actual, { depth: null })}`,
     );

@@ -32,4 +32,8 @@ npm run test:contract:parity
 
 ## Current Contracts
 
-- `GET /api/v1/health`
+The contract suite covers the full route inventory. See `contract-tests/contracts/inventory.ts` for the authoritative list and `contract-tests/contracts/index.ts` for the aggregated suite.
+
+- Route inventory: `contract-tests/contracts/inventory.ts`
+- Contract exports: `contract-tests/contracts/index.ts`
+- Health endpoint shape contract: `contract-tests/contracts/health.ts`

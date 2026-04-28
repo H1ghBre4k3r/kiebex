@@ -97,9 +97,15 @@ async function stopServer() {
 }
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, async () => {
+  let signalReceived = false;
+
+  process.once(signal, async () => {
+    if (signalReceived) {
+      return;
+    }
+    signalReceived = true;
     await stopServer();
-    process.kill(process.pid, signal);
+    process.exitCode = 128 + (signal === "SIGINT" ? 2 : 15);
   });
 }
 

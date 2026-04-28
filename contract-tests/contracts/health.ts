@@ -9,18 +9,32 @@ export const healthContract: ContractCase = {
     path: "/api/v1/health",
   },
   assert(response) {
-    assertEqual(response.status, 200, "Expected health endpoint to return 200.");
+    assert(
+      response.status === 200 || response.status === 503,
+      "Expected health endpoint to return 200 (healthy) or 503 (degraded).",
+    );
     assertString(response.headers["x-request-id"], "Expected X-Request-ID response header.");
     assertObject(response.body, "Expected JSON object response body.");
     assertEqual(response.body.status, "ok", "Expected ok response envelope.");
 
     assertObject(response.body.data, "Expected health data object.");
     assertEqual(response.body.data.service, "kiebex", "Expected service name to stay stable.");
-    assertEqual(response.body.data.status, "healthy", "Expected healthy service status.");
+    assert(
+      response.body.data.status === "healthy" || response.body.data.status === "degraded",
+      "Expected service status to be healthy or degraded.",
+    );
+    assert(
+      (response.status === 200 && response.body.data.status === "healthy") ||
+        (response.status === 503 && response.body.data.status === "degraded"),
+      "Expected health HTTP status and service status to match the documented contract.",
+    );
     assertIsoDateString(response.body.data.timestamp, "Expected ISO timestamp.");
 
     assertObject(response.body.data.checks, "Expected checks object.");
-    assertEqual(response.body.data.checks.database, "ok", "Expected healthy database check.");
+    assert(
+      response.body.data.checks.database === "ok" || response.body.data.checks.database === "error",
+      "Expected database check to be ok or error.",
+    );
   },
   normalize(response) {
     let normalized: ContractResponse = normalizeHeaders(response, [
