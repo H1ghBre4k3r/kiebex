@@ -1,8 +1,7 @@
-use axum::{Json, http::StatusCode, response::IntoResponse};
-use serde_json::Value;
+use axum::{http::StatusCode, response::IntoResponse};
 use thiserror::Error;
 
-use crate::http::{ApiError, ErrorBody};
+use crate::http::json_error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
@@ -28,16 +27,12 @@ impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         tracing::error!(error = %self, "request failed");
 
-        let status = StatusCode::INTERNAL_SERVER_ERROR;
-        let body = ApiError {
-            status: "error",
-            error: ErrorBody {
-                code: "INTERNAL_ERROR",
-                message: "An unexpected error occurred.",
-                details: None::<Vec<Value>>,
-            },
-        };
-
-        (status, Json(body)).into_response()
+        json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "INTERNAL_ERROR",
+            "An unexpected error occurred.",
+            None,
+        )
+        .into_response()
     }
 }

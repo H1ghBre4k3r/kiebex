@@ -16,6 +16,8 @@ pub struct ApiError<D: Serialize = Vec<ErrorDetail>> {
     pub error: ErrorBody<D>,
 }
 
+pub type ApiErrorResponse = ApiError<Vec<ErrorDetail>>;
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorBody<D: Serialize = Vec<ErrorDetail>> {
     pub code: &'static str,
