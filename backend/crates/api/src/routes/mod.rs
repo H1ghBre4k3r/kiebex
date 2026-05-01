@@ -6,7 +6,7 @@ use axum::{Router, routing::get};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::state::AppState;
+use crate::{models, state::AppState};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -16,14 +16,14 @@ use crate::state::AppState;
     ),
     components(schemas(
         crate::http::ErrorDetail,
-        crate::http::ApiSuccess<health::HealthData>,
-        crate::http::ApiSuccess<beer_styles::BeerStylesData>,
-        health::HealthData,
-        health::HealthChecks,
-        health::CheckStatus,
-        health::ServiceStatus,
-        beer_styles::BeerStyle,
-        beer_styles::BeerStylesData,
+        crate::http::ApiSuccess<models::health::HealthData>,
+        crate::http::ApiSuccess<models::catalog::BeerStylesData>,
+        models::health::HealthData,
+        models::health::HealthChecks,
+        models::health::CheckStatus,
+        models::health::ServiceStatus,
+        models::catalog::BeerStyle,
+        models::catalog::BeerStylesData,
     )),
     tags(
         (name = "operations", description = "Operational endpoints"),

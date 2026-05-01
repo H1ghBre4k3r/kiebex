@@ -10,6 +10,7 @@ pub struct ApiSuccess<T: Serialize> {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ApiError<D>)]
 pub struct ApiError<D: Serialize = Vec<ErrorDetail>> {
     pub status: &'static str,
     pub error: ErrorBody<D>,

@@ -1,23 +1,12 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
-use serde::Serialize;
-use utoipa::ToSchema;
 
 use crate::{
+    error::AppError,
     http::{ApiSuccess, json_ok},
+    models::catalog::BeerStylesData,
+    repositories::catalog,
     state::AppState,
 };
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BeerStyle {
-    id: String,
-    name: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BeerStylesData {
-    styles: Vec<BeerStyle>,
-    count: usize,
-}
 
 #[utoipa::path(
     get,
@@ -27,20 +16,14 @@ pub struct BeerStylesData {
         (status = 200, description = "Beer styles ordered by name", body = ApiSuccess<BeerStylesData>)
     )
 )]
-pub async fn get_beer_styles(State(state): State<AppState>) -> impl IntoResponse {
-    let styles = sqlx::query_as!(
-        BeerStyle,
-        r#"SELECT id, name FROM "BeerStyle" ORDER BY name ASC"#
-    )
-    .fetch_all(&state.db)
-    .await
-    .unwrap();
+pub async fn get_beer_styles(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
+    let styles = catalog::fetch_beer_styles(&state.db).await?;
 
-    json_ok(
+    Ok(json_ok(
         BeerStylesData {
             count: styles.len(),
             styles,
         },
         StatusCode::OK,
-    )
+    ))
 }
