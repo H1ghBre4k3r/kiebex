@@ -16,6 +16,8 @@ use crate::{models, state::AppState};
     ),
     components(schemas(
         crate::http::ErrorDetail,
+        crate::http::ErrorBody<Vec<crate::http::ErrorDetail>>,
+        crate::http::ApiErrorResponse,
         crate::http::ApiSuccess<models::health::HealthData>,
         crate::http::ApiSuccess<models::catalog::BeerStylesData>,
         models::health::HealthData,

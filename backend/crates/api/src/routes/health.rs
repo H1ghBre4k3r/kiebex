@@ -16,7 +16,8 @@ use crate::{
     tag = "operations",
     responses(
         (status = 200, description = "Service is healthy", body = ApiSuccess<models::health::HealthData>),
-        (status = 503, description = "Service is degraded", body = ApiSuccess<models::health::HealthData>)
+        (status = 503, description = "Service is degraded", body = ApiSuccess<models::health::HealthData>),
+        (status = 500, description = "Unexpected server error", body = crate::http::ApiErrorResponse)
     )
 )]
 pub async fn health(State(state): State<AppState>) -> impl IntoResponse {

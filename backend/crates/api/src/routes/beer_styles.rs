@@ -13,7 +13,8 @@ use crate::{
     path = "/api/v1/beer-styles",
     tag = "catalog",
     responses(
-        (status = 200, description = "Beer styles ordered by name", body = ApiSuccess<BeerStylesData>)
+        (status = 200, description = "Beer styles ordered by name", body = ApiSuccess<BeerStylesData>),
+        (status = 500, description = "Unexpected server error", body = crate::http::ApiErrorResponse)
     )
 )]
 pub async fn get_beer_styles(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
