@@ -32,15 +32,13 @@ pub struct HealthData {
     timestamp: DateTime<Utc>,
 }
 
-pub type HealthResponse = ApiSuccess<HealthData>;
-
 #[utoipa::path(
     get,
     path = "/api/v1/health",
     tag = "operations",
     responses(
-        (status = 200, description = "Service is healthy", body = HealthResponse),
-        (status = 503, description = "Service is degraded", body = HealthResponse)
+        (status = 200, description = "Service is healthy", body = ApiSuccess<HealthData>),
+        (status = 503, description = "Service is degraded", body = ApiSuccess<HealthData>)
     )
 )]
 pub async fn health(State(state): State<AppState>) -> impl IntoResponse {

@@ -16,14 +16,14 @@ use crate::state::AppState;
     ),
     components(schemas(
         crate::http::ErrorDetail,
+        crate::http::ApiSuccess<health::HealthData>,
+        crate::http::ApiSuccess<beer_styles::BeerStylesData>,
         health::HealthData,
         health::HealthChecks,
-        health::HealthResponse,
         health::CheckStatus,
         health::ServiceStatus,
         beer_styles::BeerStyle,
         beer_styles::BeerStylesData,
-        beer_styles::BeerStylesResponse,
     )),
     tags(
         (name = "operations", description = "Operational endpoints"),

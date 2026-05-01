@@ -19,14 +19,12 @@ pub struct BeerStylesData {
     count: usize,
 }
 
-pub type BeerStylesResponse = ApiSuccess<BeerStylesData>;
-
 #[utoipa::path(
     get,
     path = "/api/v1/beer-styles",
     tag = "catalog",
     responses(
-        (status = 200, description = "Beer styles ordered by name", body = BeerStylesResponse)
+        (status = 200, description = "Beer styles ordered by name", body = ApiSuccess<BeerStylesData>)
     )
 )]
 pub async fn get_beer_styles(State(state): State<AppState>) -> impl IntoResponse {
