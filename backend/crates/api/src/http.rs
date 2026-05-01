@@ -3,6 +3,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ApiSuccess<T>)]
 pub struct ApiSuccess<T: Serialize> {
     pub status: &'static str,
     pub data: T,
