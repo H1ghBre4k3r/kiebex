@@ -109,6 +109,7 @@ export const publicCatalogContracts: ContractCase[] = [
     (data) => {
       assertEqual(typeof data.count, "number", "Expected style count number.");
       const styles = assertArrayField(data, "styles");
+      assertEqual(data.count, styles.length, "Style count and style length should equal.");
       for (const style of styles) {
         assertObject(style, "Expected style object.");
         assertString(style.id, "Expected style id string.");
