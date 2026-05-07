@@ -12,7 +12,8 @@ use crate::{models, state::AppState};
 #[openapi(
     paths(
         health::health,
-        beer_styles::get_beer_styles
+        beer_styles::get_beer_styles,
+        metrics::metrics
     ),
     components(schemas(
         crate::http::ErrorDetail,
