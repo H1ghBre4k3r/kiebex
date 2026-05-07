@@ -116,6 +116,16 @@ export const publicCatalogContracts: ContractCase[] = [
         assertEqual(style.createdAt, undefined, "Expected public style to omit createdAt.");
         assertEqual(style.updatedAt, undefined, "Expected public style to omit updatedAt.");
       }
+      const isSorted = styles
+        .map((style: any) => style.name as string)
+        .every((val, i, all) => {
+          if (i == 0) {
+            return true;
+          }
+          const prev = all[i - 1];
+          return val > prev;
+        });
+      assert(isSorted, "Expected styles to be sorted by name");
     },
   ),
   publicOkContract(
