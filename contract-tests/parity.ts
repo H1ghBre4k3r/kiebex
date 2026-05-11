@@ -9,9 +9,18 @@ import {
 } from "./fixtures";
 import { sendContractRequest } from "./http";
 import { normalizeHeaders } from "./normalize";
+import { describeContractSelection, selectContracts } from "./select";
 import type { ContractCase, ContractResponse } from "./types";
 
-const VOLATILE_HEADERS = ["connection", "date", "keep-alive", "transfer-encoding", "x-request-id"];
+const VOLATILE_HEADERS = [
+  "connection",
+  "content-encoding",
+  "date",
+  "keep-alive",
+  "transfer-encoding",
+  "vary",
+  "x-request-id",
+];
 
 async function sendWithFreshFixtures(
   baseUrl: string,
@@ -42,10 +51,13 @@ async function main(): Promise<void> {
     );
   }
 
+  const selectedContracts = selectContracts(contracts);
   let passed = 0;
 
+  console.log(describeContractSelection(contracts.length, selectedContracts.length));
+
   try {
-    for (const contract of contracts) {
+    for (const contract of selectedContracts) {
       const nextResponse = await sendWithFreshFixtures(nextApiBaseUrl, contract);
       await contract.assert(nextResponse, { baseUrl: nextApiBaseUrl });
 

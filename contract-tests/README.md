@@ -14,6 +14,14 @@ API_BASE_URL=http://localhost:3000 npm run test:contract
 API_BASE_URL=http://localhost:4000 npm run test:contract
 ```
 
+Run a route slice by matching comma-separated substrings against the contract name or request path:
+
+```sh
+CONTRACT_TEST_PATTERN="/api/v1/health,/api/v1/metrics,/api/v1/beer-styles" \
+API_BASE_URL=http://localhost:4000 \
+npm run test:contract
+```
+
 Compare Next.js and Rust responses for parity:
 
 ```sh
@@ -21,6 +29,8 @@ NEXT_API_BASE_URL=http://localhost:3000 \
 RUST_API_BASE_URL=http://localhost:4000 \
 npm run test:contract:parity
 ```
+
+The same `CONTRACT_TEST_PATTERN` filter works in parity mode, which is useful while Rust only implements a subset of the route inventory.
 
 ## Adding A Route
 
