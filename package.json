@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "npm run start:standalone",
     "start:standalone": "node scripts/start-standalone.mjs",
+    "route-switch:dev": "node scripts/local-route-switch.mjs",
     "perf:capture-directory-sql": "tsx scripts/capture-directory-query-sql.ts",
     "perf:explain-directory": "tsx scripts/explain-directory-queries.ts",
     "test": "jest",
