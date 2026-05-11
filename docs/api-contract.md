@@ -71,75 +71,75 @@ Query-bearing routes that validate query params use:
 
 Owner describes the current implementation owner. Status describes the Rust migration state, not whether the route exists today.
 
-| Method | Path                                       | Auth             | Owner   | Status     | Contract Test |
-| ------ | ------------------------------------------ | ---------------- | ------- | ---------- | ------------- |
-| GET    | `/health`                                  | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/metrics`                                 | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/beers`                                   | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/beers`                                   | Authenticated    | Next.js | Unmigrated | Covered       |
-| GET    | `/beer-styles`                             | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/beer-brands`                             | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/beer-brands`                             | Authenticated    | Next.js | Unmigrated | Covered       |
-| GET    | `/beer-variants`                           | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/beer-variants`                           | Authenticated    | Next.js | Unmigrated | Covered       |
-| POST   | `/locations`                               | Authenticated    | Next.js | Unmigrated | Covered       |
-| GET    | `/locations/:locationId`                   | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/reviews`                                 | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/reviews`                                 | Authenticated    | Next.js | Unmigrated | Covered       |
-| PATCH  | `/reviews/:reviewId`                       | Authenticated    | Next.js | Unmigrated | Covered       |
-| DELETE | `/reviews/:reviewId`                       | Authenticated    | Next.js | Unmigrated | Covered       |
-| POST   | `/reports`                                 | Authenticated    | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/register`                           | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/login`                              | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/logout`                             | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/auth/session`                            | Optional session | Next.js | Unmigrated | Covered       |
-| GET    | `/auth/me`                                 | Authenticated    | Next.js | Unmigrated | Covered       |
-| GET    | `/auth/profile`                            | Authenticated    | Next.js | Unmigrated | Covered       |
-| PATCH  | `/auth/profile`                            | Authenticated    | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/change-email`                       | Authenticated    | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/resend-verification`                | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/auth/verify-email`                       | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/verify-email`                       | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/forgot-password`                    | Public           | Next.js | Unmigrated | Covered       |
-| POST   | `/auth/reset-password`                     | Public           | Next.js | Unmigrated | Covered       |
-| GET    | `/moderation/submissions`                  | Moderator        | Next.js | Unmigrated | Covered       |
-| GET    | `/moderation/audit-log`                    | Moderator        | Next.js | Unmigrated | Covered       |
-| GET    | `/moderation/reports`                      | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/reports/:reportId`            | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/locations/:locationId`        | Moderator        | Next.js | Unmigrated | Covered       |
-| PUT    | `/moderation/locations/:locationId`        | Moderator        | Next.js | Unmigrated | Covered       |
-| DELETE | `/moderation/locations/:locationId`        | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/brands/:brandId`              | Moderator        | Next.js | Unmigrated | Covered       |
-| DELETE | `/moderation/brands/:brandId`              | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/variants/:variantId`          | Moderator        | Next.js | Unmigrated | Covered       |
-| DELETE | `/moderation/variants/:variantId`          | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/offers/:offerId`              | Moderator        | Next.js | Unmigrated | Covered       |
-| PUT    | `/moderation/offers/:offerId`              | Moderator        | Next.js | Unmigrated | Covered       |
-| DELETE | `/moderation/offers/:offerId`              | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/price-updates/:proposalId`    | Moderator        | Next.js | Unmigrated | Covered       |
-| DELETE | `/moderation/price-updates/:proposalId`    | Moderator        | Next.js | Unmigrated | Covered       |
-| PATCH  | `/moderation/reviews/:reviewId`            | Moderator        | Next.js | Unmigrated | Covered       |
-| PUT    | `/moderation/reviews/:reviewId`            | Moderator        | Next.js | Unmigrated | Covered       |
-| DELETE | `/moderation/reviews/:reviewId`            | Moderator        | Next.js | Unmigrated | Covered       |
-| GET    | `/admin/users`                             | Admin            | Next.js | Unmigrated | Covered       |
-| DELETE | `/admin/users/:userId`                     | Admin            | Next.js | Unmigrated | Covered       |
-| PATCH  | `/admin/users/:userId/role`                | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/users/:userId/ban`                 | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/users/:userId/unban`               | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/users/:userId/verify`              | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/users/:userId/resend-verification` | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/styles`                            | Admin            | Next.js | Unmigrated | Covered       |
-| PUT    | `/admin/styles/:styleId`                   | Admin            | Next.js | Unmigrated | Covered       |
-| DELETE | `/admin/styles/:styleId`                   | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/brands`                            | Admin            | Next.js | Unmigrated | Covered       |
-| PUT    | `/admin/brands/:brandId`                   | Admin            | Next.js | Unmigrated | Covered       |
-| DELETE | `/admin/brands/:brandId`                   | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/variants`                          | Admin            | Next.js | Unmigrated | Covered       |
-| PUT    | `/admin/variants/:variantId`               | Admin            | Next.js | Unmigrated | Covered       |
-| DELETE | `/admin/variants/:variantId`               | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/locations`                         | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/admin/offers`                            | Admin            | Next.js | Unmigrated | Covered       |
-| POST   | `/test/auth-links`                         | Test mode only   | Next.js | Unmigrated | Covered       |
+| Method | Path                                       | Auth             | Owner   | Status                       | Contract Test |
+| ------ | ------------------------------------------ | ---------------- | ------- | ---------------------------- | ------------- |
+| GET    | `/health`                                  | Public           | Next.js | Rust implemented, not routed | Covered       |
+| GET    | `/metrics`                                 | Public           | Next.js | Rust implemented, not routed | Covered       |
+| GET    | `/beers`                                   | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/beers`                                   | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| GET    | `/beer-styles`                             | Public           | Next.js | Rust implemented, not routed | Covered       |
+| GET    | `/beer-brands`                             | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/beer-brands`                             | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| GET    | `/beer-variants`                           | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/beer-variants`                           | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| POST   | `/locations`                               | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| GET    | `/locations/:locationId`                   | Public           | Next.js | Unmigrated                   | Covered       |
+| GET    | `/reviews`                                 | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/reviews`                                 | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/reviews/:reviewId`                       | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/reviews/:reviewId`                       | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| POST   | `/reports`                                 | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/register`                           | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/login`                              | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/logout`                             | Public           | Next.js | Unmigrated                   | Covered       |
+| GET    | `/auth/session`                            | Optional session | Next.js | Unmigrated                   | Covered       |
+| GET    | `/auth/me`                                 | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| GET    | `/auth/profile`                            | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/auth/profile`                            | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/change-email`                       | Authenticated    | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/resend-verification`                | Public           | Next.js | Unmigrated                   | Covered       |
+| GET    | `/auth/verify-email`                       | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/verify-email`                       | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/forgot-password`                    | Public           | Next.js | Unmigrated                   | Covered       |
+| POST   | `/auth/reset-password`                     | Public           | Next.js | Unmigrated                   | Covered       |
+| GET    | `/moderation/submissions`                  | Moderator        | Next.js | Unmigrated                   | Covered       |
+| GET    | `/moderation/audit-log`                    | Moderator        | Next.js | Unmigrated                   | Covered       |
+| GET    | `/moderation/reports`                      | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/reports/:reportId`            | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/locations/:locationId`        | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PUT    | `/moderation/locations/:locationId`        | Moderator        | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/moderation/locations/:locationId`        | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/brands/:brandId`              | Moderator        | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/moderation/brands/:brandId`              | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/variants/:variantId`          | Moderator        | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/moderation/variants/:variantId`          | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/offers/:offerId`              | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PUT    | `/moderation/offers/:offerId`              | Moderator        | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/moderation/offers/:offerId`              | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/price-updates/:proposalId`    | Moderator        | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/moderation/price-updates/:proposalId`    | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/moderation/reviews/:reviewId`            | Moderator        | Next.js | Unmigrated                   | Covered       |
+| PUT    | `/moderation/reviews/:reviewId`            | Moderator        | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/moderation/reviews/:reviewId`            | Moderator        | Next.js | Unmigrated                   | Covered       |
+| GET    | `/admin/users`                             | Admin            | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/admin/users/:userId`                     | Admin            | Next.js | Unmigrated                   | Covered       |
+| PATCH  | `/admin/users/:userId/role`                | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/users/:userId/ban`                 | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/users/:userId/unban`               | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/users/:userId/verify`              | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/users/:userId/resend-verification` | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/styles`                            | Admin            | Next.js | Unmigrated                   | Covered       |
+| PUT    | `/admin/styles/:styleId`                   | Admin            | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/admin/styles/:styleId`                   | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/brands`                            | Admin            | Next.js | Unmigrated                   | Covered       |
+| PUT    | `/admin/brands/:brandId`                   | Admin            | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/admin/brands/:brandId`                   | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/variants`                          | Admin            | Next.js | Unmigrated                   | Covered       |
+| PUT    | `/admin/variants/:variantId`               | Admin            | Next.js | Unmigrated                   | Covered       |
+| DELETE | `/admin/variants/:variantId`               | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/locations`                         | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/admin/offers`                            | Admin            | Next.js | Unmigrated                   | Covered       |
+| POST   | `/test/auth-links`                         | Test mode only   | Next.js | Unmigrated                   | Covered       |
 
 ## Shared Shapes
 
@@ -367,6 +367,8 @@ ReviewWithAuthor & {
 
 Auth: public.
 
+Migration status: Rust implementation exists; public traffic still routes to Next.js until route switching is enabled.
+
 Request: no query or body.
 
 Success: `200` when healthy, `503` when degraded. Both responses still use the JSON success envelope.
@@ -385,6 +387,8 @@ Success: `200` when healthy, `503` when degraded. Both responses still use the J
 ### `GET /metrics`
 
 Auth: public.
+
+Migration status: Rust implementation exists; public traffic still routes to Next.js until route switching is enabled.
 
 Request: no query or body.
 
@@ -459,6 +463,8 @@ Errors:
 ### `GET /beer-styles`
 
 Auth: public.
+
+Migration status: Rust implementation exists; public traffic still routes to Next.js until route switching is enabled.
 
 Request: no query or body.
 
