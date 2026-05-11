@@ -3,16 +3,20 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ApiSuccess<T>)]
 pub struct ApiSuccess<T: Serialize> {
     pub status: &'static str,
     pub data: T,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ApiError<D>)]
 pub struct ApiError<D: Serialize = Vec<ErrorDetail>> {
     pub status: &'static str,
     pub error: ErrorBody<D>,
 }
+
+pub type ApiErrorResponse = ApiError<Vec<ErrorDetail>>;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorBody<D: Serialize = Vec<ErrorDetail>> {

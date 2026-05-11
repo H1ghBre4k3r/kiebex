@@ -109,6 +109,7 @@ export const publicCatalogContracts: ContractCase[] = [
     (data) => {
       assertEqual(typeof data.count, "number", "Expected style count number.");
       const styles = assertArrayField(data, "styles");
+      assertEqual(data.count, styles.length, "Style count and style length should equal.");
       for (const style of styles) {
         assertObject(style, "Expected style object.");
         assertString(style.id, "Expected style id string.");
@@ -116,6 +117,16 @@ export const publicCatalogContracts: ContractCase[] = [
         assertEqual(style.createdAt, undefined, "Expected public style to omit createdAt.");
         assertEqual(style.updatedAt, undefined, "Expected public style to omit updatedAt.");
       }
+      const isSorted = styles
+        .map((style) => (style as { name: string }).name as string)
+        .every((val, i, all) => {
+          if (i == 0) {
+            return true;
+          }
+          const prev = all[i - 1];
+          return val > prev;
+        });
+      assert(isSorted, "Expected styles to be sorted by name");
     },
   ),
   publicOkContract(

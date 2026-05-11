@@ -2,6 +2,14 @@ use axum::{extract::State, http::header, response::IntoResponse};
 
 use crate::state::AppState;
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/metrics",
+    tag = "operations",
+    responses(
+        (status = 200, description = "Prometheus metrics", content_type = "text/plain")
+    )
+)]
 pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
     (
         [

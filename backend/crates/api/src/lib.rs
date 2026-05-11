@@ -2,7 +2,9 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod http;
+pub mod models;
 pub mod observability;
+pub mod repositories;
 pub mod routes;
 pub mod state;
 

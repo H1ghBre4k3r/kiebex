@@ -31,6 +31,7 @@ npm run api:spec
 
 - `GET /api/v1/health` checks Postgres with `SELECT 1` and returns the existing `{ status, data }` response envelope.
 - `GET /api/v1/metrics` exposes Prometheus metrics for the Rust service.
+- `GET /api/v1/beer-styles` beer styles ordered by name
 - `/api-docs` serves Swagger UI, and `export-openapi` prints the OpenAPI document for CI or type generation.
 
 ## Environment
