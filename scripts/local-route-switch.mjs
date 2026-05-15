@@ -4,7 +4,10 @@ const port = Number(process.env.ROUTE_SWITCH_PORT ?? "3100");
 const nextBaseUrl = process.env.NEXT_API_BASE_URL ?? "http://localhost:3000";
 const rustBaseUrl = process.env.RUST_API_BASE_URL ?? "http://localhost:4000";
 
-const rustRoutes = [{ method: "GET", path: "/api/v1/health" }];
+const rustRoutes = [
+  { method: "GET", path: "/api/v1/health" },
+  { method: "GET", path: "/api/v1/beer-styles" },
+];
 
 const hopByHopHeaders = new Set([
   "connection",
@@ -56,7 +59,11 @@ function responseHeadersForProxy(response) {
 }
 
 function hasRequestBody(request) {
-  return request.method !== "GET" && request.method !== "HEAD";
+  return (
+    request.method !== "GET" &&
+    request.method !== "HEAD" &&
+    (Number(request.headers["content-length"] ?? "0") > 0 || request.headers["transfer-encoding"])
+  );
 }
 
 async function proxyRequest(request, response) {
