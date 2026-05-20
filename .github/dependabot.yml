@@ -4,6 +4,20 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      npm-minor-and-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      npm-dev-minor-and-patch:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      npm-major:
+        update-types:
+          - "major"
     # Automatically label dependabot PRs
     labels:
       - "dependencies"
@@ -13,6 +27,10 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
       - "github-actions"
@@ -21,5 +39,9 @@ updates:
     directory: "/backend/crates/api"
     schedule:
       interval: "daily"
+    groups:
+      cargo:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
