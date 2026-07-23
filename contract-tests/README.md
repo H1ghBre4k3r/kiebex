@@ -14,6 +14,14 @@ API_BASE_URL=http://localhost:3000 npm run test:contract
 API_BASE_URL=http://localhost:4000 npm run test:contract
 ```
 
+Run a route slice by matching comma-separated substrings against the contract name or request path:
+
+```sh
+CONTRACT_TEST_PATTERN="/api/v1/health,/api/v1/metrics,/api/v1/beer-styles" \
+API_BASE_URL=http://localhost:4000 \
+npm run test:contract
+```
+
 Compare Next.js and Rust responses for parity:
 
 ```sh
@@ -21,6 +29,28 @@ NEXT_API_BASE_URL=http://localhost:3000 \
 RUST_API_BASE_URL=http://localhost:4000 \
 npm run test:contract:parity
 ```
+
+The same `CONTRACT_TEST_PATTERN` filter works in parity mode, which is useful while Rust only implements a subset of the route inventory.
+
+## Local Route Switching
+
+When Next.js and Rust are both running locally, start the small route switch proxy:
+
+```sh
+npm run route-switch:dev
+```
+
+By default, it listens on `http://localhost:3100`, sends `GET /api/v1/health` to Rust at `http://localhost:4000`, and sends every other request to Next.js at `http://localhost:3000`.
+
+Run contracts against the switched stable URL:
+
+```sh
+API_BASE_URL=http://localhost:3100 \
+CONTRACT_TEST_PATTERN="/api/v1/health" \
+npm run test:contract
+```
+
+The defaults can be overridden with `ROUTE_SWITCH_PORT`, `NEXT_API_BASE_URL`, and `RUST_API_BASE_URL`.
 
 ## Adding A Route
 
