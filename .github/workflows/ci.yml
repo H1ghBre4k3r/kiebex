@@ -205,7 +205,7 @@ jobs:
           target: api-runner
           push: true
           cache-from: type=gha,scope=kiebex-api
-          cache-to: type=gha,scope=kiebex-api,mode=max
+          cache-to: type=gha,scope=kiebex-api,mode=max,ignore-error=true
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/kiebex-api:pr-${{ github.event.number }}-${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/kiebex-api:pr-${{ github.event.number }}
