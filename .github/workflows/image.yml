@@ -76,7 +76,7 @@ jobs:
           target: api-runner
           push: ${{ github.ref_name == 'main' }}
           cache-from: type=gha,scope=kiebex-api
-          cache-to: type=gha,scope=kiebex-api,mode=max
+          cache-to: type=gha,scope=kiebex-api,mode=max,ignore-error=true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.API_IMAGE }}:latest
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.API_IMAGE }}:${{ github.sha }}
