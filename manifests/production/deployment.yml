@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: kiebex
-          image: ghcr.io/h1ghbre4k3r/kiebex:9143240bd46e675b6c977ea050dd3634a109daa9
+          image: ghcr.io/h1ghbre4k3r/kiebex:d3dbe05913a2be662cc5b9e7a21ee22222c17438
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
