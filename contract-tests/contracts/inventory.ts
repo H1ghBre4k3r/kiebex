@@ -80,12 +80,24 @@ export const publicCatalogContracts: ContractCase[] = [
     assert(response) {
       assertEqual(response.status, 200, "Expected metrics endpoint to return 200.");
       assertString(response.body, "Expected Prometheus metrics text body.");
-      assert(response.body.includes("# HELP"), "Expected Prometheus HELP lines.");
+      assert(response.body.includes("# TYPE"), "Expected Prometheus TYPE lines.");
+      assertString(response.headers["content-type"], "Expected metrics content type header.");
+      assert(
+        response.headers["content-type"].startsWith("text/plain; version=0.0.4"),
+        "Expected Prometheus text content type.",
+      );
       assertEqual(
         response.headers["cache-control"],
         "no-cache",
         "Expected no-cache metrics header.",
       );
+    },
+    normalize(response) {
+      return {
+        ...response,
+        headers: { ...response.headers, "content-type": "text/plain; version=0.0.4" },
+        body: "<prometheus-metrics>",
+      };
     },
   },
   publicOkContract(
