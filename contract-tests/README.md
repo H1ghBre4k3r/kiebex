@@ -40,13 +40,15 @@ When Next.js and Rust are both running locally, start the small route switch pro
 npm run route-switch:dev
 ```
 
-By default, it listens on `http://localhost:3100`, sends `GET /api/v1/health` to Rust at `http://localhost:4000`, and sends every other request to Next.js at `http://localhost:3000`.
+By default, it listens only on `http://127.0.0.1:3100`, sends `GET /api/v1/health` and `GET /api/v1/beer-styles` to Rust at `http://localhost:4000`, and sends every other request to Next.js at `http://localhost:3000`.
+
+The Rust routes are an explicit method/path allowlist in `scripts/local-route-switch.mjs`. The proxy port and upstream base URLs are configurable; route patterns are not.
 
 Run contracts against the switched stable URL:
 
 ```sh
 API_BASE_URL=http://localhost:3100 \
-CONTRACT_TEST_PATTERN="/api/v1/health" \
+CONTRACT_TEST_PATTERN="/api/v1/health,/api/v1/beer-styles" \
 npm run test:contract
 ```
 
