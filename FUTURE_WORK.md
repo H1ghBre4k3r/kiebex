@@ -9,11 +9,10 @@ Known workarounds, temporary shims, and follow-ups to revisit later. Migration p
 - Routes switched to Rust (`GET /api/v1/health`, `GET /api/v1/beer-styles`) keep their Next.js handlers as the rollback path. Rollback is a routing change only.
 - Remove a Next handler only after the Rust route has been stable in production for a while, and update `docs/api-contract.md` when you do.
 
-### Rust API metrics are not scraped
+### HTTP metrics come from two services
 
-- `kiebex-api` exposes `GET /api/v1/metrics`, but there is no `ServiceMonitor` for it in `manifests/production` or `manifests/review-app`. Only the Next app is scraped today.
-- While both services serve traffic, request metrics are split. Dashboards must combine both until the cutover finishes (see ROADMAP Phase 10).
-- Next step: add a `ServiceMonitor` for `kiebex-api-service` modelled on `manifests/*/servicemonitor.yml`.
+- Next and Rust both export `kiebex_http_requests_total` and `kiebex_http_request_duration_seconds` with the same labels, and each has its own `ServiceMonitor`. Dashboard queries must not filter by job or service, or they miss one side.
+- Keep the metric names and labels identical in both apps until Next is removed (see ROADMAP Phase 10).
 
 ### Production `kiebex-api` image tag
 
