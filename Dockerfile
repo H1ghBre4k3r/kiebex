@@ -61,7 +61,9 @@ CMD ["node", "server.js"]
 # ---- api-builder ------------------------------------------------------------
 # Build the Rust API service as a separate target so it can be published as
 # ghcr.io/<owner>/kiebex-api while the Next.js image remains unchanged.
-FROM rust:1.95-slim AS api-builder
+# Builder and runner must use the same Debian release: the binary links against
+# the builder's glibc and fails to start on an older one.
+FROM rust:1.95-slim-trixie AS api-builder
 WORKDIR /app/backend
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -80,7 +82,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
  && cp /app/backend/target/release/api /app/api
 
 # ---- api-runner -------------------------------------------------------------
-FROM debian:bookworm-slim AS api-runner
+FROM debian:trixie-slim AS api-runner
 WORKDIR /app
 
 ENV RUST_API_BIND_ADDR=0.0.0.0:4000
