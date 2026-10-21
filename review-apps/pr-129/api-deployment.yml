@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiebex-api
+  namespace: kiebex-pr-129
+  labels:
+    app: kiebex-api
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kiebex-api
+  template:
+    metadata:
+      labels:
+        app: kiebex-api
+    spec:
+      containers:
+        - name: kiebex-api
+          image: ghcr.io/h1ghbre4k3r/kiebex-api:pr-129-39cb4c2e3cdccf3c8a52985237971df97b842416
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - secretRef:
+                name: kiebex-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 5
+      restartPolicy: Always
