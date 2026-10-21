@@ -73,11 +73,11 @@ Owner describes the current implementation owner. Status describes the Rust migr
 
 | Method | Path                                       | Auth             | Owner   | Status                       | Contract Test |
 | ------ | ------------------------------------------ | ---------------- | ------- | ---------------------------- | ------------- |
-| GET    | `/health`                                  | Public           | Next.js | Rust implemented, not routed | Covered       |
+| GET    | `/health`                                  | Public           | Rust    | Routed to Rust               | Covered       |
 | GET    | `/metrics`                                 | Public           | Next.js | Rust implemented, not routed | Covered       |
 | GET    | `/beers`                                   | Public           | Next.js | Unmigrated                   | Covered       |
 | POST   | `/beers`                                   | Authenticated    | Next.js | Unmigrated                   | Covered       |
-| GET    | `/beer-styles`                             | Public           | Next.js | Rust implemented, not routed | Covered       |
+| GET    | `/beer-styles`                             | Public           | Rust    | Routed to Rust               | Covered       |
 | GET    | `/beer-brands`                             | Public           | Next.js | Unmigrated                   | Covered       |
 | POST   | `/beer-brands`                             | Authenticated    | Next.js | Unmigrated                   | Covered       |
 | GET    | `/beer-variants`                           | Public           | Next.js | Unmigrated                   | Covered       |

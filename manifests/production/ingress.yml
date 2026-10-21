@@ -9,6 +9,16 @@ spec:
   entryPoints:
     - websecure
   routes:
+    - match: Host(`kiel.beer`) && Path(`/api/v1/health`) && Method(`GET`)
+      kind: Rule
+      services:
+        - name: kiebex-api-service
+          port: 80
+    - match: Host(`kiel.beer`) && Path(`/api/v1/beer-styles`) && Method(`GET`)
+      kind: Rule
+      services:
+        - name: kiebex-api-service
+          port: 80
     - match: Host(`kiel.beer`)
       kind: Rule
       services:
