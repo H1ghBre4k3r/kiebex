@@ -39,7 +39,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
-    "@sentry/nextjs": "^10.58.0",
+    "@sentry/nextjs": "^10.75.2",
     "next": "16.4.0",
     "nodemailer": "^9.1.1",
     "pg": "^8.20.0",
