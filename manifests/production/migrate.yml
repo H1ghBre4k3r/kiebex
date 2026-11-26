@@ -14,7 +14,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
-          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:11983f2649ed5cb29db260e74b5ab72a31960203
+          image: ghcr.io/h1ghbre4k3r/kiebex-migrate:9a587ce21a27f24b7f91619b6d8b82f229c5fbe5
           imagePullPolicy: Always
           command:
             - /bin/sh
